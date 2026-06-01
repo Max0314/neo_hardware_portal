@@ -1,0 +1,81 @@
+一、手动启动服务（用于测试）
+1. 启动后端（FastAPI / Uvicorn）
+cd /opt/ai-chatroom
+./venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 18080 --workers 2
+前台运行，按 Ctrl + C 停止。
+若要后台运行，可搭配 nohup 或 tmux 等工具（生产环境推荐用 systemd，见下节）。
+2. 启动 / 重载 nginx（如果修改了配置）
+# 检查配置是否正确
+sudo nginx -t
+# 重载配置（不中断现有连接）
+sudo systemctl reload nginx
+二、通过 systemd 管理 AI聊天室（推荐）
+假设已存在 /etc/systemd/system/ai-chatroom.service，内容大致如下（仅示意）：
+
+[Unit]
+Description=AI Chatroom Backend Service
+After=network.target
+[Service]
+Type=simple
+WorkingDirectory=/opt/ai-chatroom
+ExecStart=/opt/ai-chatroom/venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 18080 --workers 2
+Restart=always
+RestartSec=5
+User=www-data
+Group=www-data
+Environment=PYTHONUNBUFFERED=1
+[Install]
+WantedBy=multi-user.target
+1. 启动服务
+sudo systemctl start ai-chatroom
+2. 设置开机自启
+sudo systemctl enable ai-chatroom
+3. 重启服务
+sudo systemctl restart ai-chatroom
+4. 停止服务
+sudo systemctl stop ai-chatroom
+5. 查看服务状态
+# 概要状态（是否运行中、最近一次退出码等）
+sudo systemctl status ai-chatroom
+# 查看最近 200 行日志
+sudo journalctl -u ai-chatroom -n 200
+# 持续滚动查看日志
+sudo journalctl -u ai-chatroom -f
+三、nginx 站点管理（如需）
+如果 AI聊天室 通过 nginx 暴露在 :8080 端口，比如使用 ai_chatroom.conf / nginx_ai_chat.conf：
+
+1. 查看 nginx 状态
+sudo systemctl status nginx
+2. 启动 / 停止 / 重启 nginx
+# 启动
+sudo systemctl start nginx
+# 停止
+sudo systemctl stop nginx
+# 重启
+sudo systemctl restart nginx
+# 仅重载配置（推荐）
+sudo systemctl reload nginx
+四、常用排查命令
+检查端口监听情况：
+sudo ss -lntp | grep 18080   # 后端
+sudo ss -lntp | grep 8080    # nginx
+用 curl 简单探活：
+
+# 后端健康检查（需在服务器或能访问 127.0.0.1 的环境）
+curl http://127.0.0.1:18080/api/health
+# 通过 nginx 访问首页
+curl -I http://你的服务器IP或域名:8080/
+
+
+
+方案 B：把数据库密码改成 .env 里的（推荐长期一致）
+cd ~/rk3568/docker版本
+
+docker exec stack-htmlsystm python scripts/generate_password_sql.py zzw --sql-only --password 'Zzw5221331@123' > /tmp/reset.sql 2>/tmp/reset.meta
+cat /tmp/reset.meta
+
+docker exec -i stack-mysql bash -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < /tmp/reset.sql
+
+docker exec stack-mysql bash -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" -e "DELETE FROM login_attempts;"'
+
+docker compose up -d htmlsystm

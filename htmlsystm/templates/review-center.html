@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>审批中心 - 硬件研发部管理系统</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/neo-systm.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #1a252f, #2c3e50);
+            color: #ecf0f1;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(26, 37, 47, 0.8);
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #3498db;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .header h1 {
+            color: #3498db;
+            font-size: 2.2rem;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        .btn-back {
+            background: #34495e;
+        }
+        .btn-back:hover {
+            background: #2c3e50;
+        }
+        .btn-approve {
+            background: #27ae60;
+        }
+        .btn-approve:hover {
+            background: #219653;
+        }
+        .btn-reject {
+            background: #e74c3c;
+        }
+        .btn-reject:hover {
+            background: #c0392b;
+        }
+        
+        /* 审批列表 */
+        .review-list {
+            display: grid;
+            gap: 20px;
+        }
+        .review-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 20px;
+            border-left: 4px solid #f39c12;
+        }
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        .review-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #000000;
+            margin-bottom: 5px;
+        }
+        .review-meta {
+            color: #000000;
+            font-size: 0.9rem;
+        }
+        .review-content {
+            color: #000000;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        .review-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .no-reviews {
+            text-align: center;
+            padding: 60px 20px;
+            color: #000000;
+        }
+        .no-reviews i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #3498db;
+        }
+        
+        /* 待办人员选择弹窗 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.show {
+            display: flex;
+        }
+        .modal {
+            background: #2c3e50;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 800px;
+            max-height: 80vh;
+            width: 90%;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+        }
+        .modal-header h2 {
+            color: #3498db;
+            font-size: 1.5rem;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            color: #ecf0f1;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-close:hover {
+            color: #e74c3c;
+        }
+        .search-box {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+        .select-all-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+        .select-all-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .select-all-checkbox input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .select-all-checkbox label {
+            color: #ecf0f1;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            color: #ecf0f1;
+            font-size: 1rem;
+        }
+        .search-box input:focus {
+            outline: none;
+            border-color: #3498db;
+            background: rgba(255, 255, 255, 0.15);
+        }
+        .search-box input::placeholder {
+            color: #95a5a6;
+        }
+        .title-group {
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 15px;
+        }
+        .title-group-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .title-group-header:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            padding: 5px;
+            margin: -5px;
+        }
+        .expand-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #3498db;
+            font-size: 1.2rem;
+            transition: transform 0.3s;
+        }
+        .expand-icon.expanded {
+            transform: rotate(90deg);
+        }
+        .title-group-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        .title-group-name {
+            font-weight: bold;
+            color: #3498db;
+            font-size: 1.1rem;
+            flex: 1;
+        }
+        .title-group-count {
+            color: #95a5a6;
+            font-size: 0.9rem;
+        }
+        .user-list {
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .user-list.expanded {
+            display: grid;
+        }
+        .user-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 5px;
+            transition: background 0.2s;
+        }
+        .user-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        .user-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .user-name {
+            color: #ecf0f1;
+            font-size: 0.95rem;
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        .selected-count {
+            color: #3498db;
+            margin-right: auto;
+            font-size: 0.9rem;
+        }
+        
+        /* 进度条样式 */
+        .progress-container {
+            display: none;
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(52, 152, 219, 0.3);
+        }
+        .progress-container.active {
+            display: block;
+        }
+        .progress-bar-wrapper {
+            width: 100%;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            border-radius: 15px;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.85rem;
+            font-weight: bold;
+            position: relative;
+            overflow: hidden;
+        }
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        .progress-text {
+            text-align: center;
+            color: #ecf0f1;
+            font-size: 0.95rem;
+            margin-top: 10px;
+        }
+        .progress-details {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+            font-size: 0.85rem;
+            color: #bdc3c7;
+        }
+        .progress-details .step {
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .progress-details .step.active {
+            color: #3498db;
+        }
+        .progress-details .step.completed {
+            color: #2ecc71;
+        }
+        .progress-details .step-icon {
+            width: 16px;
+            height: 16px;
+            display: inline-block;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+            .review-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .review-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .btn {
+                flex: 1;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body class="neo-systm-home">
+    <div class="container neo-page-wrap">
+        <div class="neo-page-header">
+            <div class="header-brand-column neo-header-brand-inline">
+                <img src="/logo.png" alt="CHANGHONG NeoNet" class="brand-logo-top-index" />
+                <div class="header-brand-main">
+                    <div class="header-title" style="margin:0;">
+                        <div class="logo-text-index">NEO Hardware <span>AI</span></div>
+                        <div class="sys-subtitle-index">硬件研发部管理系统</div>
+                    </div>
+                </div>
+            </div>
+            <div class="neo-header-actions">
+                <span class="neo-page-title">审批中心</span>
+                <a href="/announcement" class="neo-btn neo-btn-secondary">← 返回公告栏</a>
+            </div>
+        </div>
+        
+        <div class="review-list" id="review-list">
+            <div class="loading">
+                <p>正在加载待审批公告...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 待办人员选择弹窗 -->
+    <div class="modal-overlay" id="todoModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>选择待办人员（可选）</h2>
+                <button class="modal-close" onclick="closeTodoModal()">×</button>
+            </div>
+            <div class="search-box">
+                <input type="text" id="userSearchInput" placeholder="搜索人员姓名或工号..." oninput="filterUsers()">
+            </div>
+            <div class="select-all-box">
+                <div class="select-all-checkbox">
+                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
+                    <label for="selectAllCheckbox">全选所有人员</label>
+                </div>
+            </div>
+            <div id="todoModalContent">
+                <div class="loading">
+                    <p>正在加载人员列表...</p>
+                </div>
+            </div>
+            <!-- 进度条容器 -->
+            <div class="progress-container" id="approvalProgress">
+                <div class="progress-bar-wrapper">
+                    <div class="progress-bar" id="progressBar" style="width: 0%">0%</div>
+                </div>
+                <div class="progress-text" id="progressText">准备开始审批...</div>
+                <div class="progress-details" id="progressDetails">
+                    <div class="step" id="step1">
+                        <span class="step-icon">⏳</span>
+                        <span>提交审批请求</span>
+                    </div>
+                    <div class="step" id="step2">
+                        <span class="step-icon">⏳</span>
+                        <span>审批公告</span>
+                    </div>
+                    <div class="step" id="step3">
+                        <span class="step-icon">⏳</span>
+                        <span>创建待办任务</span>
+                    </div>
+                    <div class="step" id="step4">
+                        <span class="step-icon">⏳</span>
+                        <span>发送通知</span>
+                    </div>
+                    <div class="step" id="step5">
+                        <span class="step-icon">⏳</span>
+                        <span>完成</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="createTodoCheckbox" checked style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="color: #ecf0f1; font-size: 0.95rem;">为勾选用户创建待办任务</span>
+                    </label>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <span class="selected-count" id="selectedCount">已选择 0 人（可选）</span>
+                    <div style="display: flex; gap: 10px;">
+                <button class="btn btn-back" id="cancelBtn" onclick="closeTodoModal()">取消</button>
+                <button class="btn btn-approve" id="confirmBtn" onclick="confirmTodoSelection()">确定</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== 浏览器兼容性Polyfill ==========
+        // 兼容Safari 11.1 (iOS 11.2.5) 和 Chrome 63+
+        
+        // Object.entries polyfill (Safari 11.1不支持)
+        if (!Object.entries) {
+            Object.entries = function(obj) {
+                var ownProps = Object.keys(obj),
+                    i = ownProps.length,
+                    resArray = new Array(i);
+                while (i--) {
+                    resArray[i] = [ownProps[i], obj[ownProps[i]]];
+                }
+                return resArray;
+            };
+        }
+        
+        // Object.values polyfill (Safari 11.1不支持)
+        if (!Object.values) {
+            Object.values = function(obj) {
+                var keys = Object.keys(obj),
+                    i = keys.length,
+                    resArray = new Array(i);
+                while (i--) {
+                    resArray[i] = obj[keys[i]];
+                }
+                return resArray;
+            };
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPendingAnnouncements();
+            
+            // 优化：减少刷新频率到60秒，并添加防抖
+            let refreshTimer = null;
+            let lastRefreshTime = 0;
+            const REFRESH_INTERVAL = 60000; // 60秒
+            const MIN_REFRESH_INTERVAL = 5000; // 最小间隔5秒
+            
+            function debouncedRefresh() {
+                const now = Date.now();
+                if (now - lastRefreshTime < MIN_REFRESH_INTERVAL) {
+                    if (refreshTimer) clearTimeout(refreshTimer);
+                    refreshTimer = setTimeout(() => {
+                        lastRefreshTime = Date.now();
+                        loadPendingAnnouncements();
+                    }, MIN_REFRESH_INTERVAL - (now - lastRefreshTime));
+                } else {
+                    lastRefreshTime = now;
+                    loadPendingAnnouncements();
+                }
+            }
+            
+            setInterval(debouncedRefresh, REFRESH_INTERVAL);
+        });
+        
+        function loadPendingAnnouncements() {
+            fetch('/api/announcement/pending', {
+                credentials: 'include'
+            })
+                .then(response => {
+                    // 检查Content-Type，如果不是JSON，可能是重定向到登录页面
+                    const contentType = response.headers.get('content-type') || '';
+                    if (!contentType.includes('application/json')) {
+                        if (response.status === 302 || response.status === 401 || response.status === 403) {
+                            throw new Error('未登录或没有权限，请先登录');
+                        }
+                        // 尝试读取文本，看看是否是HTML错误页面
+                        return response.text().then(text => {
+                            throw new Error(`服务器返回了非JSON格式的响应 (${response.status}): ${text.substring(0, 100)}`);
+                        });
+                    }
+                    
+                    if (!response.ok) {
+                        // 尝试解析JSON错误信息
+                        return response.json().then(data => {
+                            throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+                        }).catch(() => {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(announcements => {
+                    // 检查返回的是否是错误对象
+                    if (announcements && announcements.error) {
+                        throw new Error(announcements.error);
+                    }
+                    // 确保announcements是数组
+                    if (!Array.isArray(announcements)) {
+                        console.warn('待审批公告API返回非数组格式:', announcements);
+                        announcements = [];
+                    }
+                    displayPendingAnnouncements(announcements);
+                })
+                .catch(error => {
+                    console.error('加载待审批公告失败:', error);
+                    const reviewList = document.getElementById('review-list');
+                    reviewList.innerHTML = `
+                        <div class="no-reviews">
+                            <i>❌</i>
+                            <h3>加载失败</h3>
+                            <p>${error.message || '未知错误'}</p>
+                            <button onclick="loadPendingAnnouncements()" style="margin-top: 10px; padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">重试</button>
+                        </div>
+                    `;
+                });
+        }
+        
+        function displayPendingAnnouncements(announcements) {
+            const reviewList = document.getElementById('review-list');
+            
+            if (announcements.length === 0) {
+                reviewList.innerHTML = `
+                    <div class="no-reviews">
+                        <i>✅</i>
+                        <h3>暂无待审批公告</h3>
+                        <p>所有公告都已审批完成</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            reviewList.innerHTML = '';
+            
+            announcements.forEach(announcement => {
+                const item = document.createElement('div');
+                item.className = 'review-item';
+                
+                const header = document.createElement('div');
+                header.className = 'review-header';
+                
+                const title = document.createElement('div');
+                title.className = 'review-title';
+                title.textContent = announcement.title;
+                
+                const meta = document.createElement('div');
+                meta.className = 'review-meta';
+                let subBoardText = '';
+                if (announcement.sub_board_id) {
+                    // 尝试获取二级公告栏名称
+                    subBoardText = `<div>二级公告栏: ${announcement.sub_board_name || announcement.sub_board_id}</div>`;
+                }
+                meta.innerHTML = `
+                    <div>申请人: ${announcement.author}</div>
+                    <div>申请时间: ${formatDate(announcement.created_time)}</div>
+                    <div>公告栏: ${getBoardName(announcement.board_id)}</div>
+                    ${subBoardText}
+                `;
+                
+                header.appendChild(title);
+                header.appendChild(meta);
+                
+                const content = document.createElement('div');
+                content.className = 'review-content';
+                const textContent = (announcement.content || '').replace(/<[^>]*>/g, '');
+                content.textContent = textContent.length > 200 ? textContent.substring(0, 200) + '...' : textContent;
+                
+                const actions = document.createElement('div');
+                actions.className = 'review-actions';
+                actions.innerHTML = `
+                    <button class="btn btn-approve" onclick="approveAnnouncement('${announcement.id}', true)">✅ 批准发布</button>
+                    <button class="btn btn-reject" onclick="approveAnnouncement('${announcement.id}', false)">❌ 拒绝</button>
+                    <a href="/announcement-detail/${announcement.id}" class="btn">👁️ 查看详情</a>
+                `;
+                
+                item.appendChild(header);
+                item.appendChild(content);
+                item.appendChild(actions);
+                
+                reviewList.appendChild(item);
+            });
+        }
+        
+        // 全局变量：存储当前审批的公告ID和选中的待办人员
+        let currentAnnouncementId = null;
+        let selectedUsers = new Set(); // 存储选中的userid
+        let usersByTitleData = null; // 存储按title分组的用户数据
+        
+        function approveAnnouncement(announcementId, approve) {
+            if (!approve) {
+                // 拒绝操作，直接执行（拒绝操作通常很快，也显示简单进度）
+                const comment = prompt('请输入拒绝理由:');
+                if (comment === null) return; // 用户取消
+                
+                // 显示简单的进度提示
+                const reviewItem = document.querySelector(`[data-announcement-id="${announcementId}"]`);
+                if (reviewItem) {
+                    const actions = reviewItem.querySelector('.review-actions');
+                    if (actions) {
+                        const originalHTML = actions.innerHTML;
+                        actions.innerHTML = '<div style="color: #f39c12; padding: 10px;">⏳ 正在拒绝公告...</div>';
+                        submitApproval(announcementId, 'reject', comment, []);
+                        // 如果失败，恢复按钮
+                        setTimeout(() => {
+                            if (actions.innerHTML.includes('正在拒绝')) {
+                                actions.innerHTML = originalHTML;
+                            }
+                        }, 5000);
+                    }
+                } else {
+                    submitApproval(announcementId, 'reject', comment, []);
+                }
+                return;
+            }
+            
+            // 批准操作，先显示待办人员选择弹窗
+            currentAnnouncementId = announcementId;
+            selectedUsers.clear();
+            openTodoModal();
+        }
+
+        function openTodoModal() {
+            const modal = document.getElementById('todoModal');
+            modal.classList.add('show');
+            
+            // 重置进度条状态
+            hideProgress();
+            updateProgress(0, '准备开始审批...', 1);
+            
+            // 清空搜索框
+            const searchInput = document.getElementById('userSearchInput');
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            
+            // 重置全选checkbox
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            }
+            
+            // 加载用户列表
+            loadUsersByTitle();
+        }
+
+        function closeTodoModal() {
+            const modal = document.getElementById('todoModal');
+            modal.classList.remove('show');
+            currentAnnouncementId = null;
+            selectedUsers.clear();
+            
+            // 重置进度条状态
+            hideProgress();
+            updateProgress(0, '准备开始审批...', 1);
+            
+            // 清空搜索框
+            const searchInput = document.getElementById('userSearchInput');
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            
+            // 重置全选checkbox
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            }
+        }
+
+        function isExcludedTodoUser(user) {
+            const name = (user.name || '').trim();
+            return name === '系统最高管理员' || name === '最高管理员';
+        }
+
+        function loadUsersByTitle() {
+            const content = document.getElementById('todoModalContent');
+            content.innerHTML = '<div class="loading"><p>正在加载人员列表...</p></div>';
+            
+            fetch('/api/users/by-title', {
+                credentials: 'include'
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('加载人员列表失败');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    usersByTitleData = data;
+                    renderUsersByTitle(data);
+                })
+                .catch(error => {
+                    content.innerHTML = `
+                        <div class="no-reviews">
+                            <i>❌</i>
+                            <h3>加载失败</h3>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+                });
+        }
+
+        function renderUsersByTitle(data) {
+            const content = document.getElementById('todoModalContent');
+            content.innerHTML = '';
+            
+            if (!data.titles || data.titles.length === 0) {
+                content.innerHTML = '<div class="no-reviews"><p>暂无人员数据</p></div>';
+                return;
+            }
+            
+            data.titles.forEach(title => {
+                // 过滤掉"系统最高管理员"
+                if (title === '系统最高管理员' || title === '最高管理员') {
+                    return;
+                }
+                
+                const users = data.users_by_title[title] || [];
+                if (users.length === 0) return;
+                
+                const titleGroup = document.createElement('div');
+                titleGroup.className = 'title-group';
+                
+                const header = document.createElement('div');
+                header.className = 'title-group-header';
+                header.onclick = function(e) {
+                    // 如果点击的是checkbox，不触发展开/折叠
+                    if (e.target.type === 'checkbox') return;
+                    toggleTitleGroupExpand(title);
+                };
+                
+                const expandIcon = document.createElement('span');
+                expandIcon.className = 'expand-icon';
+                expandIcon.textContent = '▶';
+                expandIcon.dataset.title = title;
+                
+                const groupCheckbox = document.createElement('input');
+                groupCheckbox.type = 'checkbox';
+                groupCheckbox.className = 'title-group-checkbox';
+                groupCheckbox.dataset.title = title;
+                groupCheckbox.onclick = function(e) {
+                    e.stopPropagation(); // 阻止触发header的点击事件
+                };
+                groupCheckbox.addEventListener('change', function() {
+                    toggleTitleGroup(title, this.checked);
+                });
+                
+                const titleName = document.createElement('span');
+                titleName.className = 'title-group-name';
+                titleName.textContent = title;
+                
+                const titleCount = document.createElement('span');
+                titleCount.className = 'title-group-count';
+                titleCount.textContent = `(${users.length}人)`;
+                
+                header.appendChild(expandIcon);
+                header.appendChild(groupCheckbox);
+                header.appendChild(titleName);
+                header.appendChild(titleCount);
+                
+                const userList = document.createElement('div');
+                userList.className = 'user-list';
+                userList.dataset.title = title;
+                
+                users.forEach(user => {
+                    if (isExcludedTodoUser(user)) {
+                        return;
+                    }
+                    const userItem = document.createElement('div');
+                    userItem.className = 'user-item';
+                    userItem.dataset.userid = user.userid;
+                    userItem.dataset.name = (user.name || '').toLowerCase();
+                    userItem.dataset.jobNumber = (user.job_number || '').toLowerCase();
+                    userItem.dataset.title = title;
+                    
+                    const hasUserid = !!(user.userid && String(user.userid).trim());
+                    const userCheckbox = document.createElement('input');
+                    userCheckbox.type = 'checkbox';
+                    userCheckbox.className = 'user-checkbox';
+                    userCheckbox.value = hasUserid ? user.userid : '';
+                    userCheckbox.disabled = !hasUserid;
+                    userCheckbox.dataset.title = title;
+                    if (hasUserid) {
+                        userCheckbox.addEventListener('change', function() {
+                            toggleUser(user.userid, this.checked);
+                            updateTitleGroupCheckbox(title);
+                        });
+                    }
+                    
+                    const userName = document.createElement('span');
+                    userName.className = 'user-name';
+                    userName.textContent = hasUserid
+                        ? (user.name || user.job_number || user.userid)
+                        : ((user.name || user.job_number || '未知') + '（无钉钉ID，不可选）');
+                    
+                    userItem.appendChild(userCheckbox);
+                    userItem.appendChild(userName);
+                    userList.appendChild(userItem);
+                });
+                
+                titleGroup.appendChild(header);
+                titleGroup.appendChild(userList);
+                content.appendChild(titleGroup);
+            });
+            
+            // 初始化所有title组的checkbox状态
+            if (usersByTitleData && usersByTitleData.titles) {
+                usersByTitleData.titles.forEach(title => {
+                    // 跳过系统最高管理员
+                    if (title === '系统最高管理员' || title === '最高管理员') {
+                        return;
+                    }
+                    updateTitleGroupCheckbox(title);
+                });
+            }
+            
+            updateSelectAllCheckbox();
+            updateSelectedCount();
+        }
+
+        function toggleSelectAll() {
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            const checked = selectAllCheckbox.checked;
+            
+            if (!usersByTitleData || !usersByTitleData.titles) return;
+            
+            // 遍历所有title组（排除系统最高管理员）
+            usersByTitleData.titles.forEach(title => {
+                // 跳过系统最高管理员
+                if (title === '系统最高管理员' || title === '最高管理员') {
+                    return;
+                }
+                
+                const users = usersByTitleData.users_by_title[title] || [];
+                users.forEach(user => {
+                    if (isExcludedTodoUser(user) || !user.userid) {
+                        return;
+                    }
+                    if (checked) {
+                        selectedUsers.add(user.userid);
+                    } else {
+                        selectedUsers.delete(user.userid);
+                    }
+                });
+                
+                // 更新该组的所有checkbox
+                const groupCheckbox = document.querySelector(`.title-group-checkbox[data-title="${title}"]`);
+                if (groupCheckbox) {
+                    groupCheckbox.checked = checked;
+                    groupCheckbox.indeterminate = false;
+                }
+                
+                const userCheckboxes = document.querySelectorAll(`.user-checkbox[data-title="${title}"]`);
+                userCheckboxes.forEach(cb => {
+                    cb.checked = checked;
+                });
+            });
+            
+            updateSelectedCount();
+        }
+
+        function updateSelectAllCheckbox() {
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            if (!selectAllCheckbox || !usersByTitleData || !usersByTitleData.titles) return;
+            
+            let totalUsers = 0;
+            let selectedCount = 0;
+            
+            // 统计所有用户（排除系统最高管理员）
+            usersByTitleData.titles.forEach(title => {
+                // 跳过系统最高管理员
+                if (title === '系统最高管理员' || title === '最高管理员') {
+                    return;
+                }
+                
+                const users = usersByTitleData.users_by_title[title] || [];
+                users.forEach(user => {
+                    if (isExcludedTodoUser(user) || !user.userid) {
+                        return;
+                    }
+                    totalUsers++;
+                    if (selectedUsers.has(user.userid)) {
+                        selectedCount++;
+                    }
+                });
+            });
+            
+            // 更新全选checkbox状态
+            selectAllCheckbox.checked = totalUsers > 0 && selectedCount === totalUsers;
+            selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < totalUsers;
+        }
+
+        function toggleTitleGroup(title, checked) {
+            if (!usersByTitleData || !usersByTitleData.users_by_title[title]) return;
+            
+            const users = usersByTitleData.users_by_title[title];
+            users.forEach(user => {
+                if (isExcludedTodoUser(user) || !user.userid) {
+                    return;
+                }
+                if (checked) {
+                    selectedUsers.add(user.userid);
+                } else {
+                    selectedUsers.delete(user.userid);
+                }
+            });
+            
+            // 更新所有该title下的checkbox状态
+            const checkboxes = document.querySelectorAll(`.user-checkbox[data-title="${title}"]`);
+            checkboxes.forEach(cb => {
+                cb.checked = checked;
+            });
+            
+            updateSelectAllCheckbox();
+            updateSelectedCount();
+        }
+
+        function toggleUser(userid, checked) {
+            if (checked) {
+                selectedUsers.add(userid);
+            } else {
+                selectedUsers.delete(userid);
+            }
+            updateSelectAllCheckbox();
+            updateSelectedCount();
+        }
+
+        function updateTitleGroupCheckbox(title) {
+            // 跳过系统最高管理员
+            if (title === '系统最高管理员' || title === '最高管理员') {
+                return;
+            }
+            
+            if (!usersByTitleData || !usersByTitleData.users_by_title[title]) return;
+            
+            const users = usersByTitleData.users_by_title[title];
+            const allChecked = users.every(user => selectedUsers.has(user.userid));
+            const someChecked = users.some(user => selectedUsers.has(user.userid));
+            
+            const groupCheckbox = document.querySelector(`.title-group-checkbox[data-title="${title}"]`);
+            if (groupCheckbox) {
+                groupCheckbox.checked = allChecked;
+                groupCheckbox.indeterminate = someChecked && !allChecked;
+            }
+            
+            // 更新全选checkbox状态
+            updateSelectAllCheckbox();
+        }
+
+        function updateSelectedCount() {
+            const countElement = document.getElementById('selectedCount');
+            countElement.textContent = `已选择 ${selectedUsers.size} 人（可选）`;
+            // 同时更新全选checkbox状态
+            updateSelectAllCheckbox();
+        }
+
+        function toggleTitleGroupExpand(title) {
+            const userList = document.querySelector(`.user-list[data-title="${title}"]`);
+            const expandIcon = document.querySelector(`.expand-icon[data-title="${title}"]`);
+            
+            if (userList && expandIcon) {
+                const isExpanded = userList.classList.contains('expanded');
+                if (isExpanded) {
+                    userList.classList.remove('expanded');
+                    expandIcon.textContent = '▶';
+                    expandIcon.classList.remove('expanded');
+                } else {
+                    userList.classList.add('expanded');
+                    expandIcon.textContent = '▼';
+                    expandIcon.classList.add('expanded');
+                }
+            }
+        }
+
+        function filterUsers() {
+            const searchInput = document.getElementById('userSearchInput');
+            const searchTerm = (searchInput.value || '').toLowerCase().trim();
+            
+            if (!searchTerm) {
+                // 显示所有组和用户
+                document.querySelectorAll('.title-group').forEach(group => {
+                    group.style.display = '';
+                });
+                document.querySelectorAll('.user-item').forEach(item => {
+                    item.style.display = '';
+                });
+                return;
+            }
+            
+            // 遍历所有用户项
+            let hasVisibleGroup = false;
+            document.querySelectorAll('.title-group').forEach(group => {
+                const title = group.querySelector('.title-group-name').textContent;
+                const userItems = group.querySelectorAll('.user-item');
+                let hasVisibleUser = false;
+                
+                userItems.forEach(item => {
+                    const name = item.dataset.name || '';
+                    const jobNumber = item.dataset.jobNumber || '';
+                    const userTitle = item.dataset.title || '';
+                    
+                    if (name.includes(searchTerm) || jobNumber.includes(searchTerm) || userTitle.includes(searchTerm)) {
+                        item.style.display = '';
+                        hasVisibleUser = true;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                
+                if (hasVisibleUser || title.toLowerCase().includes(searchTerm)) {
+                    group.style.display = '';
+                    // 自动展开匹配的组
+                    const userList = group.querySelector('.user-list');
+                    const expandIcon = group.querySelector('.expand-icon');
+                    if (userList && expandIcon && !userList.classList.contains('expanded')) {
+                        userList.classList.add('expanded');
+                        expandIcon.textContent = '▼';
+                        expandIcon.classList.add('expanded');
+                    }
+                    hasVisibleGroup = true;
+                } else {
+                    group.style.display = 'none';
+                }
+            });
+        }
+
+        function confirmTodoSelection() {
+            if (!currentAnnouncementId) {
+                alert('错误：未找到公告ID');
+                return;
+            }
+            
+            // 批准理由改为可选，不再强制要求输入
+            const comment = ''; // 不再要求输入批准理由
+            
+            // 待办人员是可选的，可以为空数组
+            const selectedUserIds = Array.from(selectedUsers).filter(uid => uid && String(uid).trim());
+            
+            if (selectedUserIds.length === 0) {
+                const proceed = confirm(
+                    '未选择阅读人员，将不会发送「请阅读公告」工作通知。\n\n是否仍要批准发布？'
+                );
+                if (!proceed) {
+                    return;
+                }
+            }
+            
+            // 获取"创建待办"复选框的状态
+            const createTodoCheckbox = document.getElementById('createTodoCheckbox');
+            const createTodo = createTodoCheckbox ? createTodoCheckbox.checked : false;
+            
+            submitApproval(currentAnnouncementId, 'approve', comment, selectedUserIds, createTodo);
+        }
+
+        function showProgress() {
+            const progressContainer = document.getElementById('approvalProgress');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const confirmBtn = document.getElementById('confirmBtn');
+            
+            if (progressContainer) {
+                progressContainer.classList.add('active');
+            }
+            if (cancelBtn) {
+                cancelBtn.disabled = true;
+                cancelBtn.style.opacity = '0.5';
+                cancelBtn.style.cursor = 'not-allowed';
+            }
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.style.opacity = '0.5';
+                confirmBtn.style.cursor = 'not-allowed';
+            }
+        }
+
+        function hideProgress() {
+            const progressContainer = document.getElementById('approvalProgress');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const confirmBtn = document.getElementById('confirmBtn');
+            
+            if (progressContainer) {
+                progressContainer.classList.remove('active');
+            }
+            if (cancelBtn) {
+                cancelBtn.disabled = false;
+                cancelBtn.style.opacity = '1';
+                cancelBtn.style.cursor = 'pointer';
+            }
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.style.opacity = '1';
+                confirmBtn.style.cursor = 'pointer';
+            }
+        }
+
+        function updateProgress(percent, text, activeStep) {
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            
+            if (progressBar) {
+                progressBar.style.width = percent + '%';
+                progressBar.textContent = percent + '%';
+            }
+            if (progressText) {
+                progressText.textContent = text;
+            }
+            
+            // 更新步骤状态
+            for (let i = 1; i <= 5; i++) {
+                const step = document.getElementById('step' + i);
+                if (step) {
+                    step.classList.remove('active', 'completed');
+                    if (i < activeStep) {
+                        step.classList.add('completed');
+                        step.querySelector('.step-icon').textContent = '✅';
+                    } else if (i === activeStep) {
+                        step.classList.add('active');
+                        step.querySelector('.step-icon').textContent = '⏳';
+                    } else {
+                        step.querySelector('.step-icon').textContent = '⏸️';
+                    }
+                }
+            }
+        }
+
+        function submitApproval(announcementId, action, comment, todoUsers, createTodo = false) {
+            // 显示进度条
+            showProgress();
+            
+            // 初始化进度
+            updateProgress(10, '正在提交审批请求...', 1);
+            
+            // 模拟进度更新（实际进度由后端处理时间决定）
+            const progressInterval = setInterval(() => {
+                const currentPercent = parseInt(document.getElementById('progressBar').style.width) || 10;
+                if (currentPercent < 90) {
+                    // 缓慢增加进度，直到90%
+                    const newPercent = Math.min(currentPercent + 2, 90);
+                    if (newPercent < 30) {
+                        updateProgress(newPercent, '正在审批公告...', 2);
+                    } else if (newPercent < 60) {
+                        updateProgress(newPercent, todoUsers.length > 0 ? '正在创建待办任务...' : '审批中...', todoUsers.length > 0 ? 3 : 2);
+                    } else if (newPercent < 85) {
+                        updateProgress(newPercent, todoUsers.length > 0 ? '正在发送通知...' : '审批中...', todoUsers.length > 0 ? 4 : 2);
+                    } else {
+                        updateProgress(newPercent, '即将完成...', 5);
+                    }
+                }
+            }, 300); // 每300ms更新一次
+            
+            fetch(`/api/announcement/approve/${announcementId}`, {
+                method: 'PUT',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: action,
+                    comment: comment,
+                    todo_users: todoUsers, // 传递待办人员列表
+                    create_todo: createTodo // 传递是否创建待办的标志
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                clearInterval(progressInterval);
+                updateProgress(100, '审批完成！', 5);
+                
+                setTimeout(() => {
+                    hideProgress();
+                if (result.success) {
+                        if (action === 'approve') {
+                        try {
+                            sessionStorage.setItem('announcement_list_dirty', '1');
+                            if (typeof(Storage) !== 'undefined' && localStorage) {
+                                const keysToRemove = [];
+                                for (let i = 0; i < localStorage.length; i++) {
+                                    const key = localStorage.key(i);
+                                    if (key && (key.startsWith('announcement_list_') || key === 'announcement_sidebar_cache')) {
+                                        keysToRemove.push(key);
+                                    }
+                                }
+                                keysToRemove.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+                            }
+                        } catch (e) { /* ignore */ }
+                        let msg = result.message || '公告已批准发布';
+                        if (result.read_notification_sent === true) {
+                            msg += '\n\n【工作通知】已向阅读人员发送通知';
+                        } else if (result.read_notification_warning) {
+                            msg += '\n\n【阅读通知】' + result.read_notification_warning;
+                        } else if (result.notification_warning) {
+                            msg += '\n\n【工作通知】' + result.notification_warning;
+                        }
+                        if (result.knowledge_doc_error) {
+                            msg += '\n\n【知识库】' + result.knowledge_doc_error;
+                        }
+                        alert(msg);
+                            closeTodoModal();
+                        window.location.href = `/announcement-detail/${announcementId}`;
+                    } else {
+                        // 拒绝成功，重新加载列表
+                        alert(result.message || '公告已拒绝');
+                        loadPendingAnnouncements();
+                    }
+                } else {
+                    alert(result.error || result.message || '操作失败');
+                }
+                }, 500);
+            })
+            .catch(error => {
+                clearInterval(progressInterval);
+                hideProgress();
+                console.error('审批公告失败:', error);
+                alert('操作失败: ' + error.message);
+            });
+        }
+        
+        function formatDate(isoString) {
+            if (!isoString) return '未知';
+            const date = new Date(isoString);
+            return date.toLocaleString('zh-CN');
+        }
+        
+        function getBoardName(boardId) {
+            const boardMap = {
+                'hardware': '硬件研发部',
+                'circuit': '电路设计组',
+                'structure': '结构组',
+                'packaging': '包装标签组',
+                'testing': '测试组'
+            };
+            return boardMap[boardId] || boardId;
+        }
+    </script>
+</body>
+</html>

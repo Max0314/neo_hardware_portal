@@ -1,0 +1,99 @@
+/* 评审效能看板 - 弹层样式 */
+.dashboard-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 40, 60, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  animation: dashboard-fade-in 0.2s ease;
+}
+
+@keyframes dashboard-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.dashboard-modal-panel {
+  background: #F3F8FC;
+  border-radius: 24px;
+  max-width: 960px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 48px rgba(0, 45, 70, 0.2);
+  animation: dashboard-slide-in 0.25s ease;
+}
+
+@keyframes dashboard-slide-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.dashboard-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid rgba(37, 99, 235, 0.1);
+  background: white;
+  border-radius: 24px 24px 0 0;
+}
+
+.dashboard-modal-header h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0A2E42;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.dashboard-modal-close {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: #E4ECF2;
+  color: #3C6478;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  transition: background 0.2s, color 0.2s;
+}
+
+.dashboard-modal-close:hover {
+  background: #C1D9E8;
+  color: #0A2E42;
+}
+
+.dashboard-modal-body {
+  padding: 2rem;
+}
+
+.dashboard-modal-body .bi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+.dashboard-modal-body .bi-card {
+  min-width: 0;
+}
+
+.dashboard-placeholder {
+  color: #96B4C9;
+  font-weight: 500;
+}

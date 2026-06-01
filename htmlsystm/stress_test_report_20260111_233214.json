@@ -1,0 +1,20 @@
+{
+  "test_time": "2026-01-11T23:32:14.926605",
+  "total_duration": 104.32892608642578,
+  "server_url": "http://192.168.1.77:8000",
+  "concurrent_users": 500,
+  "results": {
+    "login_and_view_announcement": {
+      "total": 500,
+      "success": 207,
+      "failed": 293,
+      "success_rate": 41.4,
+      "avg_response_time": 5899.685965538025,
+      "min_response_time": 14.255523681640625,
+      "max_response_time": 10058.96282196045,
+      "avg_login_time": 25.899432207408704,
+      "avg_page_load_time": 21.113953590393066,
+      "avg_api_load_time": 23.993241038299413
+    }
+  }
+}

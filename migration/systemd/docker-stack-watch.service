@@ -1,0 +1,21 @@
+# 由 migration/install-boot-service.sh 安装（INSTALL_WATCH=1）
+# 宿主机巡检 Docker 栈健康状态
+
+[Unit]
+Description=Hardware R&D Docker stack health watch
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+User=zzw
+Group=docker
+SupplementaryGroups=docker vboxsf
+Environment=HOME=/home/zzw
+Environment=STACK_DIR=/media/sf_awei/docker版本
+Environment=STACK_STATE_DIR=/var/lib/docker-stack
+Environment=STACK_WATCH_LOG=/var/log/docker-stack-watch.log
+ExecStart=/usr/local/lib/docker-stack/watch-stack-health.sh
+
+[Install]
+WantedBy=multi-user.target

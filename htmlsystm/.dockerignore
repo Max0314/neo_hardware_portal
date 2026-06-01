@@ -1,0 +1,16 @@
+.git
+**/__pycache__
+*.py[cod]
+*.egg-info
+.env
+.mysql.env
+*.log
+.pytest_cache
+.mypy_cache
+stress_test_report_*.json
+htmlsystm.service
+*.md
+*.sh
+*.bat
+sdk/python/README*.md
+sdk/python/ChangeLog.md

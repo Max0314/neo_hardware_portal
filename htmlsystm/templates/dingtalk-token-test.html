@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钉钉AccessToken测试 - 硬件研发部管理系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="/js/dingtalk.open.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --accent: #e74c3c;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --ai-color: #9b59b6;
+            --card-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: var(--gradient-primary);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: var(--glass-bg);
+            border-radius: 15px;
+            padding: 25px 30px;
+            margin-bottom: 25px;
+            box-shadow: var(--card-shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .header h1 {
+            color: var(--primary);
+            font-size: 2.2rem;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+        
+        .btn {
+            background: var(--secondary);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn-back {
+            background: var(--primary);
+        }
+        
+        .main-content {
+            background: var(--glass-bg);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+        }
+        
+        .test-section h2 {
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .info-box {
+            background: rgba(52, 152, 219, 0.1);
+            border-left: 4px solid var(--secondary);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .config-form {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-family: 'Courier New', monospace;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--secondary);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        .btn-test {
+            background: var(--ai-color);
+            font-size: 1.1rem;
+            padding: 15px 30px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .btn-test:hover {
+            background: #8e44ad;
+        }
+        
+        .btn-test:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status-box {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        
+        .status-box.success {
+            border-color: var(--success);
+            background: rgba(46, 204, 113, 0.1);
+        }
+        
+        .status-box.error {
+            border-color: var(--accent);
+            background: rgba(231, 76, 60, 0.1);
+        }
+        
+        .status-box.loading {
+            border-color: var(--secondary);
+            background: rgba(52, 152, 219, 0.1);
+        }
+        
+        .status-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-box.success .status-title {
+            color: var(--success);
+        }
+        
+        .status-box.error .status-title {
+            color: var(--accent);
+        }
+        
+        .status-box.loading .status-title {
+            color: var(--secondary);
+        }
+        
+        .status-content {
+            color: #5a6c7d;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        
+        .status-content pre {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin-top: 10px;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+        
+        .token-display {
+            position: relative;
+            margin: 10px 0;
+        }
+        
+        .token-display pre {
+            padding-right: 80px;
+        }
+        
+        .btn-copy {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        
+        .btn-copy:hover {
+            background: #2980b9;
+        }
+        
+        .btn-copy.success {
+            background: var(--success);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1><i class="fas fa-key"></i> 钉钉AccessToken测试</h1>
+                <p>测试获取钉钉AccessToken（新API）</p>
+            </div>
+            <a href="/" class="btn btn-back">
+                <i class="fas fa-arrow-left"></i> 返回主页
+            </a>
+        </div>
+        
+        <div class="main-content">
+            <div class="test-section">
+                <h2><i class="fas fa-info-circle"></i> 功能说明</h2>
+                <div class="info-box">
+                    <p><strong>1. AccessToken获取（官方API格式）：</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 5px;">
+                        <li><strong>API端点：</strong>POST https://api.dingtalk.com/v1.0/oauth2/{corp_id}/token</li>
+                        <li><strong>Host：</strong>api.dingtalk.com</li>
+                        <li><strong>Content-Type：</strong>application/json</li>
+                        <li><strong>参数：</strong>client_id、client_secret、grant_type（固定为client_credentials）</li>
+                        <li><strong>返回：</strong>access_token 和 expires_in（有效期，单位：秒）</li>
+                    </ul>
+                    <p style="margin-top: 15px;"><strong>2. 免登授权码获取：</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 5px;">
+                        <li><strong>方式：</strong>使用钉钉JSAPI的 <code>dd.runtime.permission.requestAuthCode</code></li>
+                        <li><strong>参数：</strong>corpId（企业ID，可在配置参数中修改）</li>
+                        <li><strong>返回：</strong>result.code（授权码）</li>
+                        <li><strong>用途：</strong>获取授权码后，可用于调用后端API获取用户信息</li>
+                        <li><strong>注意：</strong>需要在钉钉客户端中打开此页面才能使用</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <h2><i class="fas fa-cog"></i> 配置参数</h2>
+                <div class="config-form">
+                    <div class="form-group">
+                        <label for="clientId">Client ID:</label>
+                        <input type="text" id="clientId" class="form-input" value="dingtgmzjxwfn4ilrk0b" placeholder="请输入Client ID">
+                    </div>
+                    <div class="form-group">
+                        <label for="clientSecret">Client Secret:</label>
+                        <input type="text" id="clientSecret" class="form-input" value="g4d1mxVPzcQe2m-02LXcykNoWUY82wvIVOqU6BBrPLf8oYIaFid17Nb-IEo0ZcSi" placeholder="请输入Client Secret">
+                    </div>
+                    <div class="form-group">
+                        <label for="corpId">CorpId (企业ID):</label>
+                        <input type="text" id="corpId" class="form-input" value="dingb7b711325c4be8aa35c2f4657eb6378f" placeholder="请输入CorpId">
+                        <small style="color: #7f8c8d; display: block; margin-top: 5px; font-size: 0.85rem;">
+                            <i class="fas fa-info-circle"></i> 用于构建API URL: /v1.0/oauth2/{corp_id}/token
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="grantType">Grant Type:</label>
+                        <input type="text" id="grantType" class="form-input" value="client_credentials" readonly>
+                        <small style="color: #7f8c8d; display: block; margin-top: 5px;">固定值，不可修改</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <h2><i class="fas fa-flask"></i> 测试操作</h2>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-test" id="getTokenBtn" onclick="getDingTalkToken()" style="flex: 1; min-width: 200px;">
+                        <i class="fas fa-token"></i> 获取钉钉AccessToken
+                    </button>
+                    <button class="btn btn-test" id="getAuthCodeBtn" onclick="getDingTalkAuthCode()" style="flex: 1; min-width: 200px; background: var(--success);">
+                        <i class="fas fa-key"></i> 获取免登授权码
+                    </button>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <h2><i class="fas fa-lock"></i> AccessToken测试结果</h2>
+                <div id="tokenContainer">
+                    <div class="status-box loading">
+                        <div class="status-title">
+                            <i class="fas fa-info-circle"></i> 等待获取...
+                        </div>
+                        <div class="status-content">
+                            点击上方"获取钉钉AccessToken"按钮开始测试
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <h2><i class="fas fa-user-circle"></i> 免登授权码测试结果</h2>
+                <div id="authCodeContainer">
+                    <div class="status-box loading">
+                        <div class="status-title">
+                            <i class="fas fa-info-circle"></i> 等待获取...
+                        </div>
+                        <div class="status-content">
+                            点击上方"获取免登授权码"按钮开始测试（需要在钉钉客户端中打开）
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <h2><i class="fas fa-user"></i> 获取用户信息</h2>
+                <div class="config-form">
+                    <div class="form-group">
+                        <label for="accessTokenInput">AccessToken:</label>
+                        <input type="text" id="accessTokenInput" class="form-input" placeholder="请输入AccessToken（从上方获取）">
+                        <small style="color: #7f8c8d; display: block; margin-top: 5px; font-size: 0.85rem;">
+                            <i class="fas fa-info-circle"></i> 可以从上方"AccessToken测试结果"中复制
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="authCodeInput">授权码 (Code):</label>
+                        <input type="text" id="authCodeInput" class="form-input" placeholder="请输入免登录授权码（从上方获取）">
+                        <small style="color: #7f8c8d; display: block; margin-top: 5px; font-size: 0.85rem;">
+                            <i class="fas fa-info-circle"></i> 可以从上方"免登授权码测试结果"中复制
+                        </small>
+                    </div>
+                </div>
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-test" id="getUserInfoBtn" onclick="getUserInfoDirect()" style="background: var(--ai-color);">
+                        <i class="fas fa-user-check"></i> 获取用户信息
+                    </button>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <h2><i class="fas fa-user-check"></i> 用户信息测试结果</h2>
+                <div id="userInfoContainer">
+                    <div class="status-box loading">
+                        <div class="status-title">
+                            <i class="fas fa-info-circle"></i> 等待获取...
+                        </div>
+                        <div class="status-content">
+                            请在上方输入AccessToken和授权码，然后点击"获取用户信息"按钮
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getDingTalkToken() {
+            console.log('getDingTalkToken函数被调用');
+            const tokenContainer = document.getElementById('tokenContainer');
+            const getTokenBtn = document.getElementById('getTokenBtn');
+            
+            if (!tokenContainer || !getTokenBtn) {
+                alert('页面元素加载错误，请刷新页面重试');
+                return;
+            }
+            
+            // 获取配置参数（官方API格式）
+            const clientId = document.getElementById('clientId').value.trim();
+            const clientSecret = document.getElementById('clientSecret').value.trim();
+            const corpId = document.getElementById('corpId').value.trim();
+            const grantType = document.getElementById('grantType').value.trim();
+            
+            console.log('获取参数:', {
+                clientId: clientId.substring(0, 10) + '...',
+                clientSecret: '***',
+                corpId: corpId.substring(0, 10) + '...',
+                grantType: grantType
+            });
+            
+            // 验证必填字段
+            if (!clientId || !clientSecret || !corpId) {
+                tokenContainer.innerHTML = `
+                    <div class="status-box error">
+                        <div class="status-title">
+                            <i class="fas fa-exclamation-circle"></i> 配置错误
+                        </div>
+                        <div class="status-content">
+                            <p><strong>错误信息：</strong>请填写所有必填的配置参数</p>
+                            <ul style="margin-left: 20px; margin-top: 10px;">
+                                ${!clientId ? '<li>Client ID 不能为空</li>' : ''}
+                                ${!clientSecret ? '<li>Client Secret 不能为空</li>' : ''}
+                                ${!corpId ? '<li>CorpId 不能为空</li>' : ''}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // 显示加载状态
+            tokenContainer.innerHTML = `
+                <div class="status-box loading">
+                    <div class="status-title">
+                        <i class="fas fa-spinner fa-spin"></i> 正在获取AccessToken...
+                    </div>
+                    <div class="status-content">
+                        正在调用后端API获取钉钉AccessToken...
+                    </div>
+                </div>
+            `;
+            
+            getTokenBtn.disabled = true;
+            
+            // 构建请求体（官方API格式）
+            const requestBody = {
+                client_id: clientId,
+                client_secret: clientSecret,
+                grant_type: grantType,
+                corp_id: corpId
+            };
+            
+            console.log('发送请求到后端:', {
+                url: '/api/dingtalk/get-access-token',
+                method: 'POST',
+                body: {
+                    client_id: clientId.substring(0, 10) + '...',
+                    client_secret: '***',
+                    grant_type: grantType,
+                    corp_id: corpId.substring(0, 10) + '...'
+                }
+            });
+            
+            // 调用后端API
+            fetch('/api/dingtalk/get-access-token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            })
+            .then(async response => {
+                const responseText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    throw new Error(`JSON解析失败: ${responseText.substring(0, 200)}`);
+                }
+                
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP错误 ${response.status}`);
+                }
+                
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    const accessToken = data.accessToken || data.access_token;
+                    const expireIn = data.expireIn || data.expire_in || 7200;
+                    
+                    // 计算过期时间
+                    const expireTime = new Date(Date.now() + expireIn * 1000);
+                    const expireTimeStr = expireTime.toLocaleString('zh-CN');
+                    
+                    const tokenId = 'token-' + Date.now();
+                    tokenContainer.innerHTML = `
+                        <div class="status-box success">
+                            <div class="status-title">
+                                <i class="fas fa-check-circle"></i> 成功获取AccessToken
+                            </div>
+                            <div class="status-content">
+                                <p><strong>状态码：</strong>200</p>
+                                <p style="margin-top: 10px;"><strong>AccessToken：</strong></p>
+                                <div class="token-display">
+                                    <pre id="${tokenId}">${accessToken}</pre>
+                                    <button class="btn-copy" id="copyBtn-${tokenId}" onclick="copyToClipboard('${accessToken.replace(/'/g, "\\'").replace(/"/g, '&quot;')}', 'copyBtn-${tokenId}')">
+                                        <i class="fas fa-copy"></i> 复制
+                                    </button>
+                                </div>
+                                <p style="margin-top: 10px;"><strong>有效时间：</strong>${expireIn} 秒 (约${Math.floor(expireIn / 3600)}小时${Math.floor((expireIn % 3600) / 60)}分钟)</p>
+                                <p style="margin-top: 10px;"><strong>预计过期：</strong>${expireTimeStr}</p>
+                                <details style="margin-top: 15px;">
+                                    <summary style="cursor: pointer; color: var(--secondary); font-weight: 600;">查看完整响应</summary>
+                                    <pre style="background: rgba(0, 0, 0, 0.05); padding: 10px; border-radius: 4px; margin-top: 10px; overflow-x: auto;">${JSON.stringify(data, null, 2)}</pre>
+                                </details>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // 滚动到结果区域
+                    setTimeout(() => {
+                        tokenContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 200);
+                } else {
+                    tokenContainer.innerHTML = `
+                        <div class="status-box error">
+                            <div class="status-title">
+                                <i class="fas fa-times-circle"></i> 获取AccessToken失败
+                            </div>
+                            <div class="status-content">
+                                <p><strong>错误信息：</strong>${data.error || '未知错误'}</p>
+                                ${data.error_detail ? `<p style="margin-top: 10px;"><strong>错误详情：</strong>${data.error_detail}</p>` : ''}
+                                ${data.response ? `<details style="margin-top: 15px;">
+                                    <summary style="cursor: pointer; color: var(--accent); font-weight: 600;">查看响应内容</summary>
+                                    <pre style="background: rgba(0, 0, 0, 0.05); padding: 10px; border-radius: 4px; margin-top: 10px; overflow-x: auto; white-space: pre-wrap;">${typeof data.response === 'string' ? data.response : JSON.stringify(data.response, null, 2)}</pre>
+                                </details>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+                getTokenBtn.disabled = false;
+            })
+            .catch(error => {
+                console.error('获取AccessToken失败:', error);
+                tokenContainer.innerHTML = `
+                    <div class="status-box error">
+                        <div class="status-title">
+                            <i class="fas fa-times-circle"></i> 请求失败
+                        </div>
+                        <div class="status-content">
+                            <p><strong>错误信息：</strong>${error.message || '未知错误'}</p>
+                            <p style="margin-top: 10px;">可能的原因：</p>
+                            <ul style="margin-left: 20px; margin-top: 10px;">
+                                <li>网络连接问题</li>
+                                <li>服务器返回了非JSON格式的响应</li>
+                                <li>钉钉API服务异常</li>
+                                <li>配置参数错误</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                getTokenBtn.disabled = false;
+            });
+        }
+        
+        function copyToClipboard(text, buttonId) {
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showCopySuccess(buttonId);
+                    }).catch(err => {
+                        console.error('复制失败:', err);
+                        alert('复制失败，请手动选择并复制');
+                    });
+                } else {
+                    // 降级方案
+                    const textArea = document.createElement('textarea');
+                    textArea.value = text;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-999999px';
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
+                        showCopySuccess(buttonId);
+                    } catch (err) {
+                        alert('复制失败，请手动选择并复制');
+                    }
+                    document.body.removeChild(textArea);
+                }
+            } catch (err) {
+                console.error('复制异常:', err);
+                alert('复制失败，请手动选择并复制');
+            }
+        }
+        
+        function showCopySuccess(buttonId) {
+            const button = document.getElementById(buttonId);
+            if (button) {
+                const originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-check"></i> 已复制';
+                button.classList.add('success');
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.classList.remove('success');
+                }, 2000);
+            }
+        }
+        
+        // 获取钉钉免登授权码
+        function getDingTalkAuthCode() {
+            const authCodeContainer = document.getElementById('authCodeContainer');
+            const getAuthCodeBtn = document.getElementById('getAuthCodeBtn');
+            
+            if (!authCodeContainer || !getAuthCodeBtn) {
+                alert('页面元素加载错误，请刷新页面重试');
+                return;
+            }
+            
+            // 检查是否在钉钉环境中
+            if (typeof dd === 'undefined' || !dd.runtime || !dd.runtime.permission) {
+                authCodeContainer.innerHTML = `
+                    <div class="status-box error">
+                        <div class="status-title">
+                            <i class="fas fa-exclamation-circle"></i> 环境错误
+                        </div>
+                        <div class="status-content">
+                            <p><strong>错误信息：</strong>当前不在钉钉客户端环境中</p>
+                            <p style="margin-top: 10px;">此功能需要在钉钉客户端（PC端或移动端）中打开此页面才能使用。</p>
+                            <p style="margin-top: 10px;"><strong>测试方法：</strong></p>
+                            <ul style="margin-left: 20px; margin-top: 10px;">
+                                <li>在钉钉PC客户端中打开此页面</li>
+                                <li>或在钉钉移动端中打开此页面</li>
+                                <li>或使用钉钉开发者工具测试</li>
+                            </ul>
+                            <p style="margin-top: 15px; color: var(--warning);">
+                                <i class="fas fa-info-circle"></i> <strong>提示：</strong>如果需要在非钉钉环境中测试，可以使用模拟模式。
+                            </p>
+                            <button class="btn btn-test" onclick="getDingTalkAuthCodeMock()" style="margin-top: 15px; background: var(--warning);">
+                                <i class="fas fa-flask"></i> 使用模拟模式测试
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // 显示加载状态
+            authCodeContainer.innerHTML = `
+                <div class="status-box loading">
+                    <div class="status-title">
+                        <i class="fas fa-spinner fa-spin"></i> 正在获取授权码...
+                    </div>
+                    <div class="status-content">
+                        正在调用钉钉JSAPI获取免登授权码...
+                    </div>
+                </div>
+            `;
+            
+            getAuthCodeBtn.disabled = true;
+            
+            // 从输入框获取CorpId
+            const corpId = document.getElementById('corpId').value.trim();
+            
+            // 验证CorpId
+            if (!corpId) {
+                authCodeContainer.innerHTML = `
+                    <div class="status-box error">
+                        <div class="status-title">
+                            <i class="fas fa-exclamation-circle"></i> 配置错误
+                        </div>
+                        <div class="status-content">
+                            <p><strong>错误信息：</strong>CorpId不能为空</p>
+                            <p style="margin-top: 10px;">请在配置参数中填写CorpId（企业ID）</p>
+                        </div>
+                    </div>
+                `;
+                getAuthCodeBtn.disabled = false;
+                return;
+            }
+            
+            // 调用钉钉JSAPI获取授权码（参照官方API格式）
+            dd.ready(function() {
+                dd.runtime.permission.requestAuthCode({
+                    corpId: corpId,
+                    onSuccess: function (result) {
+                        // 参照官方API格式：result.code
+                        const authCode = result.code;
+                        console.log('获取到授权码:', authCode);
+                        
+                        // 显示授权码
+                        const codeId = 'authCode-' + Date.now();
+                        authCodeContainer.innerHTML = `
+                            <div class="status-box success">
+                                <div class="status-title">
+                                    <i class="fas fa-check-circle"></i> 成功获取授权码
+                                </div>
+                                <div class="status-content">
+                                    <p><strong>CorpId：</strong>${corpId}</p>
+                                    <p style="margin-top: 10px;"><strong>授权码（AuthCode）：</strong></p>
+                                    <div class="token-display">
+                                        <pre id="${codeId}">${authCode}</pre>
+                                        <button class="btn-copy" id="copyBtn-${codeId}" onclick="copyToClipboard('${authCode.replace(/'/g, "\\'").replace(/"/g, '&quot;')}', 'copyBtn-${codeId}')">
+                                            <i class="fas fa-copy"></i> 复制
+                                        </button>
+                                    </div>
+                                    <p style="margin-top: 10px; color: #7f8c8d; font-size: 0.9rem;">
+                                        <i class="fas fa-info-circle"></i> 授权码有效期通常为5分钟，请及时使用
+                                    </p>
+                                    <button class="btn btn-test" onclick="getUserInfoByAuthCode('${authCode.replace(/'/g, "\\'").replace(/"/g, '&quot;')}')" style="margin-top: 15px; background: var(--secondary);">
+                                        <i class="fas fa-user"></i> 使用授权码获取用户信息
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        
+                        getAuthCodeBtn.disabled = false;
+                        
+                        // 滚动到结果区域
+                        setTimeout(() => {
+                            authCodeContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 200);
+                    },
+                    onFail: function (err) {
+                        console.error('获取授权码失败:', err);
+                        authCodeContainer.innerHTML = `
+                            <div class="status-box error">
+                                <div class="status-title">
+                                    <i class="fas fa-times-circle"></i> 获取授权码失败
+                                </div>
+                                <div class="status-content">
+                                    <p><strong>错误信息：</strong>${err.errorMessage || err.message || '未知错误'}</p>
+                                    <p style="margin-top: 10px;"><strong>错误码：</strong>${err.errorCode || 'N/A'}</p>
+                                    <p style="margin-top: 10px;"><strong>使用的CorpId：</strong>${corpId}</p>
+                                    <p style="margin-top: 10px;">可能的原因：</p>
+                                    <ul style="margin-left: 20px; margin-top: 10px;">
+                                        <li>CorpId配置错误</li>
+                                        <li>应用未授权</li>
+                                        <li>钉钉客户端版本过低</li>
+                                        <li>网络问题</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        `;
+                        getAuthCodeBtn.disabled = false;
+                    }
+                });
+            });
+        }
+        
+        // 模拟模式获取授权码（用于非钉钉环境测试）
+        function getDingTalkAuthCodeMock() {
+            const authCodeContainer = document.getElementById('authCodeContainer');
+            const mockCode = 'MOCK_AUTH_CODE_' + Date.now();
+            
+            authCodeContainer.innerHTML = `
+                <div class="status-box success">
+                    <div class="status-title">
+                        <i class="fas fa-check-circle"></i> 模拟模式 - 授权码生成成功
+                    </div>
+                    <div class="status-content">
+                        <p><strong>注意：</strong>这是模拟授权码，仅用于测试，不能用于真实环境</p>
+                        <p style="margin-top: 10px;"><strong>授权码（AuthCode）：</strong></p>
+                        <div class="token-display">
+                            <pre>${mockCode}</pre>
+                            <button class="btn-copy" onclick="copyToClipboard('${mockCode}', this.id)">
+                                <i class="fas fa-copy"></i> 复制
+                            </button>
+                        </div>
+                        <button class="btn btn-test" onclick="getUserInfoByAuthCode('${mockCode}', true)" style="margin-top: 15px; background: var(--secondary);">
+                            <i class="fas fa-user"></i> 使用模拟授权码获取用户信息
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 使用授权码获取用户信息
+        function getUserInfoByAuthCode(authCode, isMock = false) {
+            const authCodeContainer = document.getElementById('authCodeContainer');
+            
+            if (!authCode) {
+                alert('授权码不能为空');
+                return;
+            }
+            
+            // 显示加载状态
+            const currentContent = authCodeContainer.innerHTML;
+            authCodeContainer.innerHTML = `
+                <div class="status-box loading">
+                    <div class="status-title">
+                        <i class="fas fa-spinner fa-spin"></i> 正在获取用户信息...
+                    </div>
+                    <div class="status-content">
+                        正在使用授权码调用后端API获取用户信息...
+                    </div>
+                </div>
+            `;
+            
+            // 调用后端API
+            fetch('/api/dingtalk/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    authCode: authCode,
+                    isMock: isMock,
+                    method: '企业内部应用网页免登'
+                })
+            })
+            .then(async response => {
+                const responseText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    throw new Error(`JSON解析失败: ${responseText.substring(0, 200)}`);
+                }
+                
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP错误 ${response.status}`);
+                }
+                
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    const userInfo = data.userInfo || {};
+                    authCodeContainer.innerHTML = `
+                        <div class="status-box success">
+                            <div class="status-title">
+                                <i class="fas fa-check-circle"></i> 成功获取用户信息
+                            </div>
+                            <div class="status-content">
+                                <p><strong>授权码：</strong><code style="font-size: 0.9rem;">${authCode.substring(0, 20)}...</code></p>
+                                ${data.isMock ? '<p style="color: var(--warning); margin-top: 10px;"><i class="fas fa-exclamation-triangle"></i> <strong>注意：</strong>这是模拟数据，非真实用户信息</p>' : ''}
+                                <p style="margin-top: 15px;"><strong>用户信息：</strong></p>
+                                <pre style="background: rgba(0, 0, 0, 0.05); padding: 10px; border-radius: 4px; margin-top: 10px; overflow-x: auto;">${JSON.stringify(userInfo, null, 2)}</pre>
+                                <details style="margin-top: 15px;">
+                                    <summary style="cursor: pointer; color: var(--secondary); font-weight: 600;">查看完整响应</summary>
+                                    <pre style="background: rgba(0, 0, 0, 0.05); padding: 10px; border-radius: 4px; margin-top: 10px; overflow-x: auto;">${JSON.stringify(data, null, 2)}</pre>
+                                </details>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    authCodeContainer.innerHTML = `
+                        <div class="status-box error">
+                            <div class="status-title">
+                                <i class="fas fa-times-circle"></i> 获取用户信息失败
+                            </div>
+                            <div class="status-content">
+                                <p><strong>错误信息：</strong>${data.error || '未知错误'}</p>
+                                ${data.message ? `<p style="margin-top: 10px;"><strong>详情：</strong>${data.message}</p>` : ''}
+                                ${data.response ? `<details style="margin-top: 15px;">
+                                    <summary style="cursor: pointer; color: var(--accent); font-weight: 600;">查看响应内容</summary>
+                                    <pre style="background: rgba(0, 0, 0, 0.05); padding: 10px; border-radius: 4px; margin-top: 10px; overflow-x: auto; white-space: pre-wrap;">${typeof data.response === 'string' ? data.response : JSON.stringify(data.response, null, 2)}</pre>
+                                </details>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('获取用户信息失败:', error);
+                authCodeContainer.innerHTML = `
+                    <div class="status-box error">
+                        <div class="status-title">
+                            <i class="fas fa-times-circle"></i> 请求失败
+                        </div>
+                        <div class="status-content">
+                            <p><strong>错误信息：</strong>${error.message || '未知错误'}</p>
+                            <p style="margin-top: 10px;">可能的原因：</p>
+                            <ul style="margin-left: 20px; margin-top: 10px;">
+                                <li>网络连接问题</li>
+                                <li>后端API服务异常</li>
+                                <li>授权码已过期或无效</li>
+                                <li>钉钉配置不完整</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        // 直接使用AccessToken和授权码获取用户信息
+        function getUserInfoDirect() {
+            const userInfoContainer = document.getElementById('userInfoContainer');
+            const getUserInfoBtn = document.getElementById('getUserInfoBtn');
+            
+            if (!userInfoContainer || !getUserInfoBtn) {
+                alert('页面元素加载错误，请刷新页面重试');
+                return;
+            }
+            
+            // 获取输入参数
+            const accessToken = document.getElementById('accessTokenInput').value.trim();
+            const authCode = document.getElementById('authCodeInput').value.trim();
+            
+            // 验证必填字段
+            if (!accessToken || !authCode) {
+                userInfoContainer.innerHTML = `
+                    <div class="status-box error">
+                        <div class="status-title">
+                            <i class="fas fa-exclamation-circle"></i> 参数错误
+                        </div>
+                        <div class="status-content">
+                            <p><strong>错误信息：</strong>请填写所有必填的参数</p>
+                            <ul style="margin-left: 20px; margin-top: 10px;">
+                                ${!accessToken ? '<li>AccessToken 不能为空</li>' : ''}
+                                ${!authCode ? '<li>授权码 (Code) 不能为空</li>' : ''}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // 显示加载状态
+            userInfoContainer.innerHTML = `
+                <div class="status-box loading">
+                    <div class="status-title">
+                        <i class="fas fa-spinner fa-spin"></i> 正在获取用户信息...
+                    </div>
+                    <div class="status-content">
+                        正在调用后端API获取用户信息...
+                    </div>
+                </div>
+            `;
+            
+            getUserInfoBtn.disabled = true;
+            
+            // 构建请求体
+            const requestBody = {
+                access_token: accessToken,
+                code: authCode
+            };
+            
+            console.log('发送请求到后端:', {
+                url: '/api/dingtalk/get-user-info',
+                method: 'POST',
+                body: {
+                    access_token: accessToken.substring(0, 20) + '...',
+                    code: authCode.substring(0, 10) + '...'
+                }
+            });
+            
+            // 调用后端API
+            fetch('/api/dingtalk/get-user-info', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            })
+            .then(async response => {
+                const responseText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    throw new Error(`JSON解析失败: ${responseText.substring(0, 200)}`);
+                }
+                
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP错误 ${response.status}`);
+                }
+                
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    const userInfo = data.userInfo || {};
+                    userInfoContainer.innerHTML = `
+                        <div class="status-box success">
+                            <div class="status-title">
+                                <i class="fas fa-check-circle"></i> 成功获取用户信息
+                            </div>
+                            <div class="status-content">
+                                <p><strong>授权码：</strong><code style="font-size: 0.9rem;">${authCode.substring(0, 20)}...</code></p>
+                                <p style="margin-top: 15px;"><strong>用户信息：</strong></p>
+                                <div style="background: rgba(0, 0, 0, 0.05); padding: 15px; border-radius: 4px; margin-top: 10px;">
+                                    ${userInfo.userid ? `<p><strong>用户ID：</strong>${userInfo.userid}</p>` : ''}
+                                    ${userInfo.name ? `<p style="margin-top: 10px;"><strong>姓名：</strong>${userInfo.name}</p>` : ''}
+                                    ${userInfo.unionid ? `<p style="margin-top: 10px;"><strong>UnionID：</strong><code style="font-size: 0.9rem;">${userInfo.unionid}</code></p>` : ''}
+                                    ${userInfo.device_id ? `<p style="margin-top: 10px;"><strong>设备ID：</strong><code style="font-size: 0.9rem;">${userInfo.device_id}</code></p>` : ''}
+                                    ${userInfo.sys_level !== undefined ? `<p style="margin-top: 10px;"><strong>系统级别：</strong>${userInfo.sys_level}</p>` : ''}
+                                    ${userInfo.sys !== undefined ? `<p style="margin-top: 10px;"><strong>系统用户：</strong>${userInfo.sys ? '是' : '否'}</p>` : ''}
+                                    ${userInfo.associated_unionid ? `<p style="margin-top: 10px;"><strong>关联UnionID：</strong><code style="font-size: 0.9rem;">${userInfo.associated_unionid}</code></p>` : ''}
+                                </div>
+                                <details style="margin-top: 15px;">
+                                    <summary style="cursor: pointer; color: var(--secondary); font-weight: 600;">查看完整JSON响应</summary>
+                                    <pre style="background: rgba(0, 0, 0, 0.05); padding: 10px; border-radius: 4px; margin-top: 10px; overflow-x: auto;">${JSON.stringify(userInfo, null, 2)}</pre>
+                                </details>
+                                <details style="margin-top: 15px;">
+                                    <summary style="cursor: pointer; color: var(--secondary); font-weight: 600;">查看完整API响应</summary>
+                                    <pre style="background: rgba(0, 0, 0, 0.05); padding: 10px; border-radius: 4px; margin-top: 10px; overflow-x: auto;">${JSON.stringify(data, null, 2)}</pre>
+                                </details>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // 滚动到结果区域
+                    setTimeout(() => {
+                        userInfoContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 200);
+                } else {
+                    userInfoContainer.innerHTML = `
+                        <div class="status-box error">
+                            <div class="status-title">
+                                <i class="fas fa-times-circle"></i> 获取用户信息失败
+                            </div>
+                            <div class="status-content">
+                                <p><strong>错误信息：</strong>${data.error || '未知错误'}</p>
+                                ${data.message ? `<p style="margin-top: 10px;"><strong>详情：</strong>${data.message}</p>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+                getUserInfoBtn.disabled = false;
+            })
+            .catch(error => {
+                console.error('获取用户信息失败:', error);
+                userInfoContainer.innerHTML = `
+                    <div class="status-box error">
+                        <div class="status-title">
+                            <i class="fas fa-times-circle"></i> 请求失败
+                        </div>
+                        <div class="status-content">
+                            <p><strong>错误信息：</strong>${error.message || '未知错误'}</p>
+                            <p style="margin-top: 10px;">可能的原因：</p>
+                            <ul style="margin-left: 20px; margin-top: 10px;">
+                                <li>网络连接问题</li>
+                                <li>服务器返回了非JSON格式的响应</li>
+                                <li>钉钉API服务异常</li>
+                                <li>AccessToken或授权码无效或已过期</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                getUserInfoBtn.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,17 @@
+[Unit]
+Description=Hardware R&D Docker stack daily maintenance (sessions purge)
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+User=zzw
+Group=docker
+SupplementaryGroups=docker vboxsf
+Environment=HOME=/home/zzw
+Environment=STACK_DIR=/media/sf_awei/docker版本
+Environment=STACK_MAINT_LOG=/var/log/docker-stack-maintenance.log
+ExecStart=/usr/local/lib/docker-stack/stack-maintenance.sh
+
+[Install]
+WantedBy=multi-user.target

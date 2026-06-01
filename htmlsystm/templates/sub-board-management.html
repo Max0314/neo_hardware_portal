@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二级公告栏管理 - 硬件研发部管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #1a252f, #2c3e50);
+            color: #ecf0f1;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(26, 37, 47, 0.8);
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+        }
+        .header h1 {
+            color: #3498db;
+            font-size: 2rem;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        .btn-success {
+            background: #27ae60;
+        }
+        .btn-success:hover {
+            background: #219653;
+        }
+        .btn-danger {
+            background: #e74c3c;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        .board-section {
+            margin-bottom: 30px;
+        }
+        .board-title {
+            color: #3498db;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 5px;
+        }
+        .sub-board-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .sub-board-item {
+            background: rgba(52, 73, 94, 0.6);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #34495e;
+        }
+        .sub-board-item h3 {
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+        .sub-board-item p {
+            color: #95a5a6;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+        .sub-board-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.9rem;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: #2c3e50;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+        .modal-content h2 {
+            color: #3498db;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            color: #ecf0f1;
+            margin-bottom: 8px;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            background: rgba(52, 73, 94, 0.6);
+            border: 2px solid #34495e;
+            border-radius: 5px;
+            color: #ecf0f1;
+            font-size: 1rem;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #95a5a6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>二级公告栏管理</h1>
+            <div>
+                <a href="/announcement" class="btn">← 返回公告栏</a>
+                <button class="btn btn-success" onclick="openCreateModal()">+ 创建二级公告栏</button>
+            </div>
+        </div>
+        
+        <div id="board-list"></div>
+    </div>
+    
+    <!-- 创建/编辑模态框 -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modal-title">创建二级公告栏</h2>
+            <form id="sub-board-form">
+                <input type="hidden" id="form-action" name="action" value="create">
+                <div class="form-group">
+                    <label for="parent-board">父公告栏 *</label>
+                    <select id="parent-board" name="parent_board_id" required>
+                        <option value="">请选择父公告栏</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="sub-board-id">二级公告栏ID</label>
+                    <input type="text" id="sub-board-id" name="sub_board_id" 
+                           placeholder="留空将自动生成（基于名称）" pattern="[a-z0-9_]+">
+                    <small style="color: #95a5a6;">留空将自动生成，或手动输入（只能包含小写字母、数字和下划线）</small>
+                </div>
+                <div class="form-group">
+                    <label for="sub-board-name">二级公告栏名称 *</label>
+                    <input type="text" id="sub-board-name" name="name" required 
+                           placeholder="例如: 原理图公告">
+                </div>
+                <div class="form-group">
+                    <label for="sub-board-desc">描述</label>
+                    <textarea id="sub-board-desc" name="description" rows="3" 
+                              placeholder="可选"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="display-order">显示顺序</label>
+                    <input type="number" id="display-order" name="display_order" value="0" min="0">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="closeModal()">取消</button>
+                    <button type="submit" class="btn btn-success">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 消息提示容器 -->
+    <div id="messageContainer" style="position: fixed; top: 20px; right: 20px; z-index: 1001;"></div>
+    
+    <script>
+        const ANNOUNCEMENT_BOARDS = {
+            'hardware': '硬件研发部',
+            'circuit': '电路设计组',
+            'structure': '结构组',
+            'packaging': '包装标签组',
+            'testing': '测试组'
+        };
+        
+        let allSubBoards = {};
+        let editingSubBoard = null;
+        
+        // 显示消息提示
+        function showMessage(msg, type = 'info') {
+            const messageContainer = document.getElementById('messageContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.style.cssText = `
+                padding: 15px 20px;
+                border-radius: 5px;
+                margin-bottom: 10px;
+                font-weight: bold;
+                color: white;
+                min-width: 200px;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+                animation: slideIn 0.3s ease-out;
+            `;
+            
+            if (type === 'success') {
+                messageDiv.style.backgroundColor = '#27ae60';
+            } else if (type === 'error') {
+                messageDiv.style.backgroundColor = '#e74c3c';
+            } else {
+                messageDiv.style.backgroundColor = '#3498db';
+            }
+            
+            messageDiv.textContent = msg;
+            messageContainer.appendChild(messageDiv);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                messageDiv.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => messageDiv.remove(), 300);
+            }, 3000);
+        }
+        
+        // 添加CSS动画
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            @keyframes slideOut {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // 加载所有二级公告栏
+        async function loadSubBoards() {
+            try {
+                const response = await fetch('/api/announcement/sub-boards/all');
+                if (!response.ok) {
+                    if (response.status === 302 || response.status === 401) {
+                        // 未登录，跳转到登录页
+                        window.location.href = '/login';
+                        return;
+                    }
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                const data = await response.json();
+                console.log('加载的二级公告栏数据:', data);
+                allSubBoards = data;
+                renderSubBoards();
+            } catch (error) {
+                console.error('加载二级公告栏失败:', error);
+                showMessage('加载失败: ' + error.message, 'error');
+                document.getElementById('board-list').innerHTML = 
+                    '<div class="empty-state">加载失败，请刷新页面重试</div>';
+            }
+        }
+        
+        // 渲染二级公告栏
+        function renderSubBoards() {
+            const container = document.getElementById('board-list');
+            container.innerHTML = '';
+            
+            if (Object.keys(allSubBoards).length === 0) {
+                container.innerHTML = '<div class="empty-state">暂无二级公告栏，点击"创建二级公告栏"开始创建</div>';
+                return;
+            }
+            
+            for (const [parentId, subBoards] of Object.entries(allSubBoards)) {
+                const section = document.createElement('div');
+                section.className = 'board-section';
+                section.innerHTML = `
+                    <div class="board-title">${ANNOUNCEMENT_BOARDS[parentId] || parentId}</div>
+                    <div class="sub-board-list"></div>
+                `;
+                
+                const list = section.querySelector('.sub-board-list');
+                if (subBoards.length === 0) {
+                    list.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;">暂无二级公告栏</div>';
+                } else {
+                    subBoards.forEach(subBoard => {
+                        const item = document.createElement('div');
+                        item.className = 'sub-board-item';
+                        item.innerHTML = `
+                            <h3>${subBoard.name}</h3>
+                            <p><strong>ID:</strong> ${subBoard.sub_board_id}</p>
+                            ${subBoard.description ? `<p>${subBoard.description}</p>` : ''}
+                            <p><strong>显示顺序:</strong> ${subBoard.display_order}</p>
+                            <div class="sub-board-actions">
+                                <button class="btn btn-small" onclick="editSubBoard('${parentId}', '${subBoard.sub_board_id}')">编辑</button>
+                                <button class="btn btn-small btn-danger" onclick="deleteSubBoard('${parentId}', '${subBoard.sub_board_id}', '${subBoard.name}')">删除</button>
+                            </div>
+                        `;
+                        list.appendChild(item);
+                    });
+                }
+                
+                container.appendChild(section);
+            }
+        }
+        
+        // 打开创建模态框
+        function openCreateModal(parentId = null) {
+            editingSubBoard = null;
+            document.getElementById('modal-title').textContent = '创建二级公告栏';
+            document.getElementById('form-action').value = 'create';
+            document.getElementById('sub-board-form').reset();
+            
+            // 填充父公告栏选项
+            const select = document.getElementById('parent-board');
+            select.innerHTML = '<option value="">请选择父公告栏</option>';
+            for (const [id, name] of Object.entries(ANNOUNCEMENT_BOARDS)) {
+                const option = document.createElement('option');
+                option.value = id;
+                option.textContent = name;
+                if (parentId === id) option.selected = true;
+                select.appendChild(option);
+            }
+            
+            // 清空ID字段，让系统自动生成（创建时ID不是必填）
+            const subBoardIdInput = document.getElementById('sub-board-id');
+            subBoardIdInput.value = '';
+            subBoardIdInput.required = false;
+            subBoardIdInput.disabled = false;
+            
+            document.getElementById('modal').classList.add('active');
+        }
+        
+        // 编辑二级公告栏
+        function editSubBoard(parentId, subBoardId) {
+            const subBoard = allSubBoards[parentId]?.find(sb => sb.sub_board_id === subBoardId);
+            if (!subBoard) return;
+            
+            editingSubBoard = subBoard;
+            document.getElementById('modal-title').textContent = '编辑二级公告栏';
+            document.getElementById('form-action').value = 'update';
+            document.getElementById('parent-board').value = parentId;
+            document.getElementById('parent-board').disabled = true;
+            const subBoardIdInput = document.getElementById('sub-board-id');
+            subBoardIdInput.value = subBoardId;
+            subBoardIdInput.disabled = true;
+            subBoardIdInput.required = true;
+            document.getElementById('sub-board-name').value = subBoard.name;
+            document.getElementById('sub-board-desc').value = subBoard.description || '';
+            document.getElementById('display-order').value = subBoard.display_order || 0;
+            
+            document.getElementById('modal').classList.add('active');
+        }
+        
+        // 删除二级公告栏
+        async function deleteSubBoard(parentId, subBoardId, name) {
+            if (!confirm(`确定要删除二级公告栏"${name}"吗？\n\n注意：删除后，该二级公告栏下的公告将无法通过二级公告栏筛选查看。`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/announcement/sub-boards/delete/${encodeURIComponent(parentId)}/${encodeURIComponent(subBoardId)}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('删除成功');
+                    loadSubBoards();
+                } else {
+                    alert('删除失败: ' + (data.error || '未知错误'));
+                }
+            } catch (error) {
+                console.error('删除失败:', error);
+                alert('删除失败，请重试');
+            }
+        }
+        
+        // 关闭模态框
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+            document.getElementById('parent-board').disabled = false;
+            document.getElementById('sub-board-id').disabled = false;
+        }
+        
+        // 提交表单
+        document.getElementById('sub-board-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const subBoardId = formData.get('sub_board_id')?.trim();
+            
+            const data = {
+                action: formData.get('action'),
+                parent_board_id: formData.get('parent_board_id'),
+                name: formData.get('name'),
+                description: formData.get('description') || '',
+                display_order: parseInt(formData.get('display_order')) || 0
+            };
+            
+            // 只有在提供了sub_board_id时才添加（创建时可以为空，系统会自动生成）
+            if (subBoardId) {
+                data.sub_board_id = subBoardId;
+            }
+            
+            console.log('提交数据:', data);
+            
+            try {
+                const response = await fetch('/api/announcement/sub-boards', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('服务器错误:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                const result = await response.json();
+                console.log('服务器响应:', result);
+                
+                if (result.success) {
+                    // 显示成功消息
+                    showMessage(result.message || '保存成功', 'success');
+                    closeModal();
+                    // 延迟刷新列表，让用户看到成功消息
+                    setTimeout(() => {
+                        loadSubBoards();
+                    }, 500);
+                } else {
+                    // 显示错误消息
+                    showMessage(result.error || '保存失败', 'error');
+                    console.error('保存失败:', result);
+                }
+            } catch (error) {
+                console.error('保存失败:', error);
+                showMessage('保存失败: ' + (error.message || '网络错误'), 'error');
+                // 不要因为错误而跳转页面，保持当前状态
+            }
+        });
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSubBoards();
+        });
+    </script>
+</body>
+</html>
+

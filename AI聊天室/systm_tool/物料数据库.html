@@ -1,0 +1,2077 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物料数据库 · 多库管理与历史</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Microsoft YaHei', system-ui, 'Segoe UI', Roboto, sans-serif; }
+        html, body { height: 100%; overflow: auto; }
+        body { background-color: #f0f4f9; padding: 8px 12px; color: #1e293b; }
+        .container { height: 100%; max-width: 100%; margin: 0; display: flex; flex-direction: column; }
+        .main-card {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 35px -10px rgba(0, 20, 40, 0.15);
+            padding: 14px 16px;
+        }
+        .main-card > h1 { flex-shrink: 0; }
+        h1 {
+            font-size: 1.38rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 4px;
+            color: #0b1f33;
+        }
+        h1 i { color: #2563eb; background: #e6edfc; padding: 8px; border-radius: 16px; font-size: 1.15rem; }
+        .subtitle {
+            flex-shrink: 0;
+            color: #5e6f8d;
+            margin-bottom: 10px;
+            font-size: 0.8rem;
+            border-left: 4px solid #3b82f6;
+            padding-left: 10px;
+            background: #f8fbff;
+            border-radius: 0 12px 12px 0;
+            line-height: 1.5;
+        }
+        .toolbar {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .btn-add {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: 0.15s;
+        }
+        .btn-add:hover { background: #2563eb; transform: scale(1.02); }
+        .btn-batch {
+            background: #059669;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: 0.15s;
+        }
+        .btn-batch:hover { background: #047857; transform: scale(1.02); }
+        .btn-batch:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+        .batch-file-list {
+            max-height: 280px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            margin-top: 12px;
+        }
+        .batch-file-list table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        .batch-file-list th {
+            background: #f0f6fd;
+            padding: 8px 10px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+        }
+        .batch-file-list td { padding: 8px 10px; border-top: 1px solid #e9eef4; }
+        .batch-file-list input[type="text"] {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 0.82rem;
+        }
+        .batch-status-ok { color: #059669; }
+        .batch-status-err { color: #dc2626; }
+        .batch-hint { font-size: 0.8rem; color: #64748b; margin-top: 8px; line-height: 1.5; }
+        .link-import {
+            color: #2563eb;
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .link-import:hover { text-decoration: underline; }
+        .lib-control-panel {
+            flex-shrink: 0;
+            margin-bottom: 8px;
+            padding: 8px;
+            background: #f8fbff;
+            border: 1px solid #dbeafe;
+            border-radius: 10px;
+        }
+        .lib-control-top {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+        .lib-control-top input {
+            flex: 1;
+            min-width: 180px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 0.82rem;
+        }
+        .lib-filter-strip {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+        .lib-filter-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border: 1px solid #bfdbfe;
+            border-radius: 999px;
+            background: #eff6ff;
+            color: #1e3a8a;
+            white-space: nowrap;
+            font-size: 0.8rem;
+            user-select: none;
+        }
+        .lib-carousel-nav {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .lib-grid {
+            flex-shrink: 0;
+            display: grid;
+            grid-template-columns: repeat(6, minmax(145px, 1fr));
+            gap: 10px;
+            overflow: hidden;
+            min-height: 138px;
+            max-height: 138px;
+        }
+        .lib-card {
+            background: #fafdff;
+            border: 1px solid #e2eaf2;
+            border-radius: 14px;
+            padding: 12px;
+            transition: all 0.15s;
+        }
+        .lib-card.lib-all-card {
+            padding: 12px;
+        }
+        .lib-card.lib-normal-card {
+            padding: 9px;
+            border-radius: 12px;
+        }
+        .lib-card.lib-normal-card .lib-name {
+            font-size: 0.9rem;
+            margin-bottom: 6px;
+        }
+        .lib-card.lib-normal-card .lib-meta {
+            font-size: 0.66rem;
+            margin-bottom: 6px;
+            line-height: 1.25;
+        }
+        .lib-card.lib-normal-card .btn-sm {
+            padding: 4px 8px;
+            font-size: 0.66rem;
+        }
+        .lib-card:hover { border-color: #bdd3f0; box-shadow: 0 12px 24px -8px rgba(40, 80, 140, 0.12); }
+        .lib-name {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1d2b4b;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .lib-name i { color: #2563eb; }
+        .lib-meta {
+            font-size: 0.72rem;
+            color: #64748b;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        .lib-meta span { display: block; }
+        .lib-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .btn-sm {
+            padding: 5px 10px;
+            border-radius: 30px;
+            font-size: 0.72rem;
+            cursor: pointer;
+            border: 1px solid #cbd5e1;
+            background: white;
+            color: #475569;
+            transition: 0.1s;
+        }
+        .btn-sm:hover { background: #eef4ff; color: #2563eb; border-color: #93c5fd; }
+        .btn-sm.danger:hover { background: #fee2e2; color: #b91c1c; border-color: #f87171; }
+        .btn-sm.primary { background: #2563eb; color: white; border-color: #2563eb; }
+        .btn-sm.primary:hover { background: #1d4ed8; }
+
+        /* 弹窗 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            max-width: 560px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 { font-size: 1.3rem; color: #1e293b; }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #64748b;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+        .modal-close:hover { color: #1e293b; }
+        .modal-body { padding: 24px; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            color: #334155;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+        .form-group input[type="text"] {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            font-size: 1rem;
+        }
+        .form-group input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
+        .file-upload-area {
+            background: #f9fcff;
+            border: 2px dashed #b9d3f0;
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        .file-input { width: 0.1px; height: 0.1px; opacity: 0; position: absolute; z-index: -1; }
+        .file-label {
+            display: inline-block;
+            background: #3b82f6;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .file-label:hover { background: #2563eb; }
+        .file-info { font-size: 0.8rem; color: #64748b; margin-top: 8px; }
+        .sheet-section, .mapping-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid #e2e8f0; }
+        .map-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .map-label { width: 120px; font-size: 0.85rem; color: #334155; flex-shrink: 0; }
+        .map-select {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            font-size: 0.9rem;
+        }
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+        .btn-cancel { padding: 10px 20px; border-radius: 30px; border: 1px solid #cbd5e1; background: white; cursor: pointer; color: #475569; }
+        .btn-cancel:hover { background: #f1f5f9; }
+        .btn-save {
+            padding: 10px 24px;
+            border-radius: 30px;
+            border: none;
+            background: #2ecc71;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-save:hover { background: #27ae60; }
+        .btn-save:disabled { background: #a0b8cc; cursor: not-allowed; }
+
+        /* 空状态 */
+        .empty-state {
+            flex-shrink: 0;
+            text-align: center;
+            padding: 48px 24px;
+            color: #64748b;
+        }
+        .empty-state i { font-size: 3rem; color: #cbd5e1; margin-bottom: 16px; }
+        .empty-state p { margin-bottom: 20px; }
+
+        /* 预览表格弹窗 */
+        .preview-table-wrapper { overflow-x: auto; max-height: 60vh; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 12px; }
+        .preview-table-wrapper table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 700px; }
+        .preview-table-wrapper th { background: #f0f6fd; padding: 10px 8px; text-align: left; font-weight: 600; color: #1d3a5c; }
+        .preview-table-wrapper td { padding: 8px; border-bottom: 1px solid #e9eef4; }
+        .preview-table-wrapper tr:hover td { background: #f6fbff; }
+        .history-list { list-style: none; }
+        .history-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.9rem;
+        }
+        .history-list li:hover { background: #f8fafc; }
+        .history-list .hist-name { color: #334155; }
+        .history-list .hist-date { color: #64748b; font-size: 0.8rem; }
+        .history-list .hist-actions { display: flex; gap: 8px; }
+        .badge-required { background: #f1f5f9; color: #475569; font-size: 0.65rem; padding: 2px 8px; border-radius: 30px; margin-left: 4px; }
+
+        /* 物料详情：点击库在下方展开，占满剩余空间 */
+        .lib-card.lib-selected {
+            border-color: #22c55e;
+            box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.35);
+            background: #ecfdf3;
+        }
+        .lib-card.lib-clickable { cursor: pointer; }
+        .material-detail-panel {
+            flex: 1;
+            min-height: 200px;
+            margin-top: 8px;
+            padding: 10px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .material-detail-header {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .material-search-row {
+            flex-shrink: 0;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .material-search-row input {
+            flex: 1;
+            min-width: 260px;
+            padding: 10px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            font-size: 0.95rem;
+        }
+        .material-search-row input:focus { outline: none; border-color: #3b82f6; }
+        .search-hint { font-size: 0.8rem; color: #64748b; }
+        .material-group-list {
+            flex: 1;
+            min-height: 0;
+            border-radius: 12px;
+            max-height: 60vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .group-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: #e0f2fe;
+            border: 1px solid #bae6fd;
+            cursor: pointer;
+            font-weight: 600;
+            color: #0c4a6e;
+            user-select: none;
+        }
+        .group-header:hover { background: #bae6fd; }
+        .group-header .chevron { transition: transform 0.2s; }
+        .group-header.collapsed .chevron { transform: rotate(-90deg); }
+        .group-content {
+            overflow: hidden;
+        }
+        .group-content.collapsed { display: none; }
+        .group-content table { width: 100%; border-collapse: collapse; font-size: 0.85rem; background: white; }
+        .group-content th { background: #f0f6fd; padding: 10px 8px; text-align: left; font-weight: 600; color: #1d3a5c; border-bottom: 1px solid #e2e8f0; }
+        .group-content td { padding: 8px; border-bottom: 1px solid #e9eef4; }
+        .group-content tr:hover td { background: #f6fbff; }
+        .group-content td.td-remark { min-width: 120px; background: #fefce8; }
+        .group-content td.td-remark:focus { outline: none; background: #fef9c3; }
+        .match-score { font-size: 0.75rem; color: #16a34a; margin-left: 6px; }
+        .user-badge {
+            font-size: 0.78rem;
+            color: #475569;
+            background: #f1f5f9;
+            padding: 6px 12px;
+            border-radius: 999px;
+        }
+        .btn-audit {
+            background: #7c3aed;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-audit:hover { background: #6d28d9; }
+        .audit-log-list { list-style: none; max-height: 55vh; overflow-y: auto; }
+        .audit-log-list li {
+            padding: 12px 14px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.88rem;
+            line-height: 1.45;
+        }
+        .audit-log-list li:hover { background: #f8fafc; }
+        .audit-log-list .audit-time { color: #64748b; font-size: 0.75rem; margin-top: 4px; }
+        .pwd-hint { font-size: 0.78rem; color: #64748b; margin-top: 6px; line-height: 1.4; }
+        .form-group input[type="password"] {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="main-card">
+        <h1><i class="fas fa-database"></i> 物料数据库</h1>
+        <div class="subtitle">
+            <i class="fas fa-circle-info" style="margin-right: 8px;"></i>
+            将物料库分为多个部分管理。每个物料库可单独设置<strong>访问密码</strong>（服务端仅存哈希，不明文保存）；<strong>上传、删除、下载、批量导入、修改备注</strong>等操作须先验证密码。所有变更写入<strong>操作记录</strong>（格式：某某用户某某了某某物料库）。表头标准：物料代码、物料描述、pads库物料描述、成本单价、替代组标签、优选情况、备注说明。
+        </div>
+        <div class="toolbar">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <button type="button" id="btnAddLib" class="btn-add"><i class="fas fa-plus"></i> 新增物料库</button>
+                <button type="button" id="btnBatchImport" class="btn-batch"><i class="fas fa-file-import"></i> 批量导入</button>
+                <button type="button" id="btnExportAll" class="btn-add" style="background:#4f46e5;"><i class="fas fa-file-excel"></i> 导出全部物料库 Excel</button>
+                <button type="button" id="btnAuditLog" class="btn-audit"><i class="fas fa-clipboard-list"></i> 修改记录</button>
+                <span id="currentUserBadge" class="user-badge" style="display:none;"></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                <a href="/neo/" class="link-import" style="margin-right: 8px;"><i class="fas fa-home"></i> 返回 NEO</a>
+                <a href="#" id="dingtalkOpenMaterialDb" class="link-import" style="display:none;" title="复制后在钉钉中打开"><i class="fas fa-mobile-screen"></i> 钉钉内打开</a>
+                <a href="/neo/replacement-pairs" class="link-import"><i class="fas fa-right-left"></i> 替换对管理</a>
+                <a href="/neo/systm_tool/物料库导入.html" class="link-import"><i class="fas fa-file-import"></i> 前往三源聚合导入</a>
+            </div>
+        </div>
+        <div id="libControlPanel" class="lib-control-panel">
+            <div class="lib-control-top">
+                <input type="text" id="libSearchInput" placeholder="搜索物料库名称/前缀">
+                <button type="button" id="btnClearLibFilter" class="btn-sm">清空筛选</button>
+            </div>
+            <div id="libFilterStrip" class="lib-filter-strip"></div>
+            <div class="lib-carousel-nav">
+                <div style="display:flex; gap:8px;">
+                    <button type="button" id="btnLibPrev" class="btn-sm"><i class="fas fa-chevron-left"></i> 上一组</button>
+                    <button type="button" id="btnLibNext" class="btn-sm">下一组 <i class="fas fa-chevron-right"></i></button>
+                </div>
+                <span id="libPageInfo" style="font-size:0.8rem;color:#64748b;"></span>
+            </div>
+        </div>
+        <div id="libGrid" class="lib-grid"></div>
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <i class="fas fa-inbox"></i>
+            <p>暂无物料库，点击「新增物料库」创建</p>
+        </div>
+
+        <!-- 点击物料库后在下方展示物料列表（按替代组展开/收缩 + 搜索） -->
+        <div id="materialDetailPanel" class="material-detail-panel" style="display: none;">
+            <div class="material-detail-header">
+                <span>当前库：<span id="selectedLibName"></span></span>
+                <button type="button" class="btn-sm" id="closeMaterialDetail"><i class="fas fa-times"></i> 收起</button>
+            </div>
+            <div class="material-search-row">
+                <input type="text" id="materialSearch" placeholder="输入关键词搜索，如 0402 100nf，匹配度高的优先显示">
+                <span class="search-hint">多词用空格分隔，支持 * 模糊匹配</span>
+            </div>
+            <div id="materialGroupList" class="material-group-list"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 新增/编辑 物料库 弹窗 -->
+<div id="modalLib" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="modalLibTitle">新增物料库</h2>
+            <button type="button" class="modal-close" id="modalLibClose">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>物料库名称 <span class="badge-required">必填</span></label>
+                <input type="text" id="libName" placeholder="例如：主物料库、项目A物料库">
+            </div>
+            <div class="form-group">
+                <label>物料库前缀（可空）</label>
+                <input type="text" id="libPrefix" placeholder="例如：PADS-；留空则不加前缀">
+            </div>
+            <div class="form-group" id="libPasswordGroup">
+                <label id="libPasswordLabel">访问密码 <span class="badge-required">必填</span></label>
+                <input type="password" id="libPassword" autocomplete="new-password" placeholder="上传/删除/下载前须验证此密码">
+                <input type="password" id="libPasswordConfirm" autocomplete="new-password" placeholder="再次输入密码" style="margin-top:8px;">
+                <p class="pwd-hint">密码仅用于校验，服务器保存哈希值，不会以明文存储或返回。</p>
+            </div>
+            <div class="form-group">
+                <label>当前应用 Excel 物料表</label>
+                <div class="file-upload-area">
+                    <input type="file" id="libFile" class="file-input" accept=".xlsx,.xls">
+                    <label for="libFile" class="file-label"><i class="fas fa-upload"></i> 上传 Excel</label>
+                    <div id="libFileInfo" class="file-info">未选择文件（可选，可稍后编辑时上传）</div>
+                </div>
+                <div id="libSheetSection" class="sheet-section" style="display: none;">
+                    <label style="margin-bottom: 8px; display: block;">选择工作表</label>
+                    <select id="libSheetSelect" class="map-select" style="width:100%;"></select>
+                </div>
+                <div id="libMappingSection" class="mapping-section" style="display: none;">
+                    <div class="map-row"><span class="map-label">物料代码 <span class="badge-required">必需</span></span><select id="mapCode" class="map-select"></select></div>
+                    <div class="map-row"><span class="map-label">物料描述 <span class="badge-required">必需</span></span><select id="mapDesc" class="map-select"></select></div>
+                    <div class="map-row"><span class="map-label">pads库物料描述</span><select id="mapPads" class="map-select"></select></div>
+                    <div class="map-row"><span class="map-label">成本单价</span><select id="mapPrice" class="map-select"></select></div>
+                    <div class="map-row"><span class="map-label">替代组标签</span><select id="mapGroup" class="map-select"></select></div>
+                    <div class="map-row"><span class="map-label">优选情况</span><select id="mapStatus" class="map-select"></select></div>
+                    <div class="map-row"><span class="map-label">备注说明</span><select id="mapRemark" class="map-select"></select></div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" id="modalLibCancel">取消</button>
+            <button type="button" class="btn-save" id="modalLibSave">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 预览当前表 / 历史表 弹窗 -->
+<div id="modalPreview" class="modal-overlay">
+    <div class="modal" style="max-width: 900px;">
+        <div class="modal-header">
+            <h2 id="modalPreviewTitle">当前表预览</h2>
+            <button type="button" class="modal-close" id="modalPreviewClose">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="preview-table-wrapper" id="previewTableWrap">
+                <table id="previewTable">
+                    <thead><tr><th>物料代码</th><th>物料描述</th><th>pads库物料描述</th><th>成本单价</th><th>替代组标签</th><th>优选情况</th><th>备注说明</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div style="margin-top: 12px; text-align: right;">
+                <button type="button" class="btn-sm primary" id="btnDownloadPreview"><i class="fas fa-download"></i> 下载 Excel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 批量导入 弹窗 -->
+<div id="modalBatchImport" class="modal-overlay">
+    <div class="modal" style="max-width: 720px;">
+        <div class="modal-header">
+            <h2>批量导入物料库</h2>
+            <button type="button" class="modal-close" id="modalBatchImportClose">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p class="batch-hint">
+                支持两种格式：<strong>①「导出全部物料库 Excel」</strong>（<code>material_libraries_all.xlsx</code>，一个文件多个工作表，表名即物料库名）可直接选入导入；
+                <strong>②多个独立 Excel</strong>，每个文件对应一个物料库（库名默认取文件名，可修改）。
+                表头若已是标准七列则直接导入；否则将自动匹配「物料代码」「物料描述」等列。
+            </p>
+            <div class="form-group">
+                <label>默认物料库前缀（可空，应用于本批全部新建库）</label>
+                <input type="text" id="batchDefaultPrefix" placeholder="例如：PADS-">
+                <label style="margin-top:12px;display:block;">新建库的默认访问密码 <span class="badge-required">必填</span></label>
+                <input type="password" id="batchDefaultPassword" autocomplete="new-password" placeholder="批量新建库时使用；更新已有库须单独验证原库密码" style="width:100%;margin-top:6px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;">
+            </div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;font-weight:normal;cursor:pointer;">
+                    <input type="checkbox" id="batchOverwriteExisting" checked style="width:18px;height:18px;">
+                    若已存在同名物料库，将旧当前表移入历史并替换为新表
+                </label>
+            </div>
+            <div class="file-upload-area">
+                <input type="file" id="batchFilesInput" class="file-input" accept=".xlsx,.xls" multiple>
+                <label for="batchFilesInput" class="file-label"><i class="fas fa-upload"></i> 选择多个 Excel 文件</label>
+                <div id="batchFilesSummary" class="file-info" style="margin-top:10px;">未选择文件</div>
+            </div>
+            <div id="batchFileListWrap" class="batch-file-list" style="display:none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:28%;">文件名</th>
+                            <th style="width:32%;">物料库名称</th>
+                            <th>工作表</th>
+                            <th style="width:18%;">状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batchFileListBody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" id="modalBatchImportCancel">取消</button>
+            <button type="button" class="btn-save" id="modalBatchImportRun" disabled>开始导入</button>
+        </div>
+    </div>
+</div>
+
+<!-- 历史表列表 弹窗 -->
+<div id="modalHistory" class="modal-overlay">
+    <div class="modal" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2 id="modalHistoryTitle">历史物料表</h2>
+            <button type="button" class="modal-close" id="modalHistoryClose">&times;</button>
+        </div>
+        <div class="modal-body">
+            <ul id="historyList" class="history-list"></ul>
+            <p id="historyEmpty" style="display:none; color:#64748b; text-align:center; padding:20px;">暂无历史表</p>
+        </div>
+    </div>
+</div>
+
+<!-- 验证物料库密码 -->
+<div id="modalPassword" class="modal-overlay">
+    <div class="modal" style="max-width:420px;">
+        <div class="modal-header">
+            <h2 id="modalPasswordTitle">验证物料库密码</h2>
+            <button type="button" class="modal-close" id="modalPasswordClose">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="modalPasswordHint" class="pwd-hint" style="margin-bottom:12px;"></p>
+            <input type="password" id="modalPasswordInput" autocomplete="current-password" placeholder="请输入该物料库的访问密码" style="width:100%;padding:12px 14px;border:1px solid #cbd5e1;border-radius:12px;">
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" id="modalPasswordCancel">取消</button>
+            <button type="button" class="btn-save" id="modalPasswordConfirm">确认</button>
+        </div>
+    </div>
+</div>
+
+<!-- 操作记录 -->
+<div id="modalAudit" class="modal-overlay">
+    <div class="modal" style="max-width:720px;">
+        <div class="modal-header">
+            <h2><i class="fas fa-clipboard-list"></i> 物料库修改记录</h2>
+            <button type="button" class="modal-close" id="modalAuditClose">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <label style="font-size:0.85rem;color:#475569;">筛选物料库</label>
+                <select id="auditLibFilter" class="map-select" style="max-width:280px;">
+                    <option value="">全部物料库</option>
+                </select>
+                <button type="button" class="btn-sm" id="btnAuditRefresh">刷新</button>
+            </div>
+            <ul id="auditLogList" class="audit-log-list"></ul>
+            <p id="auditLogEmpty" style="display:none;color:#64748b;text-align:center;padding:24px;">暂无操作记录</p>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const STORAGE_KEY = 'material_db_libraries';
+    const API_BASE = '/api/material-db';
+    const STANDARD_HEADERS = ['物料代码', '物料描述', 'pads库物料描述', '成本单价', '替代组标签', '优选情况', '备注说明'];
+    let currentUser = null;
+    const unlockCache = {};
+
+    async function apiFetch(path, options) {
+        const opts = options || {};
+        const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+        const res = await fetch(path, Object.assign({ credentials: 'include' }, opts, { headers }));
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (res.status === 401) {
+            alert('请先登录管理系统');
+            window.location.href = '/login';
+            throw new Error('unauthorized');
+        }
+        return { ok: res.ok, status: res.status, data: data };
+    }
+
+    async function checkAuth() {
+        try {
+            const { ok, data } = await apiFetch('/api/auth/check');
+            if (ok && data.authenticated && data.user) {
+                currentUser = data.user;
+                const badge = document.getElementById('currentUserBadge');
+                if (badge) {
+                    badge.textContent = '当前用户：' + (data.user.name || data.user.username || '');
+                    badge.style.display = 'inline-flex';
+                }
+                return true;
+            }
+        } catch (e) { /* ignore */ }
+        return false;
+    }
+
+    function getUnlockToken(libId) {
+        const c = unlockCache[libId];
+        if (!c) return null;
+        if (Date.now() / 1000 >= c.expiresAt) {
+            delete unlockCache[libId];
+            return null;
+        }
+        return c.token;
+    }
+
+    function promptLibraryPassword(lib, purpose) {
+        return new Promise(function(resolve, reject) {
+            const modal = document.getElementById('modalPassword');
+            const title = document.getElementById('modalPasswordTitle');
+            const hint = document.getElementById('modalPasswordHint');
+            const input = document.getElementById('modalPasswordInput');
+            const btnOk = document.getElementById('modalPasswordConfirm');
+            const btnCancel = document.getElementById('modalPasswordCancel');
+            const btnClose = document.getElementById('modalPasswordClose');
+            title.textContent = '验证物料库密码';
+            hint.textContent = (lib ? '「' + lib.name + '」' : '') + (purpose || '继续操作') + '需要输入该物料库的访问密码。';
+            input.value = '';
+            modal.classList.add('show');
+            input.focus();
+            function cleanup() {
+                modal.classList.remove('show');
+                btnOk.removeEventListener('click', onOk);
+                btnCancel.removeEventListener('click', onCancel);
+                btnClose.removeEventListener('click', onCancel);
+            }
+            function onCancel() { cleanup(); reject(new Error('cancelled')); }
+            function onOk() {
+                const pwd = input.value;
+                if (!pwd) { alert('请输入密码'); return; }
+                cleanup();
+                resolve(pwd);
+            }
+            btnOk.addEventListener('click', onOk);
+            btnCancel.addEventListener('click', onCancel);
+            btnClose.addEventListener('click', onCancel);
+        });
+    }
+
+    async function ensureUnlocked(libId, purpose) {
+        const cached = getUnlockToken(libId);
+        if (cached) return cached;
+        const lib = libList.find(function(l) { return l.id === libId; });
+        const pwd = await promptLibraryPassword(lib, purpose);
+        const { ok, data } = await apiFetch(API_BASE + '/libraries/' + encodeURIComponent(libId) + '/unlock', {
+            method: 'POST',
+            body: JSON.stringify({ password: pwd })
+        });
+        if (!ok || !data.success) {
+            alert((data && data.error) || '密码错误');
+            throw new Error('bad password');
+        }
+        unlockCache[libId] = { token: data.unlockToken, expiresAt: data.expiresAt };
+        return data.unlockToken;
+    }
+
+    async function logLibraryAction(libId, action, detail) {
+        const token = getUnlockToken(libId);
+        if (!token) return;
+        try {
+            await apiFetch(API_BASE + '/libraries/' + encodeURIComponent(libId) + '/audit', {
+                method: 'POST',
+                headers: { 'X-Material-Unlock-Token': token },
+                body: JSON.stringify({ action: action, detail: detail || null })
+            });
+        } catch (e) { /* ignore */ }
+    }
+
+    async function reloadLibraries() {
+        const { ok, data } = await apiFetch(API_BASE + '/libraries');
+        if (ok && data.success) {
+            libList = data.libraries || [];
+            return true;
+        }
+        return false;
+    }
+
+    async function tryMigrateFromLocalStorage() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return;
+            const local = JSON.parse(raw);
+            if (!Array.isArray(local) || !local.length) return;
+            if (libList.length) return;
+            if (!confirm('检测到浏览器中存有本地物料库数据（' + local.length + ' 个库）。是否迁移到服务器？迁移后将为每个库设置统一访问密码。')) return;
+            const pwd = prompt('请设置迁移后的统一访问密码（仅保存哈希，不明文存储）：');
+            if (!pwd) return;
+            const { ok, data } = await apiFetch(API_BASE + '/migrate', {
+                method: 'POST',
+                body: JSON.stringify({ libraries: local, defaultPassword: pwd })
+            });
+            if (ok && data.success) {
+                localStorage.removeItem(STORAGE_KEY);
+                alert('已迁移 ' + (data.migrated || 0) + ' 个物料库到服务器。');
+                await reloadLibraries();
+            } else {
+                alert((data && data.error) || '迁移失败');
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function uuid() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    function normalizeLibList(list) {
+        if (!Array.isArray(list)) return [];
+        let changed = false;
+        const normalized = list.map(function(lib) {
+            const next = lib || {};
+            if (typeof next.prefix !== 'string') { next.prefix = ''; changed = true; }
+            const fixedCurrent = applyPadsDescRuleToTable(next.currentTable && next.currentTable.data, next.prefix);
+            if (fixedCurrent.changed) {
+                next.currentTable = next.currentTable || {};
+                next.currentTable.data = fixedCurrent.data;
+                changed = true;
+            }
+            if (Array.isArray(next.historyTables)) {
+                next.historyTables = next.historyTables.map(function(h) {
+                    const fixedHist = applyPadsDescRuleToTable(h && h.data, next.prefix);
+                    if (fixedHist.changed) changed = true;
+                    return fixedHist.changed ? Object.assign({}, h, { data: fixedHist.data }) : h;
+                });
+            }
+            return next;
+        });
+        return { list: normalized, changed: changed };
+    }
+
+    let libList = [];
+    let editingId = null; // 编辑时的库 id
+    let tempWorkbook = null;
+    let tempFileName = '';
+    let tempSheetData = { headers: [], dataRows: [] };
+
+    const libGrid = document.getElementById('libGrid');
+    const emptyState = document.getElementById('emptyState');
+    const btnAddLib = document.getElementById('btnAddLib');
+    const modalLib = document.getElementById('modalLib');
+    const modalLibTitle = document.getElementById('modalLibTitle');
+    const modalLibClose = document.getElementById('modalLibClose');
+    const modalLibCancel = document.getElementById('modalLibCancel');
+    const modalLibSave = document.getElementById('modalLibSave');
+    const libName = document.getElementById('libName');
+    const libPrefix = document.getElementById('libPrefix');
+    const libPassword = document.getElementById('libPassword');
+    const libPasswordConfirm = document.getElementById('libPasswordConfirm');
+    const libFile = document.getElementById('libFile');
+    const libFileInfo = document.getElementById('libFileInfo');
+    const libSheetSection = document.getElementById('libSheetSection');
+    const libSheetSelect = document.getElementById('libSheetSelect');
+    const libMappingSection = document.getElementById('libMappingSection');
+    const mapCode = document.getElementById('mapCode');
+    const mapDesc = document.getElementById('mapDesc');
+    const mapPads = document.getElementById('mapPads');
+    const mapPrice = document.getElementById('mapPrice');
+    const mapGroup = document.getElementById('mapGroup');
+    const mapStatus = document.getElementById('mapStatus');
+    const mapRemark = document.getElementById('mapRemark');
+
+    const modalPreview = document.getElementById('modalPreview');
+    const modalPreviewTitle = document.getElementById('modalPreviewTitle');
+    const modalPreviewClose = document.getElementById('modalPreviewClose');
+    const previewTableBody = document.querySelector('#previewTable tbody');
+    const btnDownloadPreview = document.getElementById('btnDownloadPreview');
+
+    const modalHistory = document.getElementById('modalHistory');
+    const modalHistoryTitle = document.getElementById('modalHistoryTitle');
+    const modalHistoryClose = document.getElementById('modalHistoryClose');
+    const historyList = document.getElementById('historyList');
+    const historyEmpty = document.getElementById('historyEmpty');
+
+    let previewCurrentData = null;
+    let previewLibId = null;
+    let previewIsHistory = false;
+    let previewHistoryIndex = -1;
+    let selectedLibId = null;
+    const materialDetailPanel = document.getElementById('materialDetailPanel');
+    const selectedLibNameEl = document.getElementById('selectedLibName');
+    const closeMaterialDetailBtn = document.getElementById('closeMaterialDetail');
+    const materialSearchInput = document.getElementById('materialSearch');
+    const materialGroupList = document.getElementById('materialGroupList');
+    const btnExportAll = document.getElementById('btnExportAll');
+    const libControlPanel = document.getElementById('libControlPanel');
+    const libSearchInput = document.getElementById('libSearchInput');
+    const libFilterStrip = document.getElementById('libFilterStrip');
+    const btnClearLibFilter = document.getElementById('btnClearLibFilter');
+    const btnLibPrev = document.getElementById('btnLibPrev');
+    const btnLibNext = document.getElementById('btnLibNext');
+    const libPageInfo = document.getElementById('libPageInfo');
+    const LIBS_PER_PAGE = 5;
+    let libSearchKeyword = '';
+    let selectedLibFilters = [];
+    let libCarouselPage = 0;
+    let lastLibWheelAt = 0;
+
+    function renderLibGrid() {
+        if (libList.length === 0) {
+            libGrid.innerHTML = '';
+            emptyState.style.display = 'block';
+            libControlPanel.style.display = 'none';
+            materialDetailPanel.style.display = 'none';
+            selectedLibId = null;
+            return;
+        }
+        emptyState.style.display = 'none';
+        libControlPanel.style.display = 'block';
+        // 汇总全部库的当前表条数
+        const totalRows = libList.reduce((sum, lib) => {
+            if (!lib.currentTable || !lib.currentTable.data || lib.currentTable.data.length < 2) return sum;
+            return sum + (lib.currentTable.data.length - 1);
+        }, 0);
+
+        // “全部物料（所有库）”卡片
+        const allCardHtml = `
+            <div class="lib-card lib-all-card lib-clickable ${selectedLibId === '__ALL__' ? 'lib-selected' : ''}" data-id="__ALL__">
+                <div class="lib-name">
+                    <i class="fas fa-layer-group"></i> 全部物料（所有库）
+                    <span style="font-size:0.75rem;color:#64748b;font-weight:normal;">点击查看并搜索所有库中的物料</span>
+                </div>
+                <div class="lib-meta">
+                    <span><strong>当前表汇总：</strong>${libList.length} 个库 · ${totalRows} 条物料</span>
+                    <span><strong>说明：</strong>此视图仅用于统一搜索和浏览，不支持直接编辑或导出历史表。</span>
+                </div>
+            </div>
+        `;
+
+        const libCards = libList.map(lib => {
+            const currentInfo = lib.currentTable
+                ? `${lib.currentTable.fileName} · ${lib.currentTable.updatedAt.slice(0, 10)} · ${(lib.currentTable.data.length - 1)} 条`
+                : '未上传当前表';
+            const historyCount = (lib.historyTables || []).length;
+            const isSelected = selectedLibId === lib.id;
+            return {
+                id: lib.id,
+                name: lib.name || '',
+                prefix: lib.prefix || '',
+                html: `
+                <div class="lib-card lib-normal-card lib-clickable ${isSelected ? 'lib-selected' : ''}" data-id="${lib.id}">
+                    <div class="lib-name"><i class="fas fa-folder"></i> ${escapeHtml(lib.name)} <span style="font-size:0.75rem;color:#64748b;font-weight:normal;">点击查看物料</span></div>
+                    <div class="lib-meta">
+                        <span><strong>当前表：</strong>${escapeHtml(currentInfo)}</span>
+                        <span><strong>物料库前缀：</strong>${escapeHtml(lib.prefix || '（空）')}</span>
+                        <span><strong>历史表：</strong>${historyCount} 个</span>
+                    </div>
+                    <div class="lib-actions">
+                        <button type="button" class="btn-sm primary btn-view-current" data-id="${lib.id}"><i class="fas fa-eye"></i> 查看当前表</button>
+                        <button type="button" class="btn-sm btn-history" data-id="${lib.id}"><i class="fas fa-history"></i> 历史</button>
+                        <button type="button" class="btn-sm btn-edit" data-id="${lib.id}"><i class="fas fa-edit"></i> 编辑</button>
+                        <button type="button" class="btn-sm danger btn-delete" data-id="${lib.id}"><i class="fas fa-trash"></i> 删除</button>
+                    </div>
+                </div>
+            `};
+        });
+
+        const kw = (libSearchKeyword || '').trim().toLowerCase();
+        const selectedSet = new Set(selectedLibFilters);
+        const filteredLibCards = libCards.filter(card => {
+            const matchedKw = !kw || card.name.toLowerCase().includes(kw) || card.prefix.toLowerCase().includes(kw);
+            if (!matchedKw) return false;
+            if (!selectedSet.size) return true;
+            return selectedSet.has(card.id);
+        });
+        const totalPages = Math.max(1, Math.ceil(filteredLibCards.length / LIBS_PER_PAGE));
+        if (libCarouselPage >= totalPages) libCarouselPage = totalPages - 1;
+        if (libCarouselPage < 0) libCarouselPage = 0;
+        const start = libCarouselPage * LIBS_PER_PAGE;
+        const pageCards = filteredLibCards.slice(start, start + LIBS_PER_PAGE);
+        libGrid.innerHTML = allCardHtml + (pageCards.map(c => c.html).join('') || '');
+        libPageInfo.textContent = `第 ${libCarouselPage + 1} / ${totalPages} 组（其余库共 ${filteredLibCards.length} 项）`;
+        btnLibPrev.disabled = libCarouselPage === 0;
+        btnLibNext.disabled = libCarouselPage >= totalPages - 1;
+
+        libFilterStrip.innerHTML = libCards.map(card => `
+            <label class="lib-filter-chip">
+                <input type="checkbox" class="lib-filter-checkbox" data-id="${card.id}" ${selectedSet.has(card.id) ? 'checked' : ''}>
+                <span>${escapeHtml(card.name)}</span>
+            </label>
+        `).join('');
+        libFilterStrip.querySelectorAll('.lib-filter-checkbox').forEach(el => {
+            el.addEventListener('change', function() {
+                const id = this.dataset.id;
+                if (!id) return;
+                if (this.checked) {
+                    if (!selectedLibFilters.includes(id)) selectedLibFilters.push(id);
+                } else {
+                    selectedLibFilters = selectedLibFilters.filter(x => x !== id);
+                }
+                libCarouselPage = 0;
+                renderLibGrid();
+            });
+        });
+
+        libGrid.querySelectorAll('.btn-view-current').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); openPreview(el.dataset.id, false); }));
+        libGrid.querySelectorAll('.btn-history').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); openHistory(el.dataset.id); }));
+        libGrid.querySelectorAll('.btn-edit').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); openEdit(el.dataset.id); }));
+        libGrid.querySelectorAll('.btn-delete').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); deleteLib(el.dataset.id); }));
+        libGrid.querySelectorAll('.lib-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                if (e.target.closest('button')) return;
+                selectLib(card.dataset.id);
+            });
+        });
+    }
+
+    function selectLib(id) {
+        selectedLibId = id || null;
+        if (!id) {
+            materialDetailPanel.style.display = 'none';
+            renderLibGrid();
+            return;
+        }
+        // 特殊视图：全部物料（所有库）
+        if (id === '__ALL__') {
+            if (!libList || !libList.length) {
+                alert('物料库中尚未创建任何物料库。');
+                materialDetailPanel.style.display = 'none';
+                selectedLibId = null;
+                renderLibGrid();
+                return;
+            }
+            selectedLibNameEl.textContent = '全部物料（所有库）';
+            materialDetailPanel.style.display = 'block';
+            renderLibGrid();
+            renderMaterialDetail();
+            return;
+        }
+        const lib = libList.find(l => l.id === id);
+        if (!lib || !lib.currentTable || !lib.currentTable.data || lib.currentTable.data.length < 2) {
+            if (lib && (!lib.currentTable || !lib.currentTable.data || lib.currentTable.data.length < 2))
+                alert('该库暂无当前表或表内无物料数据');
+            materialDetailPanel.style.display = 'none';
+            selectedLibId = null;
+            renderLibGrid();
+            return;
+        }
+        selectedLibNameEl.textContent = lib.name;
+        materialDetailPanel.style.display = 'block';
+        renderLibGrid();
+        renderMaterialDetail();
+    }
+
+    function getSearchKeywords(val) {
+        return (val || '').trim().split(/\s+/).map(s => s.trim()).filter(Boolean).map(s => {
+            s = s.replace(/\*/g, '');
+            return s ? s.toLowerCase() : '';
+        }).filter(Boolean);
+    }
+
+    function ensureRowLength7(row) {
+        while (row.length < 7) row.push('');
+        return row;
+    }
+
+    function normalizePrefix(prefix) {
+        return prefix != null ? String(prefix).trim() : '';
+    }
+
+    function applyPadsDescRuleToTable(tableData, prefix) {
+        if (!Array.isArray(tableData) || tableData.length === 0) {
+            return { data: tableData, changed: false };
+        }
+        const libPrefix = normalizePrefix(prefix);
+        let changed = false;
+        const next = tableData.map((row, idx) => {
+            if (idx === 0) return row;
+            const r = Array.isArray(row) ? [...row] : [];
+            ensureRowLength7(r);
+            const groupLabel = r[4] != null ? String(r[4]).trim() : '';
+            const padsDesc = libPrefix + groupLabel;
+            if ((r[2] != null ? String(r[2]) : '') !== padsDesc) {
+                r[2] = padsDesc;
+                changed = true;
+            }
+            return r;
+        });
+        return { data: changed ? [tableData[0], ...next.slice(1)] : tableData, changed };
+    }
+
+    function rowSearchText(row) {
+        var parts = [];
+        if (row[0] != null) parts.push(String(row[0]));
+        if (row[1] != null) parts.push(String(row[1]));
+        if (row[2] != null) parts.push(String(row[2]));
+        if (row[4] != null) parts.push(String(row[4]));
+        return parts.join(' ').toLowerCase();
+    }
+
+    function matchScore(row, keywords) {
+        const text = rowSearchText(row);
+        let score = 0;
+        for (const kw of keywords) {
+            if (kw && text.indexOf(kw) !== -1) score += 1;
+        }
+        return score;
+    }
+
+    function renderMaterialDetail() {
+        let rows = [];
+
+        if (selectedLibId === '__ALL__') {
+            // 汇总所有库的当前表数据
+            libList.forEach(lib => {
+                if (!lib.currentTable || !lib.currentTable.data || lib.currentTable.data.length < 2) return;
+                const data = lib.currentTable.data;
+                const subRows = data.slice(1);
+                subRows.forEach(r => rows.push(ensureRowLength7(r)));
+            });
+            if (rows.length === 0) {
+                materialGroupList.innerHTML = '<div style="padding:16px;color:#64748b;">所有库的当前表内均无物料数据。</div>';
+                return;
+            }
+        } else {
+            const lib = libList.find(l => l.id === selectedLibId);
+            if (!lib || !lib.currentTable || !lib.currentTable.data) return;
+            const data = lib.currentTable.data;
+            rows = data.length > 1 ? data.slice(1) : [];
+        }
+
+        const keywords = getSearchKeywords(materialSearchInput.value);
+
+        rows.forEach(r => ensureRowLength7(r));
+        let filtered = rows.map(row => ({ row, score: keywords.length ? matchScore(row, keywords) : 1 }));
+        if (keywords.length) {
+            // 多个关键词时，要求同时命中所有关键词（AND），否则过滤掉
+            filtered = filtered.filter(x => x.score === keywords.length);
+            // 匹配度相同则按物料代码排序
+            filtered.sort((a, b) => b.score - a.score || (a.row[0] || '').localeCompare(b.row[0] || ''));
+        } else {
+            filtered.sort((a, b) => (a.row[0] || '').localeCompare(b.row[0] || ''));
+        }
+
+        const groupMap = {};
+        filtered.forEach(({ row, score }) => {
+            const groupLabel = (row[4] != null ? String(row[4]) : '').trim() || '（无替代组）';
+            if (!groupMap[groupLabel]) groupMap[groupLabel] = [];
+            groupMap[groupLabel].push({ row, score });
+        });
+
+        const groupOrder = Object.keys(groupMap).sort((a, b) => a.localeCompare(b));
+        let html = '';
+        groupOrder.forEach((label, idx) => {
+            const items = groupMap[label];
+            const groupId = 'group-' + idx;
+            html += `
+                <div class="group-header collapsed" data-group-id="${groupId}" aria-expanded="false">
+                    <i class="fas fa-chevron-down chevron"></i>
+                    <span>${escapeHtml(label)}</span>
+                    <span style="font-size:0.8rem;font-weight:normal;color:#64748b;">(${items.length} 条)</span>
+                </div>
+                <div class="group-content collapsed" id="${groupId}">
+                    <table>
+                        <thead><tr><th>物料代码</th><th>物料描述</th><th>pads库物料描述</th><th>成本单价</th><th>替代组标签</th><th>优选情况</th><th>备注说明</th>${keywords.length ? '<th>匹配度</th>' : ''}</tr></thead>
+                        <tbody>
+                            ${items.map(({ row, score }) => '<tr data-code="' + escapeHtml(String(row[0] || '')) + '">' + row.slice(0, 7).map((c, i) => (i === 6 ? '<td class="td-remark" contenteditable="true" title="点击编辑备注">' + escapeHtml(c != null ? String(c) : '') + '</td>' : '<td>' + escapeHtml(c != null ? String(c) : '') + '</td>')).join('') + (keywords.length ? '<td><span class="match-score">' + score + '/' + keywords.length + '</span></td>' : '') + '</tr>').join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        });
+        materialGroupList.innerHTML = html || '<p style="padding:20px;color:#64748b;">无物料数据或没有匹配结果</p>';
+
+        materialGroupList.querySelectorAll('.group-header').forEach(h => {
+            h.addEventListener('click', function() {
+                const id = this.dataset.groupId;
+                const content = document.getElementById(id);
+                if (!content) return;
+                const collapsed = content.classList.toggle('collapsed');
+                this.classList.toggle('collapsed', collapsed);
+                this.setAttribute('aria-expanded', !collapsed);
+            });
+        });
+        materialGroupList.querySelectorAll('.td-remark').forEach(td => {
+            td.addEventListener('blur', async function() {
+                const tr = this.closest('tr');
+                const code = tr && tr.dataset.code;
+                if (!code || !selectedLibId || selectedLibId === '__ALL__') return;
+                const remark = (this.textContent || '').trim();
+                try {
+                    const token = await ensureUnlocked(selectedLibId, '修改备注');
+                    const { ok, data } = await apiFetch(API_BASE + '/remark', {
+                        method: 'POST',
+                        headers: { 'X-Material-Unlock-Token': token },
+                        body: JSON.stringify({ libraryId: selectedLibId, materialCode: code, remark: remark, unlockToken: token })
+                    });
+                    if (ok && data.success) await reloadLibraries();
+                    else alert((data && data.error) || '保存备注失败');
+                } catch (e) {
+                    if (e && e.message !== 'cancelled' && e.message !== 'bad password') renderMaterialDetail();
+                }
+            });
+        });
+    }
+
+    closeMaterialDetailBtn.addEventListener('click', () => selectLib(null));
+    materialSearchInput.addEventListener('input', () => { if (selectedLibId) renderMaterialDetail(); });
+    libSearchInput.addEventListener('input', function() {
+        libSearchKeyword = this.value || '';
+        libCarouselPage = 0;
+        renderLibGrid();
+    });
+    btnClearLibFilter.addEventListener('click', function() {
+        libSearchKeyword = '';
+        libSearchInput.value = '';
+        selectedLibFilters = [];
+        libCarouselPage = 0;
+        renderLibGrid();
+    });
+    btnLibPrev.addEventListener('click', function() {
+        libCarouselPage = Math.max(0, libCarouselPage - 1);
+        renderLibGrid();
+    });
+    btnLibNext.addEventListener('click', function() {
+        libCarouselPage = libCarouselPage + 1;
+        renderLibGrid();
+    });
+    libGrid.addEventListener('wheel', function(e) {
+        if (!libList || !libList.length) return;
+        const now = Date.now();
+        if (now - lastLibWheelAt < 220) {
+            e.preventDefault();
+            return;
+        }
+        const delta = e.deltaY || e.deltaX || 0;
+        if (!delta) return;
+        lastLibWheelAt = now;
+        if (delta > 0) {
+            libCarouselPage = libCarouselPage + 1;
+        } else {
+            libCarouselPage = Math.max(0, libCarouselPage - 1);
+        }
+        renderLibGrid();
+        e.preventDefault();
+    }, { passive: false });
+
+    function escapeHtml(s) {
+        if (s == null) return '';
+        const div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+
+    function openAdd() {
+        editingId = null;
+        modalLibTitle.textContent = '新增物料库';
+        document.getElementById('libPasswordLabel').innerHTML = '访问密码 <span class="badge-required">必填</span>';
+        document.getElementById('libPassword').style.display = '';
+        document.getElementById('libPasswordConfirm').style.display = '';
+        libPassword.value = '';
+        libPasswordConfirm.value = '';
+        libName.value = '';
+        libPrefix.value = '';
+        libFile.value = '';
+        libFileInfo.textContent = '未选择文件（可选，可稍后编辑时上传）';
+        libSheetSection.style.display = 'none';
+        libMappingSection.style.display = 'none';
+        tempWorkbook = null;
+        modalLib.classList.add('show');
+    }
+
+    function openEdit(id) {
+        const lib = libList.find(l => l.id === id);
+        if (!lib) return;
+        editingId = id;
+        modalLibTitle.textContent = '编辑物料库';
+        document.getElementById('libPasswordLabel').innerHTML = '修改访问密码（留空则不修改）';
+        libPassword.value = '';
+        libPasswordConfirm.value = '';
+        libName.value = lib.name;
+        libPrefix.value = lib.prefix || '';
+        libFile.value = '';
+        libFileInfo.textContent = '可上传新 Excel 替换当前表（原当前表将移入历史）';
+        libSheetSection.style.display = 'none';
+        libMappingSection.style.display = 'none';
+        tempWorkbook = null;
+        modalLib.classList.add('show');
+    }
+
+    function buildMappingOptions(headers) {
+        const opts = headers.length
+            ? headers.map((h, i) => `<option value="${i}">${escapeHtml(h)} (列${i + 1})</option>`).join('')
+            : '<option value="-1" disabled>无列</option>';
+        const def = '<option value="-1">--不映射--</option>';
+        mapCode.innerHTML = def + opts;
+        mapDesc.innerHTML = def + opts;
+        mapPads.innerHTML = def + opts;
+        mapPrice.innerHTML = def + opts;
+        mapGroup.innerHTML = def + opts;
+        mapStatus.innerHTML = def + opts;
+        mapRemark.innerHTML = def + opts;
+    }
+
+    libFile.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            try {
+                const data = new Uint8Array(ev.target.result);
+                const wb = XLSX.read(data, { type: 'array' });
+                tempWorkbook = wb;
+                tempFileName = file.name;
+                libFileInfo.textContent = '📁 ' + file.name;
+                libSheetSelect.innerHTML = wb.SheetNames.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+                libSheetSection.style.display = 'block';
+                libSheetSelect.selectedIndex = 0;
+                onLibSheetChange();
+            } catch (err) {
+                libFileInfo.textContent = '解析失败: ' + err.message;
+                libSheetSection.style.display = 'none';
+                libMappingSection.style.display = 'none';
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    function onLibSheetChange() {
+        if (!tempWorkbook) return;
+        const sheetName = libSheetSelect.value;
+        const sheet = tempWorkbook.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+        if (data.length === 0) {
+            tempSheetData = { headers: [], dataRows: [] };
+        } else {
+            const headerRow = data[0] || [];
+            tempSheetData.headers = headerRow.map((h, i) => h ? String(h) : '列' + (i + 1));
+            tempSheetData.dataRows = data.slice(1);
+        }
+        buildMappingOptions(tempSheetData.headers);
+        libMappingSection.style.display = tempSheetData.headers.length ? 'block' : 'none';
+    }
+
+    libSheetSelect.addEventListener('change', onLibSheetChange);
+
+    function normalizeToStandardTable() {
+        const codeIdx = parseInt(mapCode.value, 10);
+        const descIdx = parseInt(mapDesc.value, 10);
+        const padsIdx = parseInt(mapPads.value, 10);
+        const priceIdx = parseInt(mapPrice.value, 10);
+        const groupIdx = parseInt(mapGroup.value, 10);
+        const statusIdx = parseInt(mapStatus.value, 10);
+        const remarkIdx = parseInt(mapRemark.value, 10);
+        if (codeIdx < 0 || descIdx < 0) return null;
+        const rows = [];
+        for (const row of tempSheetData.dataRows) {
+            if (!row || row.length === 0) continue;
+            const code = row[codeIdx] ? String(row[codeIdx]).trim() : '';
+            if (!code) continue;
+            rows.push([
+                code,
+                descIdx >= 0 && row[descIdx] ? String(row[descIdx]).trim() : '',
+                padsIdx >= 0 && row[padsIdx] ? String(row[padsIdx]).trim() : '',
+                priceIdx >= 0 && row[priceIdx] ? String(row[priceIdx]).trim() : '',
+                groupIdx >= 0 && row[groupIdx] ? String(row[groupIdx]).trim() : '',
+                statusIdx >= 0 && row[statusIdx] ? String(row[statusIdx]).trim() : '',
+                remarkIdx >= 0 && row[remarkIdx] ? String(row[remarkIdx]).trim() : ''
+            ]);
+        }
+        rows.sort((a, b) => (a[0] || '').localeCompare(b[0] || ''));
+        return [STANDARD_HEADERS, ...rows];
+    }
+
+    modalLibSave.addEventListener('click', async function() {
+        const name = libName.value.trim();
+        const prefix = normalizePrefix(libPrefix.value);
+        if (!name) {
+            alert('请输入物料库名称');
+            return;
+        }
+        let newTableData = tempWorkbook && tempSheetData.headers.length
+            ? normalizeToStandardTable()
+            : null;
+        if (tempWorkbook && !newTableData) {
+            alert('请正确映射「物料代码」和「物料描述」列');
+            return;
+        }
+        if (newTableData) {
+            newTableData = applyPadsDescRuleToTable(newTableData, prefix).data;
+        }
+        const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        const pwd = libPassword.value;
+        const pwd2 = libPasswordConfirm.value;
+
+        try {
+            if (editingId) {
+                await ensureUnlocked(editingId, '编辑物料库');
+                if (pwd && pwd !== pwd2) { alert('两次输入的密码不一致'); return; }
+                const token = getUnlockToken(editingId);
+                const body = { name: name, prefix: prefix, unlockToken: token };
+                if (newTableData) {
+                    body.currentTable = { fileName: tempFileName, updatedAt: now, data: newTableData };
+                }
+                if (pwd) body.newPassword = pwd;
+                const headers = token ? { 'X-Material-Unlock-Token': token } : {};
+                const { ok, data } = await apiFetch(API_BASE + '/libraries/' + encodeURIComponent(editingId), {
+                    method: 'PUT',
+                    headers: headers,
+                    body: JSON.stringify(body)
+                });
+                if (!ok || !data.success) {
+                    alert((data && data.error) || '保存失败');
+                    return;
+                }
+            } else {
+                if (!pwd) { alert('请设置物料库访问密码'); return; }
+                if (pwd !== pwd2) { alert('两次输入的密码不一致'); return; }
+                const body = {
+                    name: name,
+                    prefix: prefix,
+                    password: pwd,
+                    currentTable: newTableData ? { fileName: tempFileName, updatedAt: now, data: newTableData } : null
+                };
+                const { ok, data } = await apiFetch(API_BASE + '/libraries', {
+                    method: 'POST',
+                    body: JSON.stringify(body)
+                });
+                if (!ok || !data.success) {
+                    alert((data && data.error) || '创建失败');
+                    return;
+                }
+            }
+            await reloadLibraries();
+            modalLib.classList.remove('show');
+            renderLibGrid();
+        } catch (e) {
+            if (e && e.message !== 'cancelled' && e.message !== 'bad password') console.error(e);
+        }
+    });
+
+    modalLibClose.addEventListener('click', () => modalLib.classList.remove('show'));
+    modalLibCancel.addEventListener('click', () => modalLib.classList.remove('show'));
+    btnAddLib.addEventListener('click', openAdd);
+
+    const btnBatchImport = document.getElementById('btnBatchImport');
+    const modalBatchImport = document.getElementById('modalBatchImport');
+    const modalBatchImportClose = document.getElementById('modalBatchImportClose');
+    const modalBatchImportCancel = document.getElementById('modalBatchImportCancel');
+    const modalBatchImportRun = document.getElementById('modalBatchImportRun');
+    const batchFilesInput = document.getElementById('batchFilesInput');
+    const batchFilesSummary = document.getElementById('batchFilesSummary');
+    const batchFileListWrap = document.getElementById('batchFileListWrap');
+    const batchFileListBody = document.getElementById('batchFileListBody');
+    const batchDefaultPrefix = document.getElementById('batchDefaultPrefix');
+    const batchOverwriteExisting = document.getElementById('batchOverwriteExisting');
+    let batchImportItems = [];
+
+    function libNameFromFileName(fileName) {
+        const base = (fileName || '').replace(/\.(xlsx|xls)$/i, '').trim();
+        return base || '未命名物料库';
+    }
+
+    /** 与导出 Excel 工作表命名规则一致（用于回导时匹配已有库） */
+    function sanitizeSheetTitle(name) {
+        var n = (name && String(name).trim()) || '';
+        n = n.replace(/[\[\]\:\\\/\?\*]/g, ' ');
+        if (n.length > 31) n = n.slice(0, 31);
+        return n;
+    }
+
+    function findLibraryByImportName(importName) {
+        const key = String(importName || '').trim();
+        if (!key) return null;
+        var hit = libList.find(function(l) { return (l.name || '').trim() === key; });
+        if (hit) return hit;
+        hit = libList.find(function(l) { return sanitizeSheetTitle(l.name) === key; });
+        if (hit) return hit;
+        if (key.length >= 28) {
+            hit = libList.find(function(l) {
+                const sn = sanitizeSheetTitle(l.name);
+                return sn === key || sn.indexOf(key) === 0 || key.indexOf(sn) === 0;
+            });
+        }
+        return hit || null;
+    }
+
+    function isStandardHeaderRow(headerRow) {
+        if (!headerRow || headerRow.length < 2) return false;
+        return STANDARD_HEADERS.every((h, i) => String(headerRow[i] || '').trim() === h);
+    }
+
+    function autoDetectMapping(headers) {
+        const norm = (h) => String(h || '').trim().toLowerCase();
+        const exact = (name) => headers.findIndex(h => String(h || '').trim() === name);
+        const find = (...candidates) => {
+            for (let i = 0; i < headers.length; i++) {
+                const h = norm(headers[i]);
+                for (const c of candidates) {
+                    const key = c.toLowerCase();
+                    if (h === key || (key.length > 1 && h.includes(key))) return i;
+                }
+            }
+            return -1;
+        };
+        const codeIdx = exact('物料代码');
+        const descIdx = exact('物料描述');
+        return {
+            codeIdx: codeIdx >= 0 ? codeIdx : find('物料代码', '料号', '编码', 'part'),
+            descIdx: descIdx >= 0 ? descIdx : find('物料描述', '描述', 'description'),
+            padsIdx: exact('pads库物料描述') >= 0 ? exact('pads库物料描述') : find('pads库', 'pads'),
+            priceIdx: exact('成本单价') >= 0 ? exact('成本单价') : find('成本单价', '单价', '价格'),
+            groupIdx: exact('替代组标签') >= 0 ? exact('替代组标签') : find('替代组', '组标签'),
+            statusIdx: exact('优选情况') >= 0 ? exact('优选情况') : find('优选'),
+            remarkIdx: exact('备注说明') >= 0 ? exact('备注说明') : find('备注')
+        };
+    }
+
+    function buildStandardTableFromSheet(headers, dataRows, mapping, prefix) {
+        if (isStandardHeaderRow(headers)) {
+            const rows = dataRows.filter(r => r && r.length && String(r[0] || '').trim());
+            rows.sort((a, b) => String(a[0] || '').localeCompare(String(b[0] || '')));
+            const table = [STANDARD_HEADERS.slice(), ...rows.map(r => {
+                const row = [];
+                for (let i = 0; i < 7; i++) row.push(r[i] != null ? String(r[i]).trim() : '');
+                return row;
+            })];
+            return applyPadsDescRuleToTable(table, prefix).data;
+        }
+        const { codeIdx, descIdx, padsIdx, priceIdx, groupIdx, statusIdx, remarkIdx } = mapping;
+        if (codeIdx < 0 || descIdx < 0) return null;
+        const rows = [];
+        for (const row of dataRows) {
+            if (!row || row.length === 0) continue;
+            const code = row[codeIdx] ? String(row[codeIdx]).trim() : '';
+            if (!code) continue;
+            rows.push([
+                code,
+                descIdx >= 0 && row[descIdx] ? String(row[descIdx]).trim() : '',
+                padsIdx >= 0 && row[padsIdx] ? String(row[padsIdx]).trim() : '',
+                priceIdx >= 0 && row[priceIdx] ? String(row[priceIdx]).trim() : '',
+                groupIdx >= 0 && row[groupIdx] ? String(row[groupIdx]).trim() : '',
+                statusIdx >= 0 && row[statusIdx] ? String(row[statusIdx]).trim() : '',
+                remarkIdx >= 0 && row[remarkIdx] ? String(row[remarkIdx]).trim() : ''
+            ]);
+        }
+        if (!rows.length) return null;
+        rows.sort((a, b) => (a[0] || '').localeCompare(b[0] || ''));
+        return applyPadsDescRuleToTable([STANDARD_HEADERS.slice(), ...rows], prefix).data;
+    }
+
+    function readFileAsWorkbook(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                try {
+                    const data = new Uint8Array(ev.target.result);
+                    resolve(XLSX.read(data, { type: 'array' }));
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            reader.onerror = () => reject(new Error('读取文件失败'));
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    function renderBatchFileList() {
+        const ready = batchImportItems.filter(it => it.status === 'ready').length;
+        batchFilesSummary.textContent = batchImportItems.length
+            ? `已选 ${batchImportItems.length} 个文件，可导入 ${ready} 个`
+            : '未选择文件';
+        modalBatchImportRun.disabled = ready === 0;
+        if (!batchImportItems.length) {
+            batchFileListWrap.style.display = 'none';
+            batchFileListBody.innerHTML = '';
+            return;
+        }
+        batchFileListWrap.style.display = 'block';
+        batchFileListBody.innerHTML = batchImportItems.map((it, idx) => {
+            const statusCls = it.status === 'ready' ? 'batch-status-ok' : 'batch-status-err';
+            const statusText = it.status === 'ready'
+                ? `就绪 · ${it.rowCount} 条`
+                : (it.error || '无法解析');
+            return `<tr data-idx="${idx}">
+                <td title="${escapeHtml(it.fileName)}">${escapeHtml(it.fileName)}</td>
+                <td><input type="text" class="batch-lib-name-input" data-idx="${idx}" value="${escapeHtml(it.libName)}"></td>
+                <td>${escapeHtml(it.sheetName)}</td>
+                <td class="${statusCls}">${escapeHtml(statusText)}</td>
+            </tr>`;
+        }).join('');
+        batchFileListBody.querySelectorAll('.batch-lib-name-input').forEach(inp => {
+            inp.addEventListener('input', function() {
+                const i = parseInt(this.dataset.idx, 10);
+                if (batchImportItems[i]) batchImportItems[i].libName = this.value.trim();
+            });
+        });
+    }
+
+    function parseWorkbookSheet(wb, sheetName, prefix) {
+        const sheet = wb.Sheets[sheetName];
+        if (!sheet) {
+            return { ok: false, error: '工作表不存在' };
+        }
+        const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+        if (!data.length) {
+            return { ok: false, error: '工作表为空' };
+        }
+        const headerRow = data[0] || [];
+        const headers = headerRow.map((h, i) => h ? String(h) : '列' + (i + 1));
+        const dataRows = data.slice(1);
+        const mapping = autoDetectMapping(headers);
+        const tableData = buildStandardTableFromSheet(headers, dataRows, mapping, prefix);
+        if (!tableData || tableData.length < 2) {
+            return { ok: false, error: '未识别到有效物料行（需含物料代码、物料描述列）' };
+        }
+        return { ok: true, sheetName: sheetName, tableData: tableData, rowCount: tableData.length - 1 };
+    }
+
+    async function processBatchFiles(fileList) {
+        batchImportItems = [];
+        const files = Array.from(fileList || []);
+        const prefix = normalizePrefix(batchDefaultPrefix.value);
+
+        for (const file of files) {
+            try {
+                const wb = await readFileAsWorkbook(file);
+                const sheetNames = (wb.SheetNames || []).filter(Boolean);
+                if (!sheetNames.length) {
+                    batchImportItems.push({
+                        file: file,
+                        fileName: file.name,
+                        libName: libNameFromFileName(file.name),
+                        sheetName: '',
+                        status: 'error',
+                        error: '文件中没有工作表',
+                        rowCount: 0,
+                        tableData: null
+                    });
+                    continue;
+                }
+
+                // 与「导出全部物料库 Excel」一致：多工作表 → 每表一个物料库（表名=库名）
+                const multiSheet = sheetNames.length > 1;
+                const targets = multiSheet
+                    ? sheetNames
+                    : [sheetNames[0]];
+
+                for (const sheetName of targets) {
+                    const item = {
+                        file: file,
+                        fileName: multiSheet ? (file.name + ' · ' + sheetName) : file.name,
+                        libName: multiSheet
+                            ? String(sheetName || '').trim() || libNameFromFileName(file.name)
+                            : libNameFromFileName(file.name),
+                        sheetName: '',
+                        status: 'pending',
+                        error: '',
+                        rowCount: 0,
+                        tableData: null
+                    };
+                    const parsed = parseWorkbookSheet(wb, sheetName, prefix);
+                    if (!parsed.ok) {
+                        item.status = 'error';
+                        item.error = parsed.error;
+                    } else {
+                        item.sheetName = parsed.sheetName;
+                        item.tableData = parsed.tableData;
+                        item.rowCount = parsed.rowCount;
+                        item.status = 'ready';
+                    }
+                    batchImportItems.push(item);
+                }
+            } catch (err) {
+                batchImportItems.push({
+                    file: file,
+                    fileName: file.name,
+                    libName: libNameFromFileName(file.name),
+                    sheetName: '',
+                    status: 'error',
+                    error: err.message || String(err),
+                    rowCount: 0,
+                    tableData: null
+                });
+            }
+        }
+        renderBatchFileList();
+    }
+
+    function openBatchImportModal() {
+        batchImportItems = [];
+        batchFilesInput.value = '';
+        batchDefaultPrefix.value = '';
+        batchOverwriteExisting.checked = true;
+        renderBatchFileList();
+        modalBatchImport.classList.add('show');
+    }
+
+    function closeBatchImportModal() {
+        modalBatchImport.classList.remove('show');
+    }
+
+    async function runBatchImport() {
+        const readyItems = batchImportItems.filter(it => it.status === 'ready' && it.tableData);
+        if (!readyItems.length) {
+            alert('没有可导入的文件');
+            return;
+        }
+        const defaultPwd = (document.getElementById('batchDefaultPassword').value || '').trim();
+        if (!defaultPwd) {
+            alert('请填写新建库的默认访问密码');
+            return;
+        }
+        const overwrite = batchOverwriteExisting.checked;
+        const defaultPrefix = normalizePrefix(batchDefaultPrefix.value);
+        const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        const unlockTokens = {};
+        const items = [];
+
+        for (const it of readyItems) {
+            const name = (it.libName || libNameFromFileName(it.fileName)).trim();
+            if (!name) continue;
+            let tableData = it.tableData;
+            if (defaultPrefix) {
+                tableData = applyPadsDescRuleToTable(tableData, defaultPrefix).data;
+            }
+            const existing = findLibraryByImportName(name);
+            if (existing && overwrite) {
+                try {
+                    const token = await ensureUnlocked(existing.id, '批量更新「' + (existing.name || name) + '」');
+                    unlockTokens[existing.id] = token;
+                } catch (e) {
+                    continue;
+                }
+            }
+            items.push({
+                name: existing && overwrite ? (existing.name || name) : name,
+                prefix: existing && overwrite ? (existing.prefix || defaultPrefix) : defaultPrefix,
+                currentTable: { fileName: it.sheetName || it.fileName, updatedAt: now, data: tableData }
+            });
+        }
+        if (!items.length) {
+            alert('没有可提交的项目（更新已有库需验证密码）');
+            return;
+        }
+        const { ok, data } = await apiFetch(API_BASE + '/batch-import', {
+            method: 'POST',
+            body: JSON.stringify({
+                items: items,
+                overwrite: overwrite,
+                defaultPrefix: defaultPrefix,
+                defaultPassword: defaultPwd,
+                unlockTokens: unlockTokens
+            })
+        });
+        if (!ok || !data.success) {
+            alert((data && data.error) || '批量导入失败');
+            return;
+        }
+        await reloadLibraries();
+        closeBatchImportModal();
+        renderLibGrid();
+        alert('批量导入完成：新建 ' + (data.created || 0) + ' 个库，更新 ' + (data.updated || 0) + ' 个库' + (data.skipped ? '，跳过 ' + data.skipped + ' 个' : '') + '。');
+    }
+
+    btnBatchImport.addEventListener('click', openBatchImportModal);
+    modalBatchImportClose.addEventListener('click', closeBatchImportModal);
+    modalBatchImportCancel.addEventListener('click', closeBatchImportModal);
+    batchFilesInput.addEventListener('change', function(e) {
+        if (!e.target.files || !e.target.files.length) return;
+        processBatchFiles(e.target.files);
+    });
+    modalBatchImportRun.addEventListener('click', runBatchImport);
+
+    function openPreview(libId, isHistory, historyIndex) {
+        const lib = libList.find(l => l.id === libId);
+        if (!lib) return;
+        previewLibId = libId;
+        previewIsHistory = isHistory;
+        previewHistoryIndex = historyIndex;
+        let data;
+        let title;
+        if (isHistory && lib.historyTables && lib.historyTables[historyIndex]) {
+            const h = lib.historyTables[historyIndex];
+            data = h.data;
+            title = `历史表：${escapeHtml(h.fileName)} (${h.updatedAt.slice(0, 10)})`;
+        } else {
+            if (!lib.currentTable || !lib.currentTable.data) {
+                alert('该库暂无当前表');
+                return;
+            }
+            data = lib.currentTable.data;
+            title = `当前表：${escapeHtml(lib.name)}`;
+        }
+        previewCurrentData = data;
+        modalPreviewTitle.textContent = title;
+        previewTableBody.innerHTML = (data.length <= 1 ? [] : data.slice(1, 101)).map(row => {
+            const cells = [];
+            for (let i = 0; i < 7; i++) cells.push('<td>' + escapeHtml(row[i] != null ? String(row[i]) : '') + '</td>');
+            return '<tr>' + cells.join('') + '</tr>';
+        }).join('') || '<tr><td colspan="7" style="text-align:center;">无数据</td></tr>';
+        if (data.length > 101) previewTableBody.innerHTML += '<tr><td colspan="7" style="text-align:center; color:#64748b;">仅显示前 100 条</td></tr>';
+        modalPreview.classList.add('show');
+    }
+
+    btnDownloadPreview.addEventListener('click', async function() {
+        if (!previewCurrentData || previewCurrentData.length === 0 || !previewLibId) return;
+        try {
+            await ensureUnlocked(previewLibId, previewIsHistory ? '下载历史表' : '下载当前表');
+            await logLibraryAction(previewLibId, previewIsHistory ? 'download_history' : 'download_current');
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(previewCurrentData);
+            XLSX.utils.book_append_sheet(wb, ws, '物料表');
+            XLSX.writeFile(wb, '物料表_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+        } catch (e) { /* cancelled */ }
+    });
+
+    modalPreviewClose.addEventListener('click', () => modalPreview.classList.remove('show'));
+
+    function openHistory(libId) {
+        const lib = libList.find(l => l.id === libId);
+        if (!lib) return;
+        modalHistoryTitle.textContent = `历史表 · ${escapeHtml(lib.name)}`;
+        const list = lib.historyTables || [];
+        if (list.length === 0) {
+            historyList.innerHTML = '';
+            historyEmpty.style.display = 'block';
+        } else {
+            historyEmpty.style.display = 'none';
+            historyList.innerHTML = list.map((h, i) => `
+                <li>
+                    <span class="hist-name">${escapeHtml(h.fileName)}</span>
+                    <span class="hist-date">${h.updatedAt.slice(0, 10)} · ${(h.data.length - 1)} 条</span>
+                    <div class="hist-actions">
+                        <button type="button" class="btn-sm btn-view-hist" data-id="${libId}" data-idx="${i}">查看</button>
+                        <button type="button" class="btn-sm btn-download-hist" data-id="${libId}" data-idx="${i}">下载</button>
+                    </div>
+                </li>
+            `).join('');
+            historyList.querySelectorAll('.btn-view-hist').forEach(el => {
+                el.addEventListener('click', () => {
+                    modalHistory.classList.remove('show');
+                    openPreview(el.dataset.id, true, parseInt(el.dataset.idx, 10));
+                });
+            });
+            historyList.querySelectorAll('.btn-download-hist').forEach(el => {
+                el.addEventListener('click', async () => {
+                    const h = lib.historyTables[parseInt(el.dataset.idx, 10)];
+                    if (!h || !h.data) return;
+                    try {
+                        await ensureUnlocked(libId, '下载历史表');
+                        await logLibraryAction(libId, 'download_history', { fileName: h.fileName });
+                        const wb = XLSX.utils.book_new();
+                        const ws = XLSX.utils.aoa_to_sheet(h.data);
+                        XLSX.utils.book_append_sheet(wb, ws, '物料表');
+                        XLSX.writeFile(wb, (h.fileName || '历史表') + '_' + (h.updatedAt || '').slice(0, 10) + '.xlsx');
+                    } catch (e) { /* cancelled */ }
+                });
+            });
+        }
+        modalHistory.classList.add('show');
+    }
+
+    modalHistoryClose.addEventListener('click', () => modalHistory.classList.remove('show'));
+
+    async function deleteLib(id) {
+        if (!confirm('确定要删除该物料库吗？删除后无法恢复。')) return;
+        try {
+            const token = await ensureUnlocked(id, '删除物料库');
+            const { ok, data } = await apiFetch(API_BASE + '/libraries/' + encodeURIComponent(id), {
+                method: 'DELETE',
+                headers: { 'X-Material-Unlock-Token': token },
+                body: JSON.stringify({ unlockToken: token })
+            });
+            if (!ok || !data.success) {
+                alert((data && data.error) || '删除失败');
+                return;
+            }
+            if (selectedLibId === id) selectLib(null);
+            delete unlockCache[id];
+            await reloadLibraries();
+            renderLibGrid();
+        } catch (e) { /* cancelled */ }
+    }
+
+    btnExportAll.addEventListener('click', async function() {
+        if (!libList || !libList.length) {
+            alert('物料库中尚未创建任何物料库，无法导出。');
+            return;
+        }
+        const withData = libList.filter(function(lib) {
+            return lib.currentTable && lib.currentTable.data && lib.currentTable.data.length;
+        });
+        if (!withData.length) {
+            alert('物料库中未找到可导出的当前表数据。');
+            return;
+        }
+        const exported = [];
+        for (const lib of withData) {
+            try {
+                if (!getUnlockToken(lib.id)) await ensureUnlocked(lib.id, '导出「' + lib.name + '」');
+                exported.push(lib);
+            } catch (e) { /* skip */ }
+        }
+        if (!exported.length) {
+            alert('未验证任何物料库密码，已取消导出。');
+            return;
+        }
+        if (exported.length < withData.length) {
+            if (!confirm('仅已验证密码的 ' + exported.length + ' / ' + withData.length + ' 个物料库将被导出，是否继续？')) return;
+        }
+        try {
+            await apiFetch(API_BASE + '/audit-export-all', {
+                method: 'POST',
+                body: JSON.stringify({ detail: { libraries: exported.map(function(l) { return l.name; }) } })
+            });
+        } catch (e) { /* ignore */ }
+        const wb = XLSX.utils.book_new();
+        exported.forEach(function(lib, index) {
+            const data = lib.currentTable.data;
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            var name = (lib.name && String(lib.name).trim()) || ('库' + (index + 1));
+            name = name.replace(/[\[\]\:\\\/\?\*]/g, ' ');
+            if (name.length > 31) name = name.slice(0, 31);
+            XLSX.utils.book_append_sheet(wb, ws, name || ('库' + (index + 1)));
+        });
+        XLSX.writeFile(wb, 'material_libraries_all.xlsx');
+    });
+
+    async function loadAuditLogs() {
+        const libId = document.getElementById('auditLibFilter').value || '';
+        const qs = libId ? '?library_id=' + encodeURIComponent(libId) + '&limit=200' : '?limit=200';
+        const { ok, data } = await apiFetch(API_BASE + '/audit-logs' + qs);
+        const listEl = document.getElementById('auditLogList');
+        const emptyEl = document.getElementById('auditLogEmpty');
+        if (!ok || !data.success || !data.logs || !data.logs.length) {
+            listEl.innerHTML = '';
+            emptyEl.style.display = 'block';
+            return;
+        }
+        emptyEl.style.display = 'none';
+        listEl.innerHTML = data.logs.map(function(log) {
+            return '<li><div>' + escapeHtml(log.message || '') + '</div><div class="audit-time">' + escapeHtml(log.createdAt || '') + '</div></li>';
+        }).join('');
+    }
+
+    function openAuditModal() {
+        const sel = document.getElementById('auditLibFilter');
+        sel.innerHTML = '<option value="">全部物料库</option>' + libList.map(function(l) {
+            return '<option value="' + escapeHtml(l.id) + '">' + escapeHtml(l.name) + '</option>';
+        }).join('');
+        document.getElementById('modalAudit').classList.add('show');
+        loadAuditLogs();
+    }
+
+    document.getElementById('btnAuditLog').addEventListener('click', openAuditModal);
+    document.getElementById('modalAuditClose').addEventListener('click', function() {
+        document.getElementById('modalAudit').classList.remove('show');
+    });
+    document.getElementById('btnAuditRefresh').addEventListener('click', loadAuditLogs);
+    document.getElementById('auditLibFilter').addEventListener('change', loadAuditLogs);
+
+    async function loadDingtalkOpenLink() {
+        const linkEl = document.getElementById('dingtalkOpenMaterialDb');
+        if (!linkEl) return;
+        try {
+            const { ok, data } = await apiFetch(API_BASE + '/dingtalk-open-url');
+            if (!ok || !data.success || !data.dingtalk_open_url) return;
+            linkEl.style.display = 'inline-flex';
+            linkEl.href = data.dingtalk_open_url;
+            linkEl.addEventListener('click', function (e) {
+                e.preventDefault();
+                const url = data.dingtalk_open_url;
+                if (typeof dd !== 'undefined' && dd.openLink) {
+                    dd.openLink({ url: url });
+                    return;
+                }
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(function () {
+                        alert('钉钉打开链接已复制。请在钉钉 PC/手机 工作台中粘贴打开，或配置 PUBLIC_BASE_URL 后由管理员从工作通知跳转。');
+                    }).catch(function () {
+                        prompt('请复制以下链接在钉钉中打开：', url);
+                    });
+                } else {
+                    prompt('请复制以下链接在钉钉中打开：', url);
+                }
+            });
+        } catch (e) {
+            console.warn('加载钉钉打开链接失败', e);
+        }
+    }
+
+    async function initPage() {
+        await checkAuth();
+        await loadDingtalkOpenLink();
+        await reloadLibraries();
+        const norm = normalizeLibList(libList);
+        libList = norm.list;
+        await tryMigrateFromLocalStorage();
+        renderLibGrid();
+    }
+
+    initPage();
+})();
+</script>
+</body>
+</html>

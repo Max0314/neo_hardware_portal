@@ -1,0 +1,33 @@
+{
+  "test_time": "2026-01-09T17:38:59.048048",
+  "total_duration": 123.73895478248596,
+  "results": {
+    "announcement_read": {
+      "total": 112,
+      "success": 109,
+      "failed": 100,
+      "success_rate": 97.32142857142857,
+      "avg_response_time": 728.2848401900825,
+      "min_response_time": 13.78631591796875,
+      "max_response_time": 5812.684059143066
+    },
+    "notification_send": {
+      "total": 99,
+      "success": 99,
+      "failed": 0,
+      "success_rate": 100.0,
+      "avg_response_time": 36.82923557782414,
+      "min_response_time": 10.14852523803711,
+      "max_response_time": 676.3753890991211
+    },
+    "todo_complete": {
+      "total": 100,
+      "success": 0,
+      "failed": 100,
+      "success_rate": 0.0,
+      "avg_response_time": 0,
+      "min_response_time": 0,
+      "max_response_time": 0
+    }
+  }
+}

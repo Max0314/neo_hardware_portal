@@ -1,0 +1,2439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公告栏 - 硬件研发部管理系统</title>
+    <link rel="icon" href="/static/neo-logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/css/neo-systm.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #1a252f, #2c3e50);
+            color: #ecf0f1;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .main-content {
+            flex: 1;
+            background: rgba(26, 37, 47, 0.8);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        .sidebar {
+            width: 300px;
+            background: rgba(26, 37, 47, 0.8);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .header h1 {
+            color: #3498db;
+            font-size: 2.2rem;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        .btn-publish {
+            background: #27ae60;
+        }
+        .btn-publish:hover {
+            background: #219653;
+        }
+        .btn-review {
+            background: #f39c12;
+        }
+        .btn-review:hover {
+            background: #e67e22;
+        }
+        .btn-back {
+            background: #34495e;
+        }
+        .btn-back:hover {
+            background: #2c3e50;
+        }
+        
+        /* 公告栏选项卡 */
+        .bulletin-tabs {
+            display: flex;
+            background: rgba(52, 152, 219, 0.2);
+            border-radius: 8px;
+            padding: 5px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            flex: 1;
+            padding: 15px 20px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+            font-weight: bold;
+            min-width: 120px;
+        }
+        .tab.active {
+            background: #3498db;
+            color: white;
+        }
+        .tab:hover:not(.active) {
+            background: rgba(52, 152, 219, 0.4);
+        }
+        
+        /* 公告列表 */
+        .announcement-list {
+            min-height: 500px;
+        }
+        .announcement-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .announcement-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(5px);
+        }
+        .announcement-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #000000;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .announcement-tags {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .tag {
+            background: rgba(52, 152, 219, 0.3);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+        .tag-high {
+            background: rgba(231, 76, 60, 0.3);
+        }
+        .tag-urgent {
+            background: rgba(231, 76, 60, 0.6);
+        }
+        .announcement-content {
+            color: #000000;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        .announcement-meta {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #000000;
+        }
+        .attachment-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(155, 89, 182, 0.3);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            margin-left: 8px;
+        }
+        
+        /* 侧边栏 */
+        .sidebar-section {
+            margin-bottom: 30px;
+        }
+        .sidebar-title {
+            color: #3498db;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #3498db;
+            font-size: 1.2rem;
+        }
+        .quick-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .stat-item {
+            background: rgba(52, 152, 219, 0.2);
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .stat-item:hover {
+            background: rgba(52, 152, 219, 0.35);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+        }
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #3498db;
+        }
+        .stat-label {
+            font-size: 0.9rem;
+            color: #bdc3c7;
+        }
+        .pending-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .pending-item {
+            background: rgba(243, 156, 18, 0.2);
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            border-left: 3px solid #f39c12;
+            cursor: pointer;
+        }
+        .pending-item:hover {
+            background: rgba(243, 156, 18, 0.3);
+        }
+        .pending-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 0.95rem;
+        }
+        .pending-meta {
+            font-size: 0.8rem;
+            color: #bdc3c7;
+        }
+        
+        /* 调试面板样式（默认隐藏，仅 ?debug=1 显示切换按钮） */
+        #debugToggle,
+        #debugPanel {
+            display: none;
+        }
+        body.announcement-debug #debugToggle {
+            display: block;
+        }
+        body.announcement-debug #debugPanel.active {
+            display: flex;
+        }
+        #debugToggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            z-index: 10000;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+        }
+        #debugToggle:hover {
+            background: #27ae60;
+            transform: scale(1.1);
+        }
+        #debugPanel {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 500px;
+            max-height: 600px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            color: #2c3e50;
+        }
+        #debugPanel.active {
+            display: flex;
+        }
+        #debugPanelHeader {
+            background: #3498db;
+            color: white;
+            padding: 15px;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #debugPanelHeader span {
+            font-weight: bold;
+        }
+        #debugPanelContent {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            max-height: 500px;
+        }
+        .debug-log {
+            margin-bottom: 8px;
+            padding: 5px;
+            border-left: 3px solid #3498db;
+            padding-left: 10px;
+            word-break: break-all;
+        }
+        .debug-log.error {
+            border-left-color: #e74c3c;
+            background: #fee;
+        }
+        .debug-log.warn {
+            border-left-color: #f39c12;
+            background: #fff8e1;
+        }
+        .debug-log.info {
+            border-left-color: #3498db;
+            background: #e3f2fd;
+        }
+        .debug-actions {
+            padding: 10px;
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+        }
+        .debug-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .debug-btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        .debug-btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        .no-announcements {
+            text-align: center;
+            padding: 60px 20px;
+            color: #95a5a6;
+        }
+        .no-announcements i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #3498db;
+        }
+        
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+            }
+            .bulletin-tabs {
+                overflow-x: auto;
+            }
+            .tab {
+                min-width: 140px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+            .header-left {
+                flex-direction: column;
+                align-items: flex-start;
+                width: 100%;
+            }
+            .announcement-meta {
+                flex-direction: column;
+                gap: 5px;
+            }
+            .quick-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body class="neo-systm-home">
+    <div class="container neo-page-wrap">
+        <div class="neo-page-header">
+            <div class="header-brand-column neo-header-brand-inline">
+                <img src="/logo.png" alt="CHANGHONG NeoNet" class="brand-logo-top-index" />
+                <div class="header-brand-main">
+                    <div class="header-title" style="margin:0;">
+                        <div class="logo-text-index">NEO Hardware <span>AI</span></div>
+                        <div class="sys-subtitle-index">硬件研发部管理系统</div>
+                    </div>
+                </div>
+            </div>
+            <div class="neo-header-actions">
+                <span class="neo-page-title">硬件研发部公告栏</span>
+                <a href="/announcement-editor" class="neo-btn neo-btn-success">📝 发布公告</a>
+                <button type="button" class="neo-btn neo-btn-warning" onclick="loadMyDrafts()">📝 我的草稿</button>
+                <a href="/review-center" class="neo-btn neo-btn-warning" id="header-review-center-btn" style="display: none;">📋 审批中心</a>
+                <a href="/board-management-unified" class="neo-btn neo-btn-primary" id="manage-sub-boards-btn" style="display: none;">⚙️ 公告栏管理</a>
+                <button type="button" class="neo-btn neo-btn-warning" id="notify-unread-btn" style="display: none;" onclick="notifyAllUnreadReaders()">📢 通知所有未阅读</button>
+                <a href="/" class="neo-btn neo-btn-secondary">← 返回主页</a>
+            </div>
+        </div>
+        <div class="main-content neo-main-col neo-page-main-full">
+            
+            <!-- 公告栏选项卡 -->
+            <div class="bulletin-tabs" id="bulletin-tabs">
+                <div class="tab active" data-board="all">全部公告</div>
+                <!-- 公告栏标签将从API动态加载 -->
+            </div>
+            
+            <!-- 搜索框 -->
+            <div class="search-container" style="margin-bottom: 20px;">
+                <input type="text" id="search-input" class="search-input neo-search-input" placeholder="🔍 搜索公告标题或内容..." style="
+                    width: 100%;
+                    padding: 12px 20px;
+                    border-radius: 12px;
+                    font-size: 1rem;
+                    outline: none;
+                ">
+            </div>
+            
+            <!-- 二级公告栏（子分类） -->
+            <div class="sub-board-tabs" id="sub-board-tabs" style="
+                display: none;
+                margin-bottom: 20px;
+                padding: 10px;
+                background: rgba(52, 152, 219, 0.1);
+                border-radius: 8px;
+            ">
+                <div class="sub-board-label" style="
+                    font-weight: bold;
+                    margin-bottom: 10px;
+                    font-size: 0.9rem;
+                ">子分类：</div>
+                <div class="sub-board-list" style="
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                "></div>
+            </div>
+            
+            <!-- 公告列表 -->
+            <div class="announcement-list" id="announcement-list">
+                <div class="loading">
+                    <p>正在加载公告...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== 浏览器兼容性Polyfill ==========
+        // 兼容Safari 11.1 (iOS 11.2.5) 和 Chrome 63+
+        
+        // Object.entries polyfill (Safari 11.1不支持)
+        if (!Object.entries) {
+            Object.entries = function(obj) {
+                var ownProps = Object.keys(obj),
+                    i = ownProps.length,
+                    resArray = new Array(i);
+                while (i--) {
+                    resArray[i] = [ownProps[i], obj[ownProps[i]]];
+                }
+                return resArray;
+            };
+        }
+        
+        // Object.values polyfill (Safari 11.1不支持)
+        if (!Object.values) {
+            Object.values = function(obj) {
+                var keys = Object.keys(obj),
+                    i = keys.length,
+                    resArray = new Array(i);
+                while (i--) {
+                    resArray[i] = obj[keys[i]];
+                }
+                return resArray;
+            };
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取DOM元素
+            const tabs = document.querySelectorAll('.tab');
+            const announcementList = document.getElementById('announcement-list');
+            const pendingList = document.getElementById('pending-list');
+            const totalCount = document.getElementById('total-count');
+            const pendingCount = document.getElementById('pending-count');
+            const todayCount = document.getElementById('today-count');
+            const urgentCount = document.getElementById('urgent-count');
+            const hasSidebarStats = !!(totalCount && pendingCount && todayCount && urgentCount);
+            
+            // 检测页面可见性变化（当用户从其他页面返回时）
+            let wasHidden = document.hidden;
+            document.addEventListener('visibilitychange', function() {
+                if (wasHidden && !document.hidden) {
+                    // 页面从隐藏变为可见，可能是从公告详情页返回
+                    // 清除缓存并强制刷新，确保待办统计信息是最新的
+                    console.log('[announcement.html] 页面从隐藏变为可见，清除缓存并刷新');
+                    try {
+                        // 清除所有公告列表缓存
+                        const cachePrefix = 'announcement_list_';
+                        for (let i = 0; i < localStorage.length; i++) {
+                            const key = localStorage.key(i);
+                            if (key && key.startsWith(cachePrefix)) {
+                                localStorage.removeItem(key);
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('[announcement.html] 清除缓存失败:', e);
+                    }
+                    // 强制刷新当前页面的公告列表
+                    if (typeof loadAnnouncements === 'function') {
+                        loadAnnouncements(currentBoard, currentSubBoard, currentPage, true);
+                    }
+                }
+                wasHidden = document.hidden;
+            });
+            
+            // 检测页面焦点变化（当用户从其他标签页或窗口返回时）
+            let lastFocusTime = Date.now();
+            window.addEventListener('focus', function() {
+                const now = Date.now();
+                // 如果页面失去焦点超过5秒，则认为用户可能从其他页面返回
+                if (now - lastFocusTime > 5000) {
+                    console.log('[announcement.html] 页面重新获得焦点，清除缓存并刷新');
+                    try {
+                        // 清除所有公告列表缓存
+                        const cachePrefix = 'announcement_list_';
+                        for (let i = 0; i < localStorage.length; i++) {
+                            const key = localStorage.key(i);
+                            if (key && key.startsWith(cachePrefix)) {
+                                localStorage.removeItem(key);
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('[announcement.html] 清除缓存失败:', e);
+                    }
+                    // 强制刷新当前页面的公告列表
+                    if (typeof loadAnnouncements === 'function') {
+                        loadAnnouncements(currentBoard, currentSubBoard, currentPage, true);
+                    }
+                }
+                lastFocusTime = now;
+            });
+            
+            window.addEventListener('blur', function() {
+                lastFocusTime = Date.now();
+            });
+            
+            let currentBoard = 'all';
+            let currentSubBoard = null;
+            let allAnnouncements = []; // 存储所有公告用于搜索
+            let allBoards = {}; // 存储所有公告栏数据 {id: {id, name, ...}}
+            const searchInput = document.getElementById('search-input');
+            const subBoardTabs = document.getElementById('sub-board-tabs');
+            const subBoardList = subBoardTabs.querySelector('.sub-board-list');
+            const bulletinTabs = document.getElementById('bulletin-tabs');
+            
+            // 分页相关变量
+            let currentPage = 1;
+            let pageSize = 10; // 默认每页10条
+            let totalPages = 0;
+            let paginationTotalCount = 0; // 分页总数（避免与DOM元素totalCount冲突）
+            
+            // Cookie缓存配置
+            const CACHE_KEY_PREFIX = 'announcement_list_';
+            const CACHE_TTL = 5 * 60 * 1000; // 5分钟缓存
+            
+            // 本地存储工具函数（使用localStorage代替Cookie，避免请求头过大）
+            // 兼容Safari 11.1和Chrome 63+（localStorage在Safari 4+和Chrome 4+都支持）
+            function setCache(name, value) {
+                try {
+                    if (typeof(Storage) !== 'undefined' && localStorage) {
+                        localStorage.setItem(name, JSON.stringify(value));
+                        return true;
+                    }
+                } catch (e) {
+                    // localStorage可能已满或不可用
+                    if (e.name === 'QuotaExceededError' || e.code === 22) {
+                        // 清理过期的缓存
+                        clearExpiredAnnouncementCache();
+                        // 重试
+                        try {
+                            localStorage.setItem(name, JSON.stringify(value));
+                            return true;
+                        } catch (e2) {
+                            console.warn('[announcement.html] localStorage已满，无法缓存:', e2);
+                        }
+                    }
+                }
+                return false;
+            }
+            
+            function getCache(name) {
+                try {
+                    if (typeof(Storage) !== 'undefined' && localStorage) {
+                        const item = localStorage.getItem(name);
+                        if (item) {
+                            return JSON.parse(item);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[announcement.html] 读取缓存失败:', e);
+                }
+                return null;
+            }
+            
+            function removeCache(name) {
+                try {
+                    if (typeof(Storage) !== 'undefined' && localStorage) {
+                        localStorage.removeItem(name);
+                    }
+                } catch (e) {
+                    // 忽略错误
+                }
+            }
+            
+            // 清理过期的公告缓存
+            function clearExpiredAnnouncementCache() {
+                try {
+                    if (typeof(Storage) === 'undefined' || !localStorage) {
+                        return;
+                    }
+                    
+                    const now = Date.now();
+                    const keysToRemove = [];
+                    
+                    // 遍历所有localStorage项，找出过期的缓存
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && key.startsWith(CACHE_KEY_PREFIX)) {
+                            try {
+                                const item = JSON.parse(localStorage.getItem(key));
+                                if (item && item.timestamp) {
+                                    const age = now - item.timestamp;
+                                    // 删除超过1小时的缓存
+                                    if (age > 60 * 60 * 1000) {
+                                        keysToRemove.push(key);
+                                    }
+                                }
+                            } catch (e) {
+                                // 如果解析失败，也删除
+                                keysToRemove.push(key);
+                            }
+                        }
+                    }
+                    
+                    // 删除过期缓存
+                    keysToRemove.forEach(key => {
+                        try {
+                            localStorage.removeItem(key);
+                        } catch (e) {
+                            // 忽略错误
+                        }
+                    });
+                } catch (e) {
+                    console.warn('[announcement.html] 清理过期缓存失败:', e);
+                }
+            }
+            
+            /** 清除公告列表 localStorage 缓存（审批/发布后调用） */
+            function clearAllAnnouncementListCache() {
+                try {
+                    if (typeof(Storage) === 'undefined' || !localStorage) return;
+                    const keysToRemove = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && key.startsWith(CACHE_KEY_PREFIX)) {
+                            keysToRemove.push(key);
+                        }
+                    }
+                    keysToRemove.forEach(key => {
+                        try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
+                    });
+                } catch (e) {
+                    console.warn('[announcement.html] 清除公告列表缓存失败:', e);
+                }
+            }
+            
+            function isAnnouncementListStale() {
+                try {
+                    return sessionStorage.getItem('announcement_list_dirty') === '1';
+                } catch (e) {
+                    return false;
+                }
+            }
+            
+            function markAnnouncementListFresh() {
+                try {
+                    sessionStorage.removeItem('announcement_list_dirty');
+                } catch (e) { /* ignore */ }
+            }
+            
+            function getCacheKey(board, subBoard, status, search, page) {
+                return CACHE_KEY_PREFIX + (board || 'all') + '_' + (subBoard || 'null') + '_' + (status || 'null') + '_' + (search || '') + '_' + (page || 1);
+            }
+            
+            function getCachedData(cacheKey) {
+                const cached = getCache(cacheKey);
+                if (cached && cached.timestamp) {
+                    const age = Date.now() - cached.timestamp;
+                    if (age < CACHE_TTL) {
+                        return cached.data;
+                    }
+                }
+                return null;
+            }
+            
+            function setCachedData(cacheKey, data) {
+                // 只缓存必要字段，减少存储大小（含 todo_stats 避免每次强制刷新）
+                const cacheData = {
+                    announcements: data.announcements ? data.announcements.map(ann => ({
+                        id: ann.id,
+                        title: ann.title,
+                        content: (ann.content || '').replace(/<[^>]*>/g, '').substring(0, 200),
+                        author: ann.author,
+                        publish_time: ann.publish_time || ann.create_time,
+                        priority: ann.priority || 'normal',
+                        board: ann.board,
+                        sub_board: ann.sub_board,
+                        todo_stats: ann.todo_stats || { total: 0, completed: 0, pending: 0 }
+                    })) : data.announcements,
+                    pagination: data.pagination
+                };
+                setCache(cacheKey, {
+                    data: cacheData,
+                    timestamp: Date.now()
+                });
+            }
+            
+            // 搜索功能
+            let searchTimeout;
+            let currentSearchTerm = ''; // 保存当前搜索关键词
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                const searchTerm = this.value.trim();
+                currentSearchTerm = searchTerm;
+                
+                if (searchTerm.length === 0) {
+                    // 如果搜索框为空，显示当前公告栏的公告
+                    currentSearchTerm = '';
+                    loadAnnouncements(currentBoard, currentSubBoard, 1, true); // 重置到第一页并强制刷新
+                    return;
+                }
+                
+                // 延迟搜索，避免频繁请求
+                searchTimeout = setTimeout(() => {
+                    // 调用后端API搜索所有公告，而不是只搜索前端已加载的
+                    loadAnnouncementsWithSearch(currentBoard, currentSubBoard, searchTerm, 1, true);
+                }, 300);
+            });
+            
+            // 使用后端API搜索公告（搜索所有页的公告）
+            function loadAnnouncementsWithSearch(board, subBoard, searchTerm, page = 1, forceRefresh = false) {
+                announcementList.innerHTML = '<div class="loading"><p>正在搜索公告...</p></div>';
+                currentPage = page;
+                
+                let url = '/api/announcement/list';
+                const params = [];
+                if (board !== 'all') {
+                    params.push(`board=${board}`);
+                }
+                if (subBoard) {
+                    params.push(`sub_board=${subBoard}`);
+                }
+                // 明确指定只获取已发布的公告
+                params.push(`status=approved`);
+                // 添加搜索参数
+                params.push(`search=${encodeURIComponent(searchTerm)}`);
+                params.push(`page=${page}`);
+                params.push(`page_size=${pageSize}`);
+                if (forceRefresh) {
+                    params.push('_refresh=true');
+                }
+                
+                if (params.length > 0) {
+                    url += '?' + params.join('&');
+                }
+                
+                console.log('[announcement.html] 搜索公告，URL:', url);
+                
+                fetch(url, {
+                    credentials: 'include'
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        return response.json();
+                    })
+                    .then(result => {
+                        console.log('[announcement.html] 搜索API响应:', result);
+                        
+                        // 兼容新旧API格式
+                        let announcements, pagination;
+                        if (result && result.announcements && result.pagination) {
+                            // 新格式：包含分页信息
+                            announcements = result.announcements;
+                            pagination = result.pagination;
+                            totalPages = pagination.total_pages || 0;
+                            paginationTotalCount = pagination.total || 0;
+                        } else if (Array.isArray(result)) {
+                            // 旧格式：直接是数组（向后兼容）
+                            announcements = result;
+                            pagination = {
+                                page: page,
+                                page_size: pageSize,
+                                total: announcements.length,
+                                total_pages: Math.ceil(announcements.length / pageSize)
+                            };
+                            totalPages = pagination.total_pages;
+                            paginationTotalCount = pagination.total;
+                        } else {
+                            console.error('[announcement.html] 无效的API响应格式:', result);
+                            announcements = [];
+                            pagination = {
+                                page: page,
+                                page_size: pageSize,
+                                total: 0,
+                                total_pages: 0
+                            };
+                            totalPages = 0;
+                            paginationTotalCount = 0;
+                        }
+                        
+                        // 保存到allAnnouncements（用于其他功能）
+                        allAnnouncements = announcements;
+                        
+                        // 显示搜索结果
+                        displayAnnouncements(announcements, pagination);
+                    })
+                    .catch(error => {
+                        console.error('[announcement.html] 搜索公告失败:', error);
+                        announcementList.innerHTML = '<div class="no-announcements"><p>搜索失败，请稍后重试</p></div>';
+                    });
+            }
+            
+            // 加载二级公告栏
+            function loadSubBoards(parentBoardId) {
+                if (parentBoardId === 'all') {
+                    subBoardTabs.style.display = 'none';
+                    return;
+                }
+                
+                console.log('[announcement.html] 加载二级公告栏，parentBoardId:', parentBoardId);
+                
+                // 添加时间戳防止缓存
+                const timestamp = new Date().getTime();
+                const url = `/api/announcement/sub-boards?parent=${parentBoardId}&_t=${timestamp}`;
+                console.log('[announcement.html] 请求URL:', url);
+                
+                fetch(url, {
+                    credentials: 'include'
+                })
+                    .then(response => {
+                        console.log('[announcement.html] 响应状态:', response.status, response.statusText);
+                        
+                        // 检查Content-Type，如果不是JSON，可能是重定向到登录页面
+                        const contentType = response.headers.get('content-type') || '';
+                        if (!contentType.includes('application/json')) {
+                            if (response.status === 302 || response.status === 401 || response.status === 403) {
+                                const currentPath = window.location.pathname + window.location.search;
+                                window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+                                return Promise.reject(new Error('未登录，已跳转到登录页面'));
+                            }
+                            // 尝试读取文本，看看是否是HTML错误页面
+                            return response.text().then(text => {
+                                throw new Error(`服务器返回了非JSON格式的响应 (${response.status})`);
+                            });
+                        }
+                        
+                        if (!response.ok) {
+                            // 如果是401未认证，跳转到登录页面（带上redirect参数）
+                            if (response.status === 401) {
+                                const currentPath = window.location.pathname + window.location.search;
+                                window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+                                return Promise.reject(new Error('未登录，已跳转到登录页面'));
+                            }
+                            // 尝试解析JSON错误信息
+                            return response.json().then(data => {
+                                throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+                            }).catch(() => {
+                                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(subBoards => {
+                        console.log('[announcement.html] 接收到的二级公告栏数据:', subBoards);
+                        console.log('[announcement.html] 数据类型:', typeof subBoards, '是否为数组:', Array.isArray(subBoards));
+                        if (Array.isArray(subBoards)) {
+                            console.log('[announcement.html] 二级公告栏数量:', subBoards.length);
+                        }
+                        
+                        if (subBoards && subBoards.length > 0) {
+                            subBoardList.innerHTML = '';
+                            subBoardTabs.style.display = 'block';
+                            
+                            // 添加"全部"选项
+                            const allTab = document.createElement('div');
+                            allTab.className = 'sub-board-tab active';
+                            allTab.textContent = '全部';
+                            allTab.style.cssText = `
+                                padding: 6px 12px;
+                                background: #3498db;
+                                color: white;
+                                border-radius: 5px;
+                                cursor: pointer;
+                                font-size: 0.9rem;
+                                transition: all 0.3s;
+                            `;
+                            allTab.addEventListener('click', function() {
+                                document.querySelectorAll('.sub-board-tab').forEach(t => t.classList.remove('active'));
+                                this.classList.add('active');
+                                this.style.background = '#3498db';
+                                currentSubBoard = null;
+                                loadAnnouncements(currentBoard, null, 1, true); // 切换公告栏时强制刷新
+                            });
+                            subBoardList.appendChild(allTab);
+                            
+                            // 添加二级公告栏选项
+                            subBoards.forEach(subBoard => {
+                                const tab = document.createElement('div');
+                                tab.className = 'sub-board-tab';
+                                tab.textContent = subBoard.name;
+                                tab.dataset.subBoardId = subBoard.sub_board_id;
+                                tab.style.cssText = `
+                                    padding: 6px 12px;
+                                    background: rgba(52, 152, 219, 0.3);
+                                    color: #3498db;
+                                    border-radius: 5px;
+                                    cursor: pointer;
+                                    font-size: 0.9rem;
+                                    transition: all 0.3s;
+                                `;
+                                tab.addEventListener('click', function() {
+                                    document.querySelectorAll('.sub-board-tab').forEach(t => {
+                                        t.classList.remove('active');
+                                        t.style.background = 'rgba(52, 152, 219, 0.3)';
+                                    });
+                                    this.classList.add('active');
+                                    this.style.background = '#3498db';
+                                    this.style.color = 'white';
+                                    currentSubBoard = this.dataset.subBoardId;
+                                loadAnnouncements(currentBoard, currentSubBoard, 1, true); // 切换公告栏时强制刷新
+                                });
+                                subBoardList.appendChild(tab);
+                            });
+                        } else {
+                            subBoardTabs.style.display = 'none';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('加载二级公告栏失败:', error);
+                        subBoardTabs.style.display = 'none';
+                    });
+            }
+            
+            // 选项卡点击事件将在 loadBoards 后绑定
+            
+            // 加载历史公告
+            function loadHistoryAnnouncements() {
+                announcementList.innerHTML = '<div class="loading"><p>正在加载历史公告...</p></div>';
+                subBoardTabs.style.display = 'none';
+                
+                fetch('/api/announcement/history', {
+                    credentials: 'include'
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(data => {
+                                throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+                            }).catch(() => {
+                                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(versions => {
+                        // 检查返回的是否是错误对象
+                        if (versions && versions.error) {
+                            throw new Error(versions.error);
+                        }
+                        // 确保versions是数组
+                        if (!Array.isArray(versions)) {
+                            console.warn('历史公告API返回非数组格式:', versions);
+                            versions = [];
+                        }
+                        displayHistoryAnnouncements(versions);
+                    })
+                    .catch(error => {
+                        console.error('加载历史公告失败:', error);
+                        announcementList.innerHTML = `
+                            <div class="no-announcements">
+                                <i>❌</i>
+                                <h3>加载失败</h3>
+                                <p>${error.message || '未知错误'}</p>
+                                <button onclick="loadHistoryAnnouncements()" style="margin-top: 10px; padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">重试</button>
+                            </div>
+                        `;
+                    });
+            }
+            
+            // 显示历史公告列表
+            function displayHistoryAnnouncements(versions) {
+                announcementList.innerHTML = '';
+                
+                if (versions.length === 0) {
+                    const emptyMsg = document.createElement('div');
+                    emptyMsg.className = 'no-announcements';
+                    emptyMsg.innerHTML = `
+                        <i>📜</i>
+                        <h3>暂无历史版本</h3>
+                        <p>还没有公告的历史版本记录</p>
+                    `;
+                    announcementList.appendChild(emptyMsg);
+                    return;
+                }
+                
+                versions.forEach(version => {
+                    const item = document.createElement('div');
+                    item.className = 'announcement-item';
+                    item.style.cssText += 'border-left-color: #9b59b6;';
+                    
+                    const versionDate = formatDate(version.publish_time || version.version);
+                    const textContent = (version.version_content || '').replace(/<[^>]*>/g, '');
+                    const preview = textContent.substring(0, 150);
+                    
+                    item.innerHTML = `
+                        <div class="announcement-title">
+                            <span style="color: #9b59b6;">
+                                <i class="fas fa-history"></i> ${version.announcement_title || '未知公告'}
+                            </span>
+                            <span class="priority-tag priority-${version.priority || 'normal'}" style="font-size: 0.8rem;">
+                                ${getPriorityText(version.priority)}
+                            </span>
+                        </div>
+                        <div class="announcement-meta" style="margin-bottom: 10px;">
+                            <span><i class="fas fa-calendar"></i> 版本时间: ${versionDate}</span>
+                            <span><i class="fas fa-folder"></i> ${version.board_name || version.board_id}</span>
+                            ${version.author ? `<span><i class="fas fa-user"></i> ${version.author}</span>` : ''}
+                        </div>
+                        <div class="announcement-content" style="margin-bottom: 10px;">
+                            ${preview}${textContent.length > 150 ? '...' : ''}
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button class="btn" style="padding: 6px 12px; font-size: 0.9rem; background: #9b59b6;" 
+                                    onclick="window.location.href='/announcement-version/${version.announcement_id}/${version.version}'">
+                                <i class="fas fa-eye"></i> 查看历史版本
+                            </button>
+                            <button class="btn" style="padding: 6px 12px; font-size: 0.9rem;" 
+                                    onclick="window.location.href='/announcement-detail/${version.announcement_id}'">
+                                <i class="fas fa-file-alt"></i> 查看当前公告
+                            </button>
+                        </div>
+                    `;
+                    
+                    announcementList.appendChild(item);
+                });
+            }
+            
+            function viewHistoryVersion(announcementId, versionNumber) {
+                window.location.href = `/announcement-version/${announcementId}/${versionNumber}`;
+            }
+            
+            // 加载我的草稿（暴露为全局函数，供onclick调用）
+            window.loadMyDrafts = function() {
+                announcementList.innerHTML = '<div class="loading"><p>正在加载我的草稿...</p></div>';
+                subBoardTabs.style.display = 'none';
+                
+                // 获取当前用户信息
+                fetch('/api/auth/check?lite=1', {
+                    credentials: 'include'
+                })
+                    .then(response => response.json())
+                    .then(authResult => {
+                        if (!authResult.authenticated || !authResult.user) {
+                            alert('请先登录');
+                            return;
+                        }
+                        
+                        const currentUser = authResult.user;
+                        const author = currentUser.name || currentUser.username;
+                        
+                        console.log('加载我的草稿，当前用户:', author);
+                        
+                        // 加载所有草稿，然后筛选出当前用户的
+                        fetch('/api/announcement/list?status=draft', {
+                            credentials: 'include'
+                        })
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('加载草稿失败');
+                                }
+                                return response.json();
+                            })
+                            .then(result => {
+                                // 兼容新旧API格式：新格式有分页信息，旧格式直接是数组
+                                let allDrafts;
+                                if (result && result.announcements && Array.isArray(result.announcements)) {
+                                    // 新格式：包含分页信息
+                                    allDrafts = result.announcements;
+                                } else if (Array.isArray(result)) {
+                                    // 旧格式：直接是数组（向后兼容）
+                                    allDrafts = result;
+                                } else {
+                                    console.error('未知的API响应格式:', result);
+                                    allDrafts = [];
+                                }
+                                
+                                console.log('获取到所有草稿:', allDrafts.length, '条');
+                                // 筛选出当前用户的草稿
+                                const myDrafts = allDrafts.filter(draft => {
+                                    const draftAuthor = draft.author || draft.original_author;
+                                    const match = draftAuthor === author || draftAuthor === currentUser.username;
+                                    if (match) {
+                                        console.log('匹配到草稿:', draft.title, '作者:', draftAuthor);
+                                    }
+                                    return match;
+                                });
+                                
+                                console.log('我的草稿数量:', myDrafts.length);
+                                displayMyDrafts(myDrafts);
+                            })
+                            .catch(error => {
+                                console.error('加载草稿失败:', error);
+                                announcementList.innerHTML = `
+                                    <div class="no-announcements">
+                                        <i>❌</i>
+                                        <h3>加载失败</h3>
+                                        <p>${error.message}</p>
+                                    </div>
+                                `;
+                            });
+                    })
+                    .catch(error => {
+                        console.error('获取用户信息失败:', error);
+                        alert('获取用户信息失败');
+                    });
+            }
+            
+            // 显示我的草稿列表
+            function displayMyDrafts(drafts) {
+                announcementList.innerHTML = '';
+                
+                if (drafts.length === 0) {
+                    const emptyMsg = document.createElement('div');
+                    emptyMsg.className = 'no-announcements';
+                    emptyMsg.innerHTML = `
+                        <i>📝</i>
+                        <h3>暂无草稿</h3>
+                        <p>您还没有保存任何草稿</p>
+                    `;
+                    announcementList.appendChild(emptyMsg);
+                    return;
+                }
+                
+                drafts.forEach(announcement => {
+                    const item = document.createElement('div');
+                    item.className = 'announcement-item';
+                    item.style.cssText += 'border-left-color: #f39c12; opacity: 0.9;';
+                    
+                    const title = document.createElement('div');
+                    title.className = 'announcement-title';
+                    title.innerHTML = `
+                        <span style="color: #f39c12;">📝 ${announcement.title || '无标题'}</span>
+                        <span style="color: #f39c12; font-size: 0.8rem; font-weight: normal;">[草稿]</span>
+                    `;
+                    
+                    const content = document.createElement('div');
+                    content.className = 'announcement-content';
+                    const textContent = (announcement.content || '').replace(/<[^>]*>/g, '');
+                    content.textContent = textContent.length > 150 ? textContent.substring(0, 150) + '...' : textContent;
+                    
+                    const meta = document.createElement('div');
+                    meta.className = 'announcement-meta';
+                    meta.innerHTML = `
+                        <span>公告栏: ${getBoardName(announcement.board_id)}</span>
+                        <span>保存时间: ${formatDate(announcement.updated_time || announcement.created_time)}</span>
+                    `;
+                    
+                    const actions = document.createElement('div');
+                    actions.style.cssText = 'display: flex; gap: 10px; margin-top: 10px;';
+                    
+                    const editBtn = document.createElement('button');
+                    editBtn.type = 'button';
+                    editBtn.className = 'btn';
+                    editBtn.style.cssText = 'padding: 6px 12px; font-size: 0.9rem; background: #3498db;';
+                    editBtn.innerHTML = '<i class="fas fa-edit"></i> 继续编辑';
+                    editBtn.addEventListener('click', function() {
+                        window.location.href = '/announcement-editor?edit=' + encodeURIComponent(announcement.id);
+                    });
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.type = 'button';
+                    deleteBtn.className = 'btn';
+                    deleteBtn.style.cssText = 'padding: 6px 12px; font-size: 0.9rem; background: #e74c3c;';
+                    deleteBtn.innerHTML = '<i class="fas fa-trash"></i> 删除草稿';
+                    deleteBtn.addEventListener('click', function() {
+                        window.deleteDraft(announcement.id);
+                    });
+                    
+                    actions.appendChild(editBtn);
+                    actions.appendChild(deleteBtn);
+                    
+                    item.appendChild(title);
+                    item.appendChild(content);
+                    item.appendChild(meta);
+                    item.appendChild(actions);
+                    
+                    announcementList.appendChild(item);
+                });
+            }
+            
+            // 删除草稿（暴露为全局函数）
+            window.deleteDraft = function(announcementId) {
+                if (!announcementId) {
+                    alert('删除失败: 草稿 ID 无效');
+                    return;
+                }
+                if (!confirm('确定要删除这个草稿吗？此操作不可恢复。')) {
+                    return;
+                }
+                
+                const deleteUrl = '/api/announcement/delete/' + encodeURIComponent(announcementId) + '?soft_delete=false';
+                fetch(deleteUrl, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                })
+                .then(async response => {
+                    let result = {};
+                    try {
+                        result = await response.json();
+                    } catch (e) {
+                        throw new Error('服务器响应格式错误');
+                    }
+                    if (!response.ok && !result.success) {
+                        throw new Error(result.error || result.message || ('HTTP ' + response.status));
+                    }
+                    return result;
+                })
+                .then(result => {
+                    if (result.success) {
+                        alert('草稿已删除');
+                        window.loadMyDrafts();
+                    } else {
+                        alert('删除失败: ' + (result.error || result.message || '未知错误'));
+                    }
+                })
+                .catch(error => {
+                    console.error('删除草稿失败:', error);
+                    alert('删除失败: ' + error.message);
+                });
+            }
+            
+            // 加载公告（支持分页和缓存）
+            function loadAnnouncements(board, subBoard = null, page = 1, forceRefresh = false) {
+                // 如果有搜索关键词，使用搜索函数
+                if (currentSearchTerm && currentSearchTerm.trim().length > 0) {
+                    loadAnnouncementsWithSearch(board, subBoard, currentSearchTerm, page, forceRefresh);
+                    return;
+                }
+                
+                // 检查cookie缓存
+                const cacheKey = getCacheKey(board, subBoard, 'approved', '', page);
+                if (!forceRefresh) {
+                    try {
+                        const cachedData = getCachedData(cacheKey);
+                        if (cachedData && cachedData.announcements) {
+                            // 补全缺失的待办统计，避免旧缓存触发无限刷新
+                            const normalized = (cachedData.announcements || []).map(ann => ({
+                                ...ann,
+                                todo_stats: ann.todo_stats || { total: 0, completed: 0, pending: 0 }
+                            }));
+                            allAnnouncements = normalized;
+                            displayAnnouncements(normalized, cachedData.pagination);
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn('[announcement.html] 缓存读取失败，使用网络请求:', e);
+                    }
+                }
+                
+                announcementList.innerHTML = '<div class="loading"><p>正在加载公告...</p></div>';
+                currentPage = page;
+                
+                let url = '/api/announcement/list';
+                const params = [];
+                if (board !== 'all') {
+                    params.push(`board=${board}`);
+                }
+                if (subBoard) {
+                    params.push(`sub_board=${subBoard}`);
+                }
+                // 明确指定只获取已发布的公告（避免前端再次过滤导致分页不一致）
+                params.push(`status=approved`);
+                params.push(`page=${page}`);
+                params.push(`page_size=${pageSize}`);
+                if (forceRefresh) {
+                    params.push('_refresh=true');
+                }
+                
+                if (params.length > 0) {
+                url += '?' + params.join('&');
+                }
+                
+                fetch(url, {
+                    credentials: 'include'
+                })
+                    .then(response => {
+                        // 如果是401未认证，直接跳转到登录页面
+                        if (response.status === 401) {
+                            const currentPath = window.location.pathname + window.location.search;
+                            window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+                            return Promise.reject(new Error('未登录，已跳转到登录页面'));
+                        }
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        return response.json();
+                    })
+                    .then(result => {
+                        // 兼容新旧API格式
+                        let announcements, pagination;
+                        if (result && result.announcements && result.pagination) {
+                            // 新格式：包含分页信息
+                            announcements = result.announcements;
+                            pagination = result.pagination;
+                            totalPages = pagination.total_pages || 0;
+                            paginationTotalCount = pagination.total || 0;
+                        } else if (Array.isArray(result)) {
+                            // 旧格式：直接是数组（向后兼容）
+                            announcements = result;
+                            pagination = {
+                                page: page,
+                                page_size: pageSize,
+                                total: announcements.length,
+                                total_pages: Math.ceil(announcements.length / pageSize)
+                            };
+                            totalPages = pagination.total_pages;
+                            paginationTotalCount = pagination.total;
+                        } else {
+                            // 未知格式，尝试解析
+                            console.warn('[announcement.html] 未知的API响应格式:', result);
+                            announcements = [];
+                            pagination = {
+                                page: page,
+                                page_size: pageSize,
+                                total: 0,
+                                total_pages: 0
+                            };
+                            totalPages = 0;
+                            paginationTotalCount = 0;
+                        }
+                        
+                        allAnnouncements = announcements; // 保存当前页公告用于搜索
+                        
+                        // 缓存数据
+                        try {
+                            setCachedData(cacheKey, {
+                                announcements: announcements,
+                                pagination: pagination
+                            });
+                        } catch (e) {
+                            console.warn('[announcement.html] 缓存写入失败:', e);
+                        }
+                        
+                        displayAnnouncements(announcements, pagination);
+                        
+                        // 加载公告后，如果统计信息较旧则更新
+                        if (typeof shouldUpdateStats === 'function' && shouldUpdateStats()) {
+                            updateStatistics();
+                            if (typeof lastStatsUpdate !== 'undefined') {
+                                lastStatsUpdate = Date.now();
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('[announcement.html] 加载公告失败:', error);
+                        announcementList.innerHTML = `
+                            <div class="no-announcements">
+                                <i>❌</i>
+                                <h3>加载失败</h3>
+                                <p>${error.message || '未知错误'}</p>
+                                <button onclick="loadAnnouncements('${board}', ${subBoard ? `'${subBoard}'` : 'null'}, ${page}, true)" 
+                                        style="margin-top: 10px; padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                    重试
+                                </button>
+                            </div>
+                        `;
+                    });
+            }
+            
+            // 显示公告列表（支持分页）
+            function displayAnnouncements(announcements, pagination = null) {
+                // 优化：使用文档片段减少DOM重排
+                const fragment = document.createDocumentFragment();
+                announcementList.innerHTML = '';
+                
+                // 后端已经过滤了status=approved，这里不需要再次过滤（避免分页不一致）
+                // 但为了安全，仍然保留过滤逻辑（以防后端返回了非approved的公告）
+                const approvedAnnouncements = announcements.filter(ann => !ann.status || ann.status === 'approved');
+                
+                if (approvedAnnouncements.length === 0) {
+                    const emptyMsg = document.createElement('div');
+                    emptyMsg.className = 'no-announcements';
+                    emptyMsg.innerHTML = `
+                        <i>📋</i>
+                        <h3>暂无公告</h3>
+                        <p>该公告栏暂时没有发布任何公告</p>
+                    `;
+                    fragment.appendChild(emptyMsg);
+                    announcementList.appendChild(fragment);
+                    // 清空分页控件
+                    const paginationContainer = document.getElementById('pagination-container');
+                    if (paginationContainer) {
+                        paginationContainer.innerHTML = '';
+                    }
+                    return;
+                }
+                
+                approvedAnnouncements.forEach(announcement => {
+                    const item = document.createElement('div');
+                    item.className = 'announcement-item';
+                    item.addEventListener('click', function() {
+                        // 直接跳转到公告详情页
+                        window.location.href = `/announcement-detail/${announcement.id}`;
+                    });
+                    
+                    const title = document.createElement('div');
+                    title.className = 'announcement-title';
+                    
+                    const titleText = document.createElement('span');
+                    titleText.textContent = announcement.title;
+                    title.appendChild(titleText);
+                    
+                    // 如果有附件，显示附件图标
+                    if (announcement.attachments && announcement.attachments.length > 0) {
+                        const attachmentBadge = document.createElement('span');
+                        attachmentBadge.className = 'attachment-badge';
+                        attachmentBadge.textContent = `📎 ${announcement.attachments.length}`;
+                        title.appendChild(attachmentBadge);
+                    }
+                    
+                    // 添加优先级标签
+                    const tags = document.createElement('div');
+                    tags.className = 'announcement-tags';
+                    
+                    if (announcement.priority !== 'normal') {
+                        const priorityTag = document.createElement('span');
+                        priorityTag.className = `tag tag-${announcement.priority}`;
+                        priorityTag.textContent = getPriorityText(announcement.priority);
+                        tags.appendChild(priorityTag);
+                    }
+                    
+                    // 添加公告栏标签
+                    const boardTag = document.createElement('span');
+                    boardTag.className = 'tag';
+                    boardTag.textContent = getBoardName(announcement.board_id);
+                    tags.appendChild(boardTag);
+                    
+                    const content = document.createElement('div');
+                    content.className = 'announcement-content';
+                    // 只显示纯文本预览，移除HTML标签
+                    const textContent = (announcement.content || '').replace(/<[^>]*>/g, '');
+                    content.textContent = textContent.length > 150 ? textContent.substring(0, 150) + '...' : textContent;
+                    
+                    const meta = document.createElement('div');
+                    meta.className = 'announcement-meta';
+                    let approverText = '';
+                    if (announcement.approver) {
+                        approverText = `<span>审核人: ${announcement.approver}</span>`;
+                    }
+                    let editorText = '';
+                    if (announcement.last_editor && announcement.last_editor !== announcement.original_author) {
+                        editorText = `<span>最后编辑: ${announcement.last_editor}</span>`;
+                    }
+                    const authorText = announcement.original_author || announcement.author;
+                    
+                    // 添加待办统计信息（已读/未读数量）
+                    // 即使total为0也要显示统计信息（显示为 已读: 0 未读: 0）
+                    let todoStatsText = '';
+                    // 确保todo_stats存在，如果不存在则初始化为空统计
+                    const todoStats = announcement.todo_stats || { total: 0, completed: 0, pending: 0 };
+                    const total = todoStats.total || 0;
+                    const completed = todoStats.completed || 0;
+                    const pending = todoStats.pending || 0;
+                    // 始终显示待办统计信息（即使为0）
+                    todoStatsText = `<span style="margin-right: 10px;">已读: ${completed}</span><span>未读: ${pending}</span>`;
+                    
+                    meta.innerHTML = `
+                        <span>发起人: ${authorText}</span>
+                        ${editorText}
+                        ${approverText}
+                        <span>发布时间: ${formatDate(announcement.publish_time)}</span>
+                        ${todoStatsText}
+                    `;
+                    
+                    item.appendChild(title);
+                    item.appendChild(tags);
+                    item.appendChild(content);
+                    item.appendChild(meta);
+                    
+                    fragment.appendChild(item);
+                });
+                
+                // 一次性添加到DOM，减少重排
+                announcementList.appendChild(fragment);
+                
+                // 显示分页控件
+                if (pagination && pagination.total_pages > 1) {
+                    displayPagination(pagination);
+                } else {
+                    // 清空分页控件
+                    const paginationContainer = document.getElementById('pagination-container');
+                    if (paginationContainer) {
+                        paginationContainer.innerHTML = '';
+                    }
+                }
+            }
+            
+            // 显示分页控件
+            function displayPagination(pagination) {
+                let paginationContainer = document.getElementById('pagination-container');
+                if (!paginationContainer) {
+                    paginationContainer = document.createElement('div');
+                    paginationContainer.id = 'pagination-container';
+                    paginationContainer.className = 'pagination-container';
+                    paginationContainer.style.cssText = `
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        gap: 10px;
+                        margin-top: 30px;
+                        padding: 20px;
+                    `;
+                    announcementList.parentNode.insertBefore(paginationContainer, announcementList.nextSibling);
+                }
+                
+                paginationContainer.innerHTML = '';
+                
+                const { page, total_pages, total } = pagination;
+                
+                // 上一页按钮
+                const prevBtn = document.createElement('button');
+                prevBtn.className = 'btn';
+                prevBtn.textContent = '上一页';
+                prevBtn.disabled = page <= 1;
+                prevBtn.style.cssText = `
+                    padding: 8px 16px;
+                    background: ${page <= 1 ? '#7f8c8d' : '#3498db'};
+                    cursor: ${page <= 1 ? 'not-allowed' : 'pointer'};
+                    border: none;
+                    border-radius: 5px;
+                    color: white;
+                `;
+                if (page > 1) {
+                    prevBtn.addEventListener('click', () => {
+                        loadAnnouncements(currentBoard, currentSubBoard, page - 1, true); // 强制刷新，不使用缓存
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    });
+                }
+                paginationContainer.appendChild(prevBtn);
+                
+                // 页码信息
+                const pageInfo = document.createElement('span');
+                pageInfo.className = 'page-info';
+                pageInfo.style.cssText = 'color: #000000; font-size: 0.95rem; font-weight: 600;';
+                pageInfo.textContent = `第 ${page} / ${total_pages} 页 (共 ${total} 条)`;
+                paginationContainer.appendChild(pageInfo);
+                
+                // 下一页按钮
+                const nextBtn = document.createElement('button');
+                nextBtn.className = 'btn';
+                nextBtn.textContent = '下一页';
+                nextBtn.disabled = page >= total_pages;
+                nextBtn.style.cssText = `
+                    padding: 8px 16px;
+                    background: ${page >= total_pages ? '#7f8c8d' : '#3498db'};
+                    cursor: ${page >= total_pages ? 'not-allowed' : 'pointer'};
+                    border: none;
+                    border-radius: 5px;
+                    color: white;
+                `;
+                if (page < total_pages) {
+                    nextBtn.addEventListener('click', () => {
+                        loadAnnouncements(currentBoard, currentSubBoard, page + 1, true); // 强制刷新，不使用缓存
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    });
+                }
+                paginationContainer.appendChild(nextBtn);
+            }
+            
+            // 加载待审批列表
+            function loadPendingAnnouncements() {
+                if (!pendingList) {
+                    return;
+                }
+                fetch('/api/announcement/pending', {
+                    credentials: 'include'
+                })
+                    .then(response => {
+                        // 检查Content-Type，如果不是JSON，可能是重定向到登录页面
+                        const contentType = response.headers.get('content-type') || '';
+                        if (!contentType.includes('application/json')) {
+                            if (response.status === 302 || response.status === 401 || response.status === 403) {
+                                throw new Error('未登录或没有权限，请先登录');
+                            }
+                            // 尝试读取文本，看看是否是HTML错误页面
+                            return response.text().then(text => {
+                                throw new Error(`服务器返回了非JSON格式的响应 (${response.status}): ${text.substring(0, 100)}`);
+                            });
+                        }
+                        
+                        if (!response.ok) {
+                            // 如果是401未认证，跳转到登录页面（带上redirect参数）
+                            if (response.status === 401) {
+                                const currentPath = window.location.pathname + window.location.search;
+                                window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+                                return Promise.reject(new Error('未登录，已跳转到登录页面'));
+                            }
+                            // 尝试解析JSON错误信息
+                            return response.json().then(data => {
+                                throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+                            }).catch(() => {
+                                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(pendingAnnouncements => {
+                        // 检查返回的是否是错误对象
+                        if (pendingAnnouncements && pendingAnnouncements.error) {
+                            throw new Error(pendingAnnouncements.error);
+                        }
+                        // 确保pendingAnnouncements是数组
+                        if (!Array.isArray(pendingAnnouncements)) {
+                            console.warn('待审批公告API返回非数组格式:', pendingAnnouncements);
+                            pendingAnnouncements = [];
+                        }
+                        displayPendingAnnouncements(pendingAnnouncements);
+                    })
+                    .catch(error => {
+                        console.error('加载待审批公告失败:', error);
+                        pendingList.innerHTML = `
+                            <div style="text-align: center; padding: 20px; color: #e74c3c;">
+                                <i>❌</i>
+                                <h3>加载失败</h3>
+                                <p>${error.message || '未知错误'}</p>
+                                <button onclick="loadPendingAnnouncements()" style="margin-top: 10px; padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">重试</button>
+                            </div>
+                        `;
+                    });
+            }
+            
+            // 显示待审批公告
+            function displayPendingAnnouncements(pendingAnnouncements) {
+                if (!pendingList) {
+                    if (pendingCount) {
+                        pendingCount.textContent = pendingAnnouncements.length;
+                    }
+                    return;
+                }
+                pendingList.innerHTML = '';
+                
+                // 更新统计
+                if (pendingCount) {
+                    pendingCount.textContent = pendingAnnouncements.length;
+                }
+                
+                if (pendingAnnouncements.length === 0) {
+                    const emptyMsg = document.createElement('div');
+                    emptyMsg.style.textAlign = 'center';
+                    emptyMsg.style.padding = '20px';
+                    emptyMsg.style.color = '#95a5a6';
+                    emptyMsg.textContent = '暂无待审批公告';
+                    pendingList.appendChild(emptyMsg);
+                    return;
+                }
+                
+                // 只显示最近5条
+                pendingAnnouncements.slice(0, 5).forEach(announcement => {
+                    const item = document.createElement('div');
+                    item.className = 'pending-item';
+                    item.addEventListener('click', function() {
+                        // 直接跳转到公告详情页
+                        window.location.href = `/announcement-detail/${announcement.id}`;
+                    });
+                    
+                    const title = document.createElement('div');
+                    title.className = 'pending-title';
+                    title.textContent = announcement.title;
+                    
+                    const meta = document.createElement('div');
+                    meta.className = 'pending-meta';
+                    meta.textContent = `${announcement.author} | ${formatDate(announcement.created_time)}`;
+                    
+                    item.appendChild(title);
+                    item.appendChild(meta);
+                    
+                    pendingList.appendChild(item);
+                });
+            }
+            
+            // 更新统计信息
+            function updateStatistics() {
+                if (!hasSidebarStats) {
+                    return;
+                }
+                fetch('/api/announcement/statistics', {
+                    credentials: 'include'
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('加载统计信息失败');
+                        }
+                        return response.json();
+                    })
+                    .then(stats => {
+                        if (totalCount) totalCount.textContent = stats.total;
+                        if (pendingCount) pendingCount.textContent = stats.pending;
+                        if (todayCount) todayCount.textContent = stats.today;
+                        if (urgentCount) urgentCount.textContent = stats.urgent;
+                    })
+                    .catch(error => {
+                        console.error('加载统计信息失败:', error);
+                    });
+            }
+            
+            // 统计块点击事件
+            function setupStatItemClickHandlers() {
+                const statItems = document.querySelectorAll('.stat-item');
+                statItems.forEach(item => {
+                    item.addEventListener('click', function() {
+                        const filter = this.getAttribute('data-filter');
+                        handleStatItemClick(filter);
+                    });
+                });
+            }
+            
+            // 处理统计块点击
+            function handleStatItemClick(filter) {
+                console.log('[announcement.html] 统计块点击:', filter);
+                
+                switch(filter) {
+                    case 'all':
+                        // 切换到"全部公告"标签（直接更新UI，然后加载）
+                        const allTab = document.querySelector('.tab[data-board="all"]');
+                        if (allTab) {
+                            // 直接更新UI状态，不触发click事件（避免重复加载）
+                            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                            allTab.classList.add('active');
+                        }
+                        // 清除搜索框
+                        if (searchInput) {
+                            searchInput.value = '';
+                        }
+                        // 清除筛选提示
+                        const oldFilterHint = announcementList.querySelector('.filter-hint');
+                        if (oldFilterHint) {
+                            oldFilterHint.remove();
+                        }
+                        // 加载所有公告
+                        currentBoard = 'all';
+                        currentSubBoard = null;
+                        loadAnnouncements('all', null, 1, true); // 重置到第一页并强制刷新
+                        break;
+                        
+                    case 'pending':
+                        // 跳转到审批中心（有权限时）
+                        fetch('/api/auth/check?lite=1', { credentials: 'include' })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.can_approve) {
+                                    window.location.href = '/review-center';
+                                } else {
+                                    alert('您没有访问审批中心的权限');
+                                }
+                            })
+                            .catch(() => alert('检查权限失败，请稍后重试'));
+                        break;
+                        
+                    case 'today':
+                        // 筛选今日发布的公告
+                        filterTodayAnnouncements();
+                        break;
+                        
+                    case 'urgent':
+                        // 筛选紧急公告
+                        filterUrgentAnnouncements();
+                        break;
+                }
+            }
+            
+            // 筛选今日发布的公告
+            function filterTodayAnnouncements() {
+                // 先加载所有公告，然后再筛选
+                // 优化：移除时间戳，使用后端缓存
+                fetch('/api/announcement/list', {
+                    credentials: 'include'
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('加载公告失败');
+                        }
+                        return response.json();
+                    })
+                    .then(announcements => {
+                        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+                        const todayAnnouncements = announcements.filter(ann => {
+                            const publishTime = ann.publish_time || ann.created_time;
+                            if (!publishTime) return false;
+                            return publishTime.startsWith(today);
+                        });
+                        
+                        // 切换到"全部公告"标签以显示筛选结果（不触发点击事件，避免重新加载）
+                        const allTab = document.querySelector('.tab[data-board="all"]');
+                        if (allTab) {
+                            // 直接更新UI状态，不触发click事件
+                            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                            allTab.classList.add('active');
+                        }
+                        // 隐藏二级公告栏
+                        if (subBoardTabs) {
+                            subBoardTabs.style.display = 'none';
+                        }
+                        // 清除搜索框
+                        if (searchInput) {
+                            searchInput.value = '';
+                        }
+                        // 更新当前状态
+                        currentBoard = 'all';
+                        currentSubBoard = null;
+                        // 显示筛选结果
+                        displayAnnouncements(todayAnnouncements);
+                        
+                        // 显示筛选提示
+                        const filterHint = document.createElement('div');
+                        filterHint.className = 'filter-hint';
+                        filterHint.style.cssText = 'background: rgba(52, 152, 219, 0.3); padding: 10px; border-radius: 5px; margin-bottom: 15px; text-align: center; color: #3498db;';
+                        filterHint.innerHTML = `<span>📅 显示今日发布的公告 (${todayAnnouncements.length} 条)</span> <button onclick="window.clearFilter && window.clearFilter()" style="margin-left: 10px; background: rgba(52, 152, 219, 0.5); border: none; color: white; padding: 4px 12px; border-radius: 3px; cursor: pointer;">清除筛选</button>`;
+                        
+                        // 移除旧的提示
+                        const oldHint = announcementList.querySelector('.filter-hint');
+                        if (oldHint) {
+                            oldHint.remove();
+                        }
+                        
+                        // 插入新提示
+                        announcementList.insertBefore(filterHint, announcementList.firstChild);
+                    })
+                    .catch(error => {
+                        console.error('筛选今日公告失败:', error);
+                        alert('加载公告失败，请稍后重试');
+                    });
+            }
+            
+            // 筛选紧急公告
+            function filterUrgentAnnouncements() {
+                // 先加载所有公告，然后再筛选
+                // 优化：移除时间戳，使用后端缓存
+                fetch('/api/announcement/list', {
+                    credentials: 'include'
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('加载公告失败');
+                        }
+                        return response.json();
+                    })
+                    .then(result => {
+                        // 兼容新旧API格式
+                        let announcements = Array.isArray(result) ? result : (result.announcements || []);
+                        
+                        const urgentAnnouncements = announcements.filter(ann => {
+                            const priority = ann.priority;
+                            return priority === 'high' || priority === 'urgent';
+                        });
+                        
+                        // 切换到"全部公告"标签以显示筛选结果（不触发点击事件，避免重新加载）
+                        const allTab = document.querySelector('.tab[data-board="all"]');
+                        if (allTab) {
+                            // 直接更新UI状态，不触发click事件
+                            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                            allTab.classList.add('active');
+                        }
+                        // 隐藏二级公告栏
+                        if (subBoardTabs) {
+                            subBoardTabs.style.display = 'none';
+                        }
+                        // 清除搜索框
+                        if (searchInput) {
+                            searchInput.value = '';
+                        }
+                        // 更新当前状态
+                        currentBoard = 'all';
+                        currentSubBoard = null;
+                        // 显示筛选结果（不分页，因为这是筛选结果）
+                        displayAnnouncements(urgentAnnouncements);
+                        
+                        // 显示筛选提示
+                        const filterHint = document.createElement('div');
+                        filterHint.className = 'filter-hint';
+                        filterHint.style.cssText = 'background: rgba(231, 76, 60, 0.3); padding: 10px; border-radius: 5px; margin-bottom: 15px; text-align: center; color: #e74c3c;';
+                        filterHint.innerHTML = `<span>🚨 显示紧急公告 (${urgentAnnouncements.length} 条)</span> <button onclick="window.clearFilter && window.clearFilter()" style="margin-left: 10px; background: rgba(231, 76, 60, 0.5); border: none; color: white; padding: 4px 12px; border-radius: 3px; cursor: pointer;">清除筛选</button>`;
+                        
+                        // 移除旧的提示
+                        const oldHint = announcementList.querySelector('.filter-hint');
+                        if (oldHint) {
+                            oldHint.remove();
+                        }
+                        
+                        // 插入新提示
+                        announcementList.insertBefore(filterHint, announcementList.firstChild);
+                    })
+                    .catch(error => {
+                        console.error('筛选紧急公告失败:', error);
+                        alert('加载公告失败，请稍后重试');
+                    });
+            }
+            
+            // 清除筛选（全局函数，供按钮调用）
+            window.clearFilter = function() {
+                // 移除筛选提示
+                const filterHint = announcementList.querySelector('.filter-hint');
+                if (filterHint) {
+                    filterHint.remove();
+                }
+                // 重新加载所有公告
+                loadAnnouncements(currentBoard, currentSubBoard, 1, true);
+            };
+            
+            // 工具函数
+            function formatDate(isoString) {
+                if (!isoString) return '未知';
+                const date = new Date(isoString);
+                return date.toLocaleDateString('zh-CN');
+            }
+            
+            function getPriorityText(priority) {
+                const priorityMap = {
+                    'low': '低',
+                    'normal': '普通',
+                    'high': '高',
+                    'urgent': '紧急'
+                };
+                return priorityMap[priority] || '普通';
+            }
+            
+            // 加载公告栏数据（优化：移除时间戳，使用后端缓存）
+            async function loadBoards() {
+                try {
+                    // 优化：不添加时间戳，使用后端缓存
+                    // 公告栏列表很少变化，后端缓存30秒足够
+                    const response = await fetch('/api/announcement/boards', {
+                        credentials: 'include'
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    const boards = await response.json();
+                    
+                    // 存储公告栏数据
+                    boards.forEach(board => {
+                        allBoards[board.id] = board;
+                    });
+                    
+                    // 更新标签
+                    updateBoardTabs(boards);
+                } catch (error) {
+                    console.error('加载公告栏失败:', error);
+                    // 如果API失败，使用默认值
+                    const defaultBoards = [
+                        {id: 'hardware', name: '硬件研发部'},
+                        {id: 'circuit', name: '电路设计组'},
+                        {id: 'structure', name: '结构组'},
+                        {id: 'packaging', name: '包装标签组'},
+                        {id: 'testing', name: '测试组'}
+                    ];
+                    defaultBoards.forEach(board => {
+                        allBoards[board.id] = board;
+                    });
+                    updateBoardTabs(defaultBoards);
+                }
+            }
+            
+            // 更新公告栏标签
+            function updateBoardTabs(boards) {
+                // 保留"全部公告"标签
+                bulletinTabs.innerHTML = '<div class="tab active" data-board="all">全部公告</div>';
+                
+                // 添加其他公告栏标签
+                boards.forEach(board => {
+                    const tab = document.createElement('div');
+                    tab.className = 'tab';
+                    tab.setAttribute('data-board', board.id);
+                    tab.textContent = board.name;
+                    bulletinTabs.appendChild(tab);
+                });
+                
+                // 添加"历史公告"标签
+                const historyTab = document.createElement('div');
+                historyTab.className = 'tab';
+                historyTab.setAttribute('data-board', 'history');
+                historyTab.innerHTML = '<i class="fas fa-history"></i> 历史公告';
+                historyTab.style.cssText += 'background: rgba(155, 89, 182, 0.3);';
+                bulletinTabs.appendChild(historyTab);
+                
+                // 重新绑定点击事件
+                const tabs = document.querySelectorAll('.tab');
+                tabs.forEach(tab => {
+                    tab.addEventListener('click', function() {
+                        const clickedTab = this;
+                        clickedTab.style.opacity = '0.6';
+                        clickedTab.style.cursor = 'wait';
+                        
+                        tabs.forEach(t => t.classList.remove('active'));
+                        clickedTab.classList.add('active');
+                        currentBoard = clickedTab.getAttribute('data-board');
+                        currentSubBoard = null;
+                        searchInput.value = '';
+                        
+                        if (currentBoard === 'history') {
+                            // 加载历史公告
+                            loadHistoryAnnouncements();
+                        } else {
+                            loadSubBoards(currentBoard);
+                            loadAnnouncements(currentBoard, null, 1, true); // 切换公告栏时重置到第一页并强制刷新
+                        }
+                        
+                        setTimeout(() => {
+                            clickedTab.style.opacity = '1';
+                            clickedTab.style.cursor = 'pointer';
+                        }, 300);
+                    });
+                });
+            }
+            
+            function getBoardName(boardId) {
+                if (allBoards[boardId]) {
+                    return allBoards[boardId].name;
+                }
+                // 如果缓存中没有，尝试实时获取
+                return boardId;
+            }
+            
+            // 强制刷新公告栏数据（仅在需要时手动调用，如创建/编辑公告栏后）
+            async function refreshBoards(force = false) {
+                if (!force) {
+                    // 默认不刷新，因为公告栏列表很少变化
+                    return true;
+                }
+                
+                console.log('[announcement.html] 强制刷新公告栏数据...');
+                try {
+                    // 使用 _refresh=1 参数强制刷新后端缓存
+                    const response = await fetch('/api/announcement/boards?_refresh=1', {
+                        credentials: 'include'
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    const boards = await response.json();
+                    
+                    // 更新缓存
+                    boards.forEach(board => {
+                        allBoards[board.id] = board;
+                    });
+                    
+                    // 更新标签（如果当前选中的公告栏名称已更改）
+                    const currentTab = document.querySelector('.tab.active');
+                    if (currentTab) {
+                        const currentBoardId = currentTab.getAttribute('data-board');
+                        if (currentBoardId && currentBoardId !== 'all') {
+                            const boardData = allBoards[currentBoardId];
+                            if (boardData && currentTab.textContent !== boardData.name) {
+                                currentTab.textContent = boardData.name;
+                                console.log(`[announcement.html] 更新公告栏标签: ${currentBoardId} -> ${boardData.name}`);
+                            }
+                        }
+                    }
+                    
+                    // 更新所有标签
+                    updateBoardTabs(boards);
+                    
+                    return true;
+                } catch (error) {
+                    console.error('[announcement.html] 刷新公告栏数据失败:', error);
+                    return false;
+                }
+            }
+            
+            async function notifyAllUnreadReaders() {
+                if (!confirm('将向所有已发布公告中「未完成阅读待办」的人员发送钉钉工作通知，是否继续？')) {
+                    return;
+                }
+                const btn = document.getElementById('notify-unread-btn');
+                if (btn) btn.disabled = true;
+                try {
+                    const response = await fetch('/api/announcement/notify-unread-readers', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({})
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        alert(result.message || ('已通知 ' + (result.users_notified || 0) + ' 人'));
+                    } else {
+                        alert(result.error || result.message || '发送失败');
+                    }
+                } catch (error) {
+                    console.error('催读通知失败:', error);
+                    alert('发送失败: ' + (error.message || '网络错误'));
+                } finally {
+                    if (btn) btn.disabled = false;
+                }
+            }
+
+            // 检查用户权限，显示管理/审批按钮
+            function setElementVisible(el, visible) {
+                if (!el) return;
+                el.style.display = visible ? (el.dataset.displayMode || 'inline-flex') : 'none';
+            }
+            
+            fetch('/api/auth/check?lite=1', { credentials: 'include' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.authenticated && data.user) {
+                        const roles = data.user.roles || [];
+                        const isManagement = roles.includes('management') || roles.includes('admin') || roles.includes('super_admin') || data.user.username === 'zzw';
+                        const canApprove = data.can_approve === true;
+                        if (isManagement) {
+                            setElementVisible(document.getElementById('manage-sub-boards-btn'), true);
+                        }
+                        if (canApprove || isManagement) {
+                            setElementVisible(document.getElementById('notify-unread-btn'), true);
+                        }
+                        setElementVisible(document.getElementById('header-review-center-btn'), canApprove);
+                    } else {
+                        setElementVisible(document.getElementById('header-review-center-btn'), false);
+                    }
+                })
+                .catch(error => console.error('检查权限失败:', error));
+            
+            // 无审批权限时从审批中心被重定向回来
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('error') === 'no_review_permission') {
+                alert('您没有访问审批中心的权限');
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            
+            // 初始加载
+            loadBoards().then(() => {
+                loadSubBoards('all');
+                const needFreshList = isAnnouncementListStale();
+                if (needFreshList) {
+                    clearAllAnnouncementListCache();
+                    markAnnouncementListFresh();
+                }
+                loadAnnouncements('all', null, 1, needFreshList);
+                loadPendingAnnouncements();
+                updateStatistics();
+                // 设置统计块点击事件
+                setupStatItemClickHandlers();
+            });
+            
+            // 从审批详情返回时（bfcache）强制刷新列表
+            window.addEventListener('pageshow', function(event) {
+                if (event.persisted || isAnnouncementListStale()) {
+                    clearAllAnnouncementListCache();
+                    markAnnouncementListFresh();
+                    loadAnnouncements(currentBoard, currentSubBoard, currentPage, true);
+                    updateStatistics();
+                }
+            });
+            
+            // 优化：移除定期刷新公告栏数据
+            // 公告栏列表很少变化，只在页面加载时获取一次即可
+            // 如果用户需要刷新，可以通过手动操作触发（如创建/编辑公告栏后）
+            
+            // 优化：统计信息更新策略
+            // 统计信息只在以下情况更新：
+            // 1. 页面初始加载
+            // 2. 用户操作后（创建/审批/删除公告后，通过事件触发）
+            // 3. 长时间未更新时（每5分钟检查一次，而不是每60秒）
+            let lastStatsUpdate = Date.now();
+            const STATS_CHECK_INTERVAL = 300000; // 5分钟检查一次
+            const STATS_MAX_AGE = 600000; // 10分钟未更新才强制刷新
+            
+            function shouldUpdateStats() {
+                const now = Date.now();
+                // 如果超过10分钟未更新，才需要刷新
+                return (now - lastStatsUpdate) > STATS_MAX_AGE;
+            }
+            
+            function updateStatsIfNeeded() {
+                if (shouldUpdateStats()) {
+                    updateStatistics();
+                    lastStatsUpdate = Date.now();
+                }
+            }
+            
+            // 每5分钟检查一次是否需要更新统计（而不是强制更新）
+            setInterval(() => {
+                updateStatsIfNeeded();
+            }, STATS_CHECK_INTERVAL);
+            
+            // 页面获得焦点时，只在长时间未更新时才刷新统计
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    // 延迟检查，避免快速切换标签页时频繁检查
+                    setTimeout(() => {
+                        updateStatsIfNeeded();
+                    }, 2000);
+                }
+            });
+            
+            // 导出更新统计函数，供其他操作后调用
+            window.refreshStatistics = function() {
+                updateStatistics();
+                lastStatsUpdate = Date.now();
+            };
+        });
+    </script>
+    
+    <!-- 调试面板 -->
+    <button id="debugToggle" title="显示/隐藏调试面板">🐛</button>
+    <div id="debugPanel">
+        <div id="debugPanelHeader">
+            <span>调试面板</span>
+            <button onclick="debugToggle()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 5px 10px; border-radius: 5px; cursor: pointer;">关闭</button>
+        </div>
+        <div id="debugPanelContent"></div>
+        <div class="debug-actions">
+            <button class="debug-btn debug-btn-primary" onclick="debugCopy()">📋 复制日志</button>
+            <button class="debug-btn debug-btn-secondary" onclick="debugClear()">清空</button>
+        </div>
+    </div>
+    
+    <script>
+        // 调试面板功能（避免无限递归）
+        const originalConsole = {
+            log: console.log.bind(console),
+            error: console.error.bind(console),
+            warn: console.warn.bind(console),
+            info: console.info.bind(console)
+        };
+        
+        let debugLogs = [];
+        let debugPanelVisible = false;
+        
+        function debugLog(message, type = 'log') {
+            // 无论面板是否可见，都记录日志
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = {
+                time: timestamp,
+                type: type,
+                message: String(message)
+            };
+            debugLogs.push(logEntry);
+            
+            // 限制日志数量，避免内存溢出
+            if (debugLogs.length > 500) {
+                debugLogs.shift();
+            }
+            
+            // 只有在面板可见时才更新DOM
+            if (debugPanelVisible) {
+                const content = document.getElementById('debugPanelContent');
+                if (content) {
+                    const logDiv = document.createElement('div');
+                    logDiv.className = `debug-log ${type}`;
+                    logDiv.textContent = `[${timestamp}] ${message}`;
+                    content.appendChild(logDiv);
+                    content.scrollTop = content.scrollHeight;
+                }
+            }
+        }
+        
+        function debugToggle() {
+            debugPanelVisible = !debugPanelVisible;
+            const panel = document.getElementById('debugPanel');
+            if (panel) {
+                panel.classList.toggle('active', debugPanelVisible);
+                
+                // 如果面板刚打开，显示所有已记录的日志
+                if (debugPanelVisible) {
+                    const content = document.getElementById('debugPanelContent');
+                    if (content) {
+                        content.innerHTML = ''; // 清空现有内容
+                        debugLogs.forEach(logEntry => {
+                            const logDiv = document.createElement('div');
+                            logDiv.className = `debug-log ${logEntry.type}`;
+                            logDiv.textContent = `[${logEntry.time}] ${logEntry.message}`;
+                            content.appendChild(logDiv);
+                        });
+                        content.scrollTop = content.scrollHeight;
+                    }
+                }
+            }
+        }
+        
+        function debugClear() {
+            debugLogs = [];
+            const content = document.getElementById('debugPanelContent');
+            if (content) {
+                content.innerHTML = '';
+            }
+        }
+        
+        function debugCopy() {
+            const text = debugLogs.map(log => `[${log.time}] ${log.message}`).join('\n');
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    originalConsole.log('日志已复制到剪贴板');
+                }).catch(() => {
+                    // 降级方案
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    originalConsole.log('日志已复制到剪贴板');
+                });
+            } else {
+                // 降级方案
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                originalConsole.log('日志已复制到剪贴板');
+            }
+        }
+        
+        // 仅 ?debug=1 时启用调试面板与 fetch/console 拦截
+        const ANNOUNCEMENT_DEBUG = window.location.search.indexOf('debug=1') >= 0;
+        if (ANNOUNCEMENT_DEBUG) {
+            document.body.classList.add('announcement-debug');
+        }
+
+        if (ANNOUNCEMENT_DEBUG) {
+        // 记录 API 请求
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            const url = args[0];
+            debugLog(`API请求: ${url}`, 'info');
+            return originalFetch.apply(this, args).then(response => {
+                debugLog(`API响应: ${url} - ${response.status} ${response.statusText}`, response.ok ? 'info' : 'error');
+                if (response.status === 401) {
+                    debugLog(`⚠️ 401未授权: ${url}`, 'error');
+                }
+                return response;
+            }).catch(error => {
+                debugLog(`API错误: ${url} - ${error.message}`, 'error');
+                throw error;
+            });
+        };
+        
+        // 拦截 console 方法
+        console.log = function(...args) {
+            originalConsole.log(...args);
+            debugLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'log');
+        };
+        
+        console.error = function(...args) {
+            originalConsole.error(...args);
+            debugLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'error');
+        };
+        
+        console.warn = function(...args) {
+            originalConsole.warn(...args);
+            debugLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'warn');
+        };
+        
+        console.info = function(...args) {
+            originalConsole.info(...args);
+            debugLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'info');
+        };
+
+        // 捕获全局错误
+        window.addEventListener('error', function(e) {
+            debugLog(`全局错误: ${e.message} (${e.filename}:${e.lineno})`, 'error');
+        });
+        
+        window.addEventListener('unhandledrejection', function(e) {
+            debugLog(`未处理的Promise拒绝: ${e.reason}`, 'error');
+        });
+        
+        const toggleBtn = document.getElementById('debugToggle');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', debugToggle);
+        }
+        
+        debugLog('页面加载完成', 'info');
+        debugLog('当前URL: ' + window.location.href, 'info');
+        debugLog('UserAgent: ' + navigator.userAgent, 'info');
+        }
+    </script>
+    <script src="/js/csrf-fetch.js" defer></script>
+</body>
+</html>

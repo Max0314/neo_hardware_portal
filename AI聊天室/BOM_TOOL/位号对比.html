@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOM位号对比工具 - 简化版</title>
+    <script src="../vendor/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2980b9;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --gray-color: #6c757d;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, var(--primary-color), var(--success-color), var(--warning-color));
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: var(--dark-color);
+            margin-bottom: 10px;
+            font-size: 2.2rem;
+            font-weight: 700;
+        }
+        
+        .description {
+            color: var(--gray-color);
+            max-width: 800px;
+            margin: 0 auto;
+            font-size: 1.1rem;
+        }
+        
+        .upload-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .bom-upload {
+            background: var(--light-color);
+            padding: 25px;
+            border-radius: 10px;
+            border: 2px dashed #dee2e6;
+            transition: all 0.3s ease;
+        }
+        
+        .bom-upload:hover {
+            border-color: var(--primary-color);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .bom-upload h3 {
+            margin-bottom: 15px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .bom-upload h3::before {
+            content: '📋';
+            font-size: 1.3rem;
+        }
+        
+        .file-input-container {
+            margin-bottom: 20px;
+        }
+        
+        .file-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            background-color: white;
+            font-size: 16px;
+        }
+        
+        .file-info {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: var(--gray-color);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .file-info::before {
+            content: '📄';
+        }
+        
+        .column-mapping {
+            margin-top: 20px;
+        }
+        
+        .mapping-row {
+            display: flex;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+        
+        .mapping-label {
+            width: 120px;
+            font-weight: 500;
+            color: var(--dark-color);
+        }
+        
+        select {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            background-color: white;
+            transition: border-color 0.3s;
+            font-size: 16px;
+        }
+        
+        select:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+        
+        .actions {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        button {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+        
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .clear-btn {
+            background: linear-gradient(135deg, var(--danger-color), #c0392b);
+            padding: 8px 16px;
+            font-size: 14px;
+            margin-left: 15px;
+        }
+        
+        .results {
+            margin-top: 40px;
+            display: none;
+        }
+        
+        .summary {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .summary h3 {
+            margin-bottom: 15px;
+            color: #1565c0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .summary h3::before {
+            content: '📊';
+            font-size: 1.3rem;
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .summary-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .summary-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .summary-label {
+            font-size: 0.9rem;
+            color: var(--gray-color);
+        }
+        
+        .comparison-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .result-box {
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 200px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .result-box h4 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .bom-a-only {
+            background-color: #e8f4fd;
+            border-left: 5px solid #3498db;
+        }
+        
+        .bom-a-only h4::before {
+            content: '📋';
+        }
+        
+        .bom-b-only {
+            background-color: #f9f0ff;
+            border-left: 5px solid #9b59b6;
+        }
+        
+        .bom-b-only h4::before {
+            content: '📋';
+        }
+        
+        .common {
+            background-color: #f0f9f0;
+            border-left: 5px solid #27ae60;
+        }
+        
+        .common h4::before {
+            content: '✓';
+        }
+        
+        .result-list {
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        
+        .result-list div {
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 4px;
+            border-left: 3px solid #ddd;
+            word-break: break-word;
+        }
+        
+        .bom-a-only .result-list div {
+            border-left-color: #3498db;
+        }
+        
+        .bom-b-only .result-list div {
+            border-left-color: #9b59b6;
+        }
+        
+        .common .result-list div {
+            border-left-color: #27ae60;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 30px;
+            color: var(--gray-color);
+        }
+        
+        .no-data::before {
+            content: '📝';
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        .export-section {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .export-btn {
+            background: linear-gradient(135deg, var(--success-color), #27ae60);
+            padding: 12px 24px;
+            font-size: 16px;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            color: var(--gray-color);
+            font-size: 0.9rem;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 滚动条样式 */
+        .result-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .result-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .result-list::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 10px;
+        }
+        
+        .result-list::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        
+        @media (max-width: 768px) {
+            .upload-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .summary-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>BOM位号对比工具 - 简化版</h1>
+            <p class="description">上传两个BOM文件，选择位号列，系统将自动对比位号差异，并自动忽略重复的位号。</p>
+        </header>
+        
+        <div class="upload-section">
+            <div class="bom-upload">
+                <h3>第一个BOM <button class="clear-btn" data-bom="1">清除</button></h3>
+                <div class="file-input-container">
+                    <input type="file" id="bom1" accept=".xlsx,.xls,.csv" class="file-input">
+                    <div class="file-info" id="bom1-info">未选择文件</div>
+                </div>
+                <div class="column-mapping">
+                    <div class="mapping-row">
+                        <div class="mapping-label">位号列</div>
+                        <select id="bom1-reference">
+                            <option value="">请选择位号列</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bom-upload">
+                <h3>第二个BOM <button class="clear-btn" data-bom="2">清除</button></h3>
+                <div class="file-input-container">
+                    <input type="file" id="bom2" accept=".xlsx,.xls,.csv" class="file-input">
+                    <div class="file-info" id="bom2-info">未选择文件</div>
+                </div>
+                <div class="column-mapping">
+                    <div class="mapping-row">
+                        <div class="mapping-label">位号列</div>
+                        <select id="bom2-reference">
+                            <option value="">请选择位号列</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>正在处理文件，请稍候...</p>
+        </div>
+        
+        <div class="actions">
+            <button id="compare-btn" disabled>开始对比</button>
+        </div>
+        
+        <div class="results" id="results">
+            <div class="summary">
+                <h3>对比结果概览</h3>
+                <div class="summary-grid" id="summary-content">
+                    <!-- 动态生成概览内容 -->
+                </div>
+            </div>
+            
+            <div class="comparison-results">
+                <div class="result-box bom-a-only">
+                    <h4>仅BOM A包含</h4>
+                    <div class="result-list" id="only-in-a"></div>
+                </div>
+                
+                <div class="result-box bom-b-only">
+                    <h4>仅BOM B包含</h4>
+                    <div class="result-list" id="only-in-b"></div>
+                </div>
+                
+                <div class="result-box common">
+                    <h4>共同位号</h4>
+                    <div class="result-list" id="common-items"></div>
+                </div>
+            </div>
+            
+            <div class="export-section">
+                <button class="export-btn" id="export-btn">导出对比结果</button>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>BOM位号对比工具 - 简化版 &copy; 2023 | 支持 .xlsx, .xls, .csv 格式</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const bom1FileInput = document.getElementById('bom1');
+            const bom2FileInput = document.getElementById('bom2');
+            const bom1Info = document.getElementById('bom1-info');
+            const bom2Info = document.getElementById('bom2-info');
+            const bom1ReferenceSelect = document.getElementById('bom1-reference');
+            const bom2ReferenceSelect = document.getElementById('bom2-reference');
+            const compareBtn = document.getElementById('compare-btn');
+            const resultsSection = document.getElementById('results');
+            const loadingIndicator = document.getElementById('loading');
+            const exportBtn = document.getElementById('export-btn');
+            
+            // 存储解析后的BOM数据
+            let bom1Data = [];
+            let bom2Data = [];
+            let bom1Headers = [];
+            let bom2Headers = [];
+            
+            // 存储对比结果数据
+            let comparisonResult = null;
+            
+            // 监听文件上传
+            bom1FileInput.addEventListener('change', function(e) {
+                handleFileUpload(e.target.files[0], 1);
+            });
+            
+            bom2FileInput.addEventListener('change', function(e) {
+                handleFileUpload(e.target.files[0], 2);
+            });
+            
+            // 处理文件上传
+            function handleFileUpload(file, bomNumber) {
+                if (!file) return;
+                
+                const fileInfo = document.getElementById(`bom${bomNumber}-info`);
+                fileInfo.textContent = `${file.name} (${formatFileSize(file.size)})`;
+                
+                loadingIndicator.style.display = 'block';
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        
+                        // 获取第一个工作表
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                        
+                        if (jsonData.length === 0) {
+                            throw new Error('文件为空');
+                        }
+                        
+                        parseExcelData(jsonData, bomNumber);
+                        loadingIndicator.style.display = 'none';
+                    } catch (error) {
+                        console.error('解析文件时出错:', error);
+                        fileInfo.textContent = `解析错误: ${error.message}`;
+                        loadingIndicator.style.display = 'none';
+                    }
+                };
+                
+                reader.onerror = function() {
+                    fileInfo.textContent = '文件读取失败';
+                    loadingIndicator.style.display = 'none';
+                };
+                
+                reader.readAsArrayBuffer(file);
+            }
+            
+            // 格式化文件大小
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+            
+            // 解析Excel数据
+            function parseExcelData(excelData, bomNumber) {
+                const headers = excelData[0];
+                const data = [];
+                
+                // 从第二行开始解析数据
+                for (let i = 1; i < excelData.length; i++) {
+                    const row = excelData[i];
+                    if (row.length === 0) continue;
+                    
+                    const rowData = {};
+                    headers.forEach((header, index) => {
+                        // 处理空单元格，如果单元格为空则设为空字符串
+                        rowData[header] = row[index] === undefined || row[index] === null ? '' : String(row[index]);
+                    });
+                    
+                    data.push(rowData);
+                }
+                
+                if (bomNumber === 1) {
+                    bom1Data = data;
+                    bom1Headers = headers;
+                } else {
+                    bom2Data = data;
+                    bom2Headers = headers;
+                }
+                
+                // 更新列选择下拉菜单
+                updateColumnSelectors(headers, bomNumber);
+                
+                // 检查是否两个文件都已上传并解析
+                checkReadyToCompare();
+            }
+            
+            // 更新列选择下拉菜单
+            function updateColumnSelectors(headers, bomNumber) {
+                const referenceSelect = document.getElementById(`bom${bomNumber}-reference`);
+                
+                // 清空现有选项
+                referenceSelect.innerHTML = '<option value="">请选择位号列</option>';
+                
+                // 添加新选项
+                headers.forEach(header => {
+                    const option = document.createElement('option');
+                    option.value = header;
+                    option.textContent = header;
+                    
+                    // 自动选择可能包含"位号"的列
+                    if (header.toLowerCase().includes('位号') || 
+                        header.toLowerCase().includes('ref') ||
+                        header.toLowerCase().includes('designator')) {
+                        option.selected = true;
+                    }
+                    
+                    referenceSelect.appendChild(option);
+                });
+            }
+            
+            // 检查是否可以进行对比
+            function checkReadyToCompare() {
+                const bom1Ref = bom1ReferenceSelect.value;
+                const bom2Ref = bom2ReferenceSelect.value;
+                
+                const isBom1Ready = bom1Data.length > 0 && bom1Ref;
+                const isBom2Ready = bom2Data.length > 0 && bom2Ref;
+                
+                compareBtn.disabled = !(isBom1Ready && isBom2Ready);
+            }
+            
+            // 对比按钮点击事件
+            compareBtn.addEventListener('click', function() {
+                loadingIndicator.style.display = 'block';
+                
+                // 使用setTimeout确保UI更新
+                setTimeout(function() {
+                    // 获取位号列
+                    const bom1RefColumn = bom1ReferenceSelect.value;
+                    const bom2RefColumn = bom2ReferenceSelect.value;
+                    
+                    // 提取位号并去重
+                    const bom1References = extractAndDeduplicateReferences(bom1Data, bom1RefColumn);
+                    const bom2References = extractAndDeduplicateReferences(bom2Data, bom2RefColumn);
+                    
+                    // 执行对比
+                    comparisonResult = compareReferences(bom1References, bom2References);
+                    
+                    // 显示结果
+                    displayResults(comparisonResult);
+                    resultsSection.style.display = 'block';
+                    try {
+                        if (window.parent && window.parent !== window) {
+                            window.parent.postMessage({ type: 'neo_compare_tool_done' }, '*');
+                        }
+                    } catch (e) { /* ignore */ }
+                    
+                    loadingIndicator.style.display = 'none';
+                }, 100);
+            });
+            
+            // 提取位号并去重
+            function extractAndDeduplicateReferences(bomData, referenceColumn) {
+                const references = new Set();
+                
+                bomData.forEach(row => {
+                    const reference = row[referenceColumn];
+                    if (reference && reference.trim() !== '') {
+                        // 处理可能包含多个位号的单元格（用逗号、分号、空格等分隔）
+                        const refs = reference.split(/[,;/\s]+/);
+                        refs.forEach(ref => {
+                            const trimmedRef = ref.trim();
+                            if (trimmedRef) {
+                                references.add(trimmedRef);
+                            }
+                        });
+                    }
+                });
+                
+                return Array.from(references);
+            }
+            
+            // 对比位号
+            function compareReferences(bom1Refs, bom2Refs) {
+                // 将数组转换为Set以便快速查找
+                const bom1Set = new Set(bom1Refs);
+                const bom2Set = new Set(bom2Refs);
+                
+                // 找出仅在BOM1中的位号
+                const onlyInA = bom1Refs.filter(ref => !bom2Set.has(ref));
+                
+                // 找出仅在BOM2中的位号
+                const onlyInB = bom2Refs.filter(ref => !bom1Set.has(ref));
+                
+                // 找出共同位号
+                const common = bom1Refs.filter(ref => bom2Set.has(ref));
+                
+                return {
+                    onlyInA: onlyInA,
+                    onlyInB: onlyInB,
+                    common: common,
+                    bom1Total: bom1Refs.length,
+                    bom2Total: bom2Refs.length,
+                    commonTotal: common.length,
+                    diffTotal: onlyInA.length + onlyInB.length
+                };
+            }
+            
+            // 显示对比结果
+            function displayResults(result) {
+                // 更新概览
+                updateSummary(result);
+                
+                // 显示仅A包含的位号
+                displayResultList('only-in-a', result.onlyInA, '仅BOM A包含的位号');
+                
+                // 显示仅B包含的位号
+                displayResultList('only-in-b', result.onlyInB, '仅BOM B包含的位号');
+                
+                // 显示共同位号
+                displayResultList('common-items', result.common, '共同位号');
+            }
+            
+            // 更新概览
+            function updateSummary(result) {
+                const summaryContent = document.getElementById('summary-content');
+                
+                summaryContent.innerHTML = `
+                    <div class="summary-item">
+                        <div class="summary-value">${result.bom1Total}</div>
+                        <div class="summary-label">BOM A位号数</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value">${result.bom2Total}</div>
+                        <div class="summary-label">BOM B位号数</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" style="color: var(--success-color)">${result.commonTotal}</div>
+                        <div class="summary-label">共同位号数</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" style="color: var(--warning-color)">${result.diffTotal}</div>
+                        <div class="summary-label">差异位号数</div>
+                    </div>
+                `;
+            }
+            
+            // 显示结果列表
+            function displayResultList(elementId, items, emptyMessage) {
+                const element = document.getElementById(elementId);
+                
+                if (items.length === 0) {
+                    element.innerHTML = `<div class="no-data">${emptyMessage}</div>`;
+                    return;
+                }
+                
+                // 按字母数字排序
+                items.sort((a, b) => {
+                    // 分离数字和字母部分进行排序
+                    const regex = /(\d+)|(\D+)/g;
+                    const aParts = a.match(regex) || [];
+                    const bParts = b.match(regex) || [];
+                    
+                    for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {
+                        const aPart = aParts[i];
+                        const bPart = bParts[i];
+                        
+                        // 如果都是数字，按数字大小比较
+                        if (!isNaN(aPart) && !isNaN(bPart)) {
+                            if (parseInt(aPart) !== parseInt(bPart)) {
+                                return parseInt(aPart) - parseInt(bPart);
+                            }
+                        } 
+                        // 否则按字符串比较
+                        else if (aPart !== bPart) {
+                            return aPart.localeCompare(bPart);
+                        }
+                    }
+                    
+                    return aParts.length - bParts.length;
+                });
+                
+                element.innerHTML = '';
+                items.forEach(item => {
+                    const div = document.createElement('div');
+                    div.textContent = item;
+                    element.appendChild(div);
+                });
+            }
+            
+            // 导出结果
+            exportBtn.addEventListener('click', function() {
+                if (!comparisonResult) {
+                    alert('请先进行对比');
+                    return;
+                }
+                
+                exportResults(comparisonResult);
+            });
+            
+            // 导出结果到Excel
+            function exportResults(result) {
+                // 创建工作簿
+                const wb = XLSX.utils.book_new();
+                
+                // 创建三个工作表：仅A包含、仅B包含、共同位号
+                const ws1 = XLSX.utils.aoa_to_sheet([
+                    ['仅BOM A包含的位号'],
+                    ...result.onlyInA.map(ref => [ref])
+                ]);
+                
+                const ws2 = XLSX.utils.aoa_to_sheet([
+                    ['仅BOM B包含的位号'],
+                    ...result.onlyInB.map(ref => [ref])
+                ]);
+                
+                const ws3 = XLSX.utils.aoa_to_sheet([
+                    ['共同位号'],
+                    ...result.common.map(ref => [ref])
+                ]);
+                
+                // 添加汇总信息
+                const summaryWs = XLSX.utils.aoa_to_sheet([
+                    ['BOM位号对比结果汇总'],
+                    [''],
+                    ['BOM A位号总数', result.bom1Total],
+                    ['BOM B位号总数', result.bom2Total],
+                    ['共同位号数', result.commonTotal],
+                    ['差异位号数', result.diffTotal],
+                    [''],
+                    ['仅BOM A包含的位号数', result.onlyInA.length],
+                    ['仅BOM B包含的位号数', result.onlyInB.length]
+                ]);
+                
+                // 将工作表添加到工作簿
+                XLSX.utils.book_append_sheet(wb, summaryWs, '汇总');
+                XLSX.utils.book_append_sheet(wb, ws1, '仅BOM A包含');
+                XLSX.utils.book_append_sheet(wb, ws2, '仅BOM B包含');
+                XLSX.utils.book_append_sheet(wb, ws3, '共同位号');
+                
+                // 导出Excel文件
+                XLSX.writeFile(wb, `BOM位号对比结果_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            }
+            
+            // 清除BOM数据
+            function setupClearButtons() {
+                const clearButtons = document.querySelectorAll('.clear-btn');
+                
+                clearButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        const bomNumber = this.getAttribute('data-bom');
+                        clearBomData(bomNumber);
+                    });
+                });
+            }
+            
+            // 清除BOM数据
+            function clearBomData(bomNumber) {
+                const fileInput = document.getElementById(`bom${bomNumber}`);
+                const fileInfo = document.getElementById(`bom${bomNumber}-info`);
+                const referenceSelect = document.getElementById(`bom${bomNumber}-reference`);
+                
+                // 清除文件输入
+                fileInput.value = '';
+                fileInfo.textContent = '未选择文件';
+                referenceSelect.innerHTML = '<option value="">请选择位号列</option>';
+                
+                // 清除对应的数据
+                if (bomNumber === '1') {
+                    bom1Data = [];
+                    bom1Headers = [];
+                } else {
+                    bom2Data = [];
+                    bom2Headers = [];
+                }
+                
+                // 隐藏结果区域
+                resultsSection.style.display = 'none';
+                
+                checkReadyToCompare();
+            }
+            
+            // 监听列选择变化，更新对比按钮状态
+            bom1ReferenceSelect.addEventListener('change', checkReadyToCompare);
+            bom2ReferenceSelect.addEventListener('change', checkReadyToCompare);
+            
+            // 初始化清除按钮
+            setupClearButtons();
+        });
+    </script>
+</body>
+</html>

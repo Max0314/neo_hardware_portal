@@ -1,0 +1,59 @@
+[Unit]
+Description=HTML System Server (Gunicorn with Auto-Restart Monitor)
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/home/chxw/htmlsystm
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONPATH=/home/chxw/htmlsystm"
+
+# MySQL环境变量（根据实际情况修改）
+Environment="MYSQL_HOST=localhost"
+Environment="MYSQL_PORT=3306"
+Environment="MYSQL_USER=htmlsystm_user"
+Environment="MYSQL_DATABASE=htmlsystm"
+Environment="MYSQL_PASSWORD=Zzw5221331"
+
+# 服务器端口（可选，默认从配置文件读取）
+# Environment="SERVER_PORT=8080"
+
+# 启用监控模式
+Environment="USE_MONITOR=1"
+Environment="USE_GUNICORN=1"
+Environment="GUNICORN_MODE=prod"
+
+# 启动命令
+ExecStart=/usr/bin/bash /home/chxw/htmlsystm/start_gunicorn.sh prod
+
+# 停止命令（优雅关闭）
+ExecStop=/bin/kill -TERM $MAINPID
+
+# 重启命令
+ExecReload=/bin/kill -HUP $MAINPID
+
+# 自动重启配置
+Restart=always
+RestartSec=10
+StartLimitInterval=300
+StartLimitBurst=5
+
+# 日志配置
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=htmlsystm
+
+# 安全配置
+NoNewPrivileges=true
+PrivateTmp=true
+
+# 资源限制（可选）
+# LimitNOFILE=65535
+# LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target
+

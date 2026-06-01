@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="NEO">
+  <defs>
+    <linearGradient id="neoG" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a8fbf"/>
+      <stop offset="55%" stop-color="#0c4d66"/>
+      <stop offset="100%" stop-color="#0a3344"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#neoG)"/>
+  <path fill="#e8f4fb" d="M18 44V20h8l10 14 10-14h8v24h-7V30L28 46l-3-4-7-10v18z"/>
+  <circle cx="46" cy="22" r="5" fill="#7fd4ff" opacity="0.9"/>
+</svg>

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>历史版本详情 - 硬件研发部管理系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/neo-systm.css" />
+    <script src="/js/transfer-utils.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #1a252f, #2c3e50);
+            color: #ecf0f1;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(26, 37, 47, 0.8);
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #3498db;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .header h1 {
+            color: #3498db;
+            font-size: 2.2rem;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        .btn-back {
+            background: #34495e;
+        }
+        .btn-back:hover {
+            background: #2c3e50;
+        }
+        .version-badge {
+            background: #9b59b6;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        
+        .announcement-content {
+            line-height: 1.7;
+            margin-bottom: 30px;
+        }
+        .announcement-title {
+            color: #000000;
+            font-size: 2rem;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .announcement-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            padding: 15px;
+            background: #F7FAFD;
+            border: 1px solid rgba(34, 116, 172, 0.1);
+            border-radius: 12px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .meta-label {
+            color: #000000;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .meta-value {
+            color: #000000;
+            font-weight: bold;
+        }
+        .priority-tag {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .priority-low {
+            background: rgba(52, 152, 219, 0.3);
+        }
+        .priority-normal {
+            background: rgba(46, 204, 113, 0.3);
+        }
+        .priority-high {
+            background: rgba(243, 156, 18, 0.3);
+        }
+        .priority-urgent {
+            background: rgba(231, 76, 60, 0.6);
+        }
+        
+        .content-body {
+            background: #ffffff;
+            color: #000000;
+            border: 1px solid rgba(34, 116, 172, 0.1);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            min-height: 200px;
+        }
+        .content-body img {
+            max-width: 100%;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .content-body table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .content-body th, .content-body td {
+            border: 1px solid #3498db;
+            padding: 10px;
+            text-align: left;
+        }
+        .content-body th {
+            background: rgba(52, 152, 219, 0.3);
+        }
+        
+        .attachments {
+            margin-top: 30px;
+        }
+        .attachments h3 {
+            color: #3498db;
+            margin-bottom: 15px;
+        }
+        .attachment-list {
+            display: grid;
+            gap: 10px;
+        }
+        .attachment-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            border-left: 3px solid #3498db;
+        }
+        .attachment-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .attachment-icon {
+            color: #3498db;
+            font-size: 1.2rem;
+        }
+        .attachment-size {
+            color: #95a5a6;
+            font-size: 0.9rem;
+        }
+        .btn-download {
+            background: #27ae60;
+            padding: 8px 15px;
+            font-size: 0.9rem;
+        }
+        .btn-download:hover {
+            background: #219653;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #3498db;
+        }
+        .error {
+            text-align: center;
+            padding: 60px 20px;
+            color: #e74c3c;
+        }
+        
+        @media (max-width: 768px) {
+            .announcement-meta {
+                flex-direction: column;
+            }
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body class="neo-systm-home">
+    <div class="container neo-page-wrap">
+        <div class="neo-page-header">
+            <div class="header-brand-column neo-header-brand-inline">
+                <img src="/logo.png" alt="CHANGHONG NeoNet" class="brand-logo-top-index" />
+                <div class="header-brand-main">
+                    <div class="header-title" style="margin:0;">
+                        <div class="logo-text-index">NEO Hardware <span>AI</span></div>
+                        <div class="sys-subtitle-index">硬件研发部管理系统</div>
+                    </div>
+                </div>
+            </div>
+            <div class="neo-header-actions">
+                <span class="neo-page-title">历史版本详情</span>
+                <span class="version-badge" id="version-badge">版本加载中...</span>
+                <button onclick="goBack()" class="neo-btn neo-btn-secondary">← 返回</button>
+            </div>
+        </div>
+        
+        <div id="version-content">
+            <div class="loading">
+                <p>正在加载历史版本详情...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量存储公告ID，用于返回功能
+        let currentAnnouncementId = null;
+        
+        // 返回上一页或公告详情页
+        function goBack() {
+            // 如果有历史记录，返回上一页
+            if (window.history.length > 1) {
+                window.history.back();
+            } else if (currentAnnouncementId) {
+                // 如果没有历史记录，跳转到公告详情页
+                window.location.href = `/announcement-detail/${currentAnnouncementId}`;
+            } else {
+                // 如果都没有，跳转到公告列表页
+                window.location.href = '/announcement';
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // 从URL获取公告ID和版本号
+            const pathParts = window.location.pathname.split('/');
+            const versionNumber = pathParts[pathParts.length - 1];
+            const announcementId = pathParts[pathParts.length - 2];
+            
+            if (!announcementId || !versionNumber) {
+                showError('无效的公告ID或版本号');
+                return;
+            }
+            
+            // 保存公告ID到全局变量
+            currentAnnouncementId = announcementId;
+            
+            loadVersion(announcementId, versionNumber);
+        });
+        
+        function loadVersion(announcementId, versionNumber) {
+            fetch(`/api/announcement/versions/${announcementId}/${versionNumber}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('加载历史版本失败');
+                    }
+                    return response.json();
+                })
+                .then(version => {
+                    displayVersion(version, announcementId, versionNumber);
+                })
+                .catch(error => {
+                    showError(error.message);
+                });
+        }
+        
+        function displayVersion(version, announcementId, versionNumber) {
+            const container = document.getElementById('version-content');
+            const badge = document.getElementById('version-badge');
+            
+            badge.textContent = `版本 ${versionNumber}`;
+            
+            const priorityClass = `priority-${version.priority || 'normal'}`;
+            const priorityText = getPriorityText(version.priority);
+            const boardName = getBoardName(version.board_id);
+            
+            let html = `
+                <div class="announcement-content">
+                    <h1 class="announcement-title">${version.title}</h1>
+                    
+                    <div class="announcement-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">发起人</span>
+                            <span class="meta-value">${version.original_author || version.author || '未知'}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">公告栏</span>
+                            <span class="meta-value">${boardName}</span>
+                        </div>
+                        ${version.sub_board_id ? `
+                        <div class="meta-item">
+                            <span class="meta-label">二级公告栏</span>
+                            <span class="meta-value">${version.sub_board_name || version.sub_board_id}</span>
+                        </div>
+                        ` : ''}
+                        <div class="meta-item">
+                            <span class="meta-label">优先级</span>
+                            <span class="meta-value priority-tag ${priorityClass}">${priorityText}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">发布时间</span>
+                            <span class="meta-value">${formatDate(version.version || version.publish_time || version.created_time)}</span>
+                        </div>
+                        ${version.approver ? `
+                        <div class="meta-item">
+                            <span class="meta-label">审核人</span>
+                            <span class="meta-value">${version.approver}</span>
+                        </div>
+                        ${version.approve_time ? `
+                        <div class="meta-item">
+                            <span class="meta-label">审核时间</span>
+                            <span class="meta-value">${formatDate(version.approve_time)}</span>
+                        </div>
+                        ` : ''}
+                        ` : ''}
+                    </div>
+                    
+                    <div class="content-body">
+                        ${version.content || '暂无内容'}
+                    </div>
+            `;
+            
+            // 显示附件
+            if (version.attachments && version.attachments.length > 0) {
+                html += `
+                    <div class="attachments">
+                        <h3>附件下载</h3>
+                        <div class="attachment-list">
+                `;
+                
+                version.attachments.forEach(attachment => {
+                    const size = (attachment.size / 1024).toFixed(1);
+                    const downloadUrl = `/api/announcement/attachment/${announcementId}/${encodeURIComponent(attachment.name)}?version=${versionNumber}`;
+                    html += `
+                        <div class="attachment-item">
+                            <div class="attachment-info">
+                                <span class="attachment-icon">📎</span>
+                                <div>
+                                    <div>${attachment.name}</div>
+                                    <div class="attachment-size">${size} KB</div>
+                                </div>
+                            </div>
+                            <button class="btn btn-download" data-download-url="${downloadUrl}" data-filename="${encodeURIComponent(attachment.name)}">
+                                下载
+                            </button>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += `</div>`;
+            container.innerHTML = html;
+            TransferUtils.bindDownloadButtons(container);
+        }
+        
+        function showError(message) {
+            const container = document.getElementById('version-content');
+            container.innerHTML = `
+                <div class="error">
+                    <h3>加载失败</h3>
+                    <p>${message}</p>
+                    <button class="btn" onclick="goBack()">返回</button>
+                </div>
+            `;
+        }
+        
+        function formatDate(isoString) {
+            if (!isoString) return '未知';
+            const date = new Date(isoString);
+            return date.toLocaleString('zh-CN');
+        }
+        
+        function getPriorityText(priority) {
+            const priorityMap = {
+                'low': '低',
+                'normal': '普通',
+                'high': '高',
+                'urgent': '紧急'
+            };
+            return priorityMap[priority] || '普通';
+        }
+        
+        function getBoardName(boardId) {
+            const boardMap = {
+                'hardware': '硬件研发部',
+                'circuit': '电路设计组',
+                'structure': '结构组',
+                'packaging': '包装标签组',
+                'testing': '测试组'
+            };
+            return boardMap[boardId] || boardId;
+        }
+    </script>
+</body>
+</html>
+

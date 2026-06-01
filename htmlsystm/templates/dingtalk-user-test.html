@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钉钉部门用户列表测试 - 硬件研发部管理系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --accent: #e74c3c;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --ai-color: #9b59b6;
+            --card-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: var(--gradient-primary);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: var(--glass-bg);
+            border-radius: 15px;
+            padding: 25px 30px;
+            margin-bottom: 25px;
+            box-shadow: var(--card-shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .header h1 {
+            color: var(--primary);
+            font-size: 2.2rem;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+        
+        .btn {
+            background: var(--secondary);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn-back {
+            background: var(--primary);
+        }
+        
+        .btn-test {
+            background: var(--success);
+        }
+        
+        .main-content {
+            background: var(--glass-bg);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+        }
+        
+        .test-section h2 {
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .info-box {
+            background: rgba(52, 152, 219, 0.1);
+            border-left: 4px solid var(--secondary);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .config-form {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-family: 'Courier New', monospace;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--secondary);
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .status-box {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .status-box.loading {
+            border-left: 4px solid var(--secondary);
+        }
+        
+        .status-box.success {
+            border-left: 4px solid var(--success);
+        }
+        
+        .status-box.error {
+            border-left: 4px solid var(--accent);
+        }
+        
+        .status-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-content {
+            color: #555;
+            line-height: 1.6;
+        }
+        
+        .status-content pre {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .btn:disabled:hover {
+            transform: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1><i class="fas fa-users"></i> 钉钉部门用户列表测试</h1>
+                <p>获取钉钉部门用户列表并保存到Excel文件</p>
+            </div>
+            <a href="/" class="btn btn-back">
+                <i class="fas fa-arrow-left"></i> 返回首页
+            </a>
+        </div>
+        
+        <div class="main-content">
+            <div class="info-box">
+                <p><strong><i class="fas fa-info-circle"></i> 使用说明：</strong></p>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>1. 首先在"钉钉Token测试"页面获取 AccessToken</li>
+                    <li>2. 将 AccessToken 粘贴到下方输入框</li>
+                    <li>3. 输入部门ID（dept_id），默认为1（根部门）</li>
+                    <li>4. 点击"获取部门用户列表"按钮开始获取</li>
+                    <li>5. 系统会自动处理分页，获取所有用户</li>
+                    <li>6. 获取到的用户数据会保存到 <code>data/users.xlsx</code> 的"钉钉用户数据"工作表</li>
+                    <li>7. 表头格式：job_number, userid, 密码, name, title, parent_id, dept_id, 物料库管理员, 公告栏管理员, 状态, 创建时间</li>
+                    <li>8. <strong>智能合并策略：</strong></li>
+                    <li style="margin-left: 40px;">- 已存在的用户会更新信息（保留管理员信息和密码）</li>
+                    <li style="margin-left: 40px;">- 新用户会新增</li>
+                    <li style="margin-left: 40px;">- 未搜索到的用户会被禁用（管理员除外，管理员信息会被保留）</li>
+                </ul>
+            </div>
+            
+            <div class="test-section">
+                <h2><i class="fas fa-cog"></i> 配置参数</h2>
+                <div class="config-form">
+                    <div class="form-group">
+                        <label for="accessTokenInput">AccessToken:</label>
+                        <input type="text" id="accessTokenInput" class="form-input" placeholder="请输入AccessToken（从钉钉Token测试页面获取）">
+                        <small style="color: #7f8c8d; display: block; margin-top: 5px; font-size: 0.85rem;">
+                            <i class="fas fa-info-circle"></i> 可以从"钉钉Token测试"页面中复制
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="deptIdInput">部门ID (dept_id):</label>
+                        <input type="text" id="deptIdInput" class="form-input" value="1" placeholder="请输入部门ID（默认为1，根部门）">
+                        <small style="color: #7f8c8d; display: block; margin-top: 5px; font-size: 0.85rem;">
+                            <i class="fas fa-info-circle"></i> 可以从"钉钉部门列表"页面中查看部门ID
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <h2><i class="fas fa-flask"></i> 测试操作</h2>
+                <button class="btn btn-test" id="getUsersBtn" onclick="getDepartmentUsers()" style="width: 100%; padding: 15px; font-size: 1.1rem;">
+                    <i class="fas fa-download"></i> 获取部门用户列表
+                </button>
+            </div>
+            
+            <div class="test-section">
+                <h2><i class="fas fa-list"></i> 获取结果</h2>
+                <div id="resultContainer">
+                    <div class="status-box loading">
+                        <div class="status-title">
+                            <i class="fas fa-info-circle"></i> 等待获取...
+                        </div>
+                        <div class="status-content">
+                            请在上方输入AccessToken和部门ID，然后点击"获取部门用户列表"按钮
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getDepartmentUsers() {
+            const resultContainer = document.getElementById('resultContainer');
+            const getUsersBtn = document.getElementById('getUsersBtn');
+            
+            if (!resultContainer || !getUsersBtn) {
+                alert('页面元素加载错误，请刷新页面重试');
+                return;
+            }
+            
+            // 获取输入参数
+            const accessToken = document.getElementById('accessTokenInput').value.trim();
+            const deptId = document.getElementById('deptIdInput').value.trim() || '1';
+            const clearExisting = false;  // 不再支持清空，总是智能合并
+            
+            // 验证必填字段
+            if (!accessToken) {
+                resultContainer.innerHTML = `
+                    <div class="status-box error">
+                        <div class="status-title">
+                            <i class="fas fa-exclamation-circle"></i> 参数错误
+                        </div>
+                        <div class="status-content">
+                            <p><strong>错误信息：</strong>请填写 AccessToken</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // 显示加载状态
+            resultContainer.innerHTML = `
+                <div class="status-box loading">
+                    <div class="status-title">
+                        <i class="fas fa-spinner fa-spin"></i> 正在获取部门用户列表...
+                    </div>
+                    <div class="status-content">
+                        <p>正在从部门ID ${deptId} 获取用户列表...</p>
+                        <p style="margin-top: 10px; color: #7f8c8d;">系统会自动处理分页，这可能需要一些时间，请耐心等待...</p>
+                    </div>
+                </div>
+            `;
+            
+            getUsersBtn.disabled = true;
+            
+            // 构建请求体
+            const requestBody = {
+                access_token: accessToken,
+                dept_id: deptId,
+                clear_existing: clearExisting
+            };
+            
+            console.log('发送请求到后端:', {
+                url: '/api/dingtalk/get-department-users',
+                method: 'POST',
+                body: {
+                    access_token: accessToken.substring(0, 20) + '...',
+                    dept_id: deptId,
+                    clear_existing: clearExisting
+                }
+            });
+            
+            // 调用后端API
+            fetch('/api/dingtalk/get-department-users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            })
+            .then(async response => {
+                const responseText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    throw new Error(`JSON解析失败: ${responseText.substring(0, 200)}`);
+                }
+                
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP错误 ${response.status}`);
+                }
+                
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    const count = data.count || 0;
+                    const users = data.users || [];
+                    
+                    resultContainer.innerHTML = `
+                        <div class="status-box success">
+                            <div class="status-title">
+                                <i class="fas fa-check-circle"></i> 成功获取部门用户列表
+                            </div>
+                            <div class="status-content">
+                                <p><strong>获取到的用户数量：</strong>${count} 个</p>
+                                <p style="margin-top: 10px;"><strong>保存位置：</strong><code>data/users.xlsx</code> (工作表: 钉钉用户数据)</p>
+                                ${users.length > 0 ? `
+                                    <p style="margin-top: 15px;"><strong>所有用户列表（共 ${users.length} 个）：</strong></p>
+                                    <div style="max-height: 600px; overflow-y: auto; margin-top: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                                            <thead style="position: sticky; top: 0; background: white; z-index: 10;">
+                                                <tr style="background: rgba(0, 0, 0, 0.05);">
+                                                    <th style="padding: 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">工号</th>
+                                                    <th style="padding: 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">用户ID</th>
+                                                    <th style="padding: 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">姓名</th>
+                                                    <th style="padding: 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">职位</th>
+                                                    <th style="padding: 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">部门ID</th>
+                                                    <th style="padding: 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">状态</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${users.map(user => `
+                                                    <tr>
+                                                        <td style="padding: 8px; border: 1px solid #ddd;">${user.job_number || '-'}</td>
+                                                        <td style="padding: 8px; border: 1px solid #ddd;">${user.userid || '-'}</td>
+                                                        <td style="padding: 8px; border: 1px solid #ddd;">${user.name || '-'}</td>
+                                                        <td style="padding: 8px; border: 1px solid #ddd;">${user.title || '-'}</td>
+                                                        <td style="padding: 8px; border: 1px solid #ddd;">${Array.isArray(user.dept_id_list) ? user.dept_id_list.join(', ') : (user.dept_id_list || '-')}</td>
+                                                        <td style="padding: 8px; border: 1px solid #ddd;">${user.active ? '活跃' : '非活跃'}</td>
+                                                    </tr>
+                                                `).join('')}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ` : ''}
+                                <details style="margin-top: 15px;">
+                                    <summary style="cursor: pointer; color: var(--secondary); font-weight: 600;">查看完整JSON响应</summary>
+                                    <pre style="background: rgba(0, 0, 0, 0.05); padding: 10px; border-radius: 4px; margin-top: 10px; overflow-x: auto; max-height: 400px; overflow-y: auto;">${JSON.stringify(data, null, 2)}</pre>
+                                </details>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // 滚动到结果区域
+                    setTimeout(() => {
+                        resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 200);
+                } else {
+                    resultContainer.innerHTML = `
+                        <div class="status-box error">
+                            <div class="status-title">
+                                <i class="fas fa-times-circle"></i> 获取部门用户列表失败
+                            </div>
+                            <div class="status-content">
+                                <p><strong>错误信息：</strong>${data.error || '未知错误'}</p>
+                                ${data.message ? `<p style="margin-top: 10px;"><strong>详情：</strong>${data.message}</p>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+                getUsersBtn.disabled = false;
+            })
+            .catch(error => {
+                console.error('获取部门用户列表失败:', error);
+                resultContainer.innerHTML = `
+                    <div class="status-box error">
+                        <div class="status-title">
+                            <i class="fas fa-times-circle"></i> 请求失败
+                        </div>
+                        <div class="status-content">
+                            <p><strong>错误信息：</strong>${error.message || '未知错误'}</p>
+                            <p style="margin-top: 10px;">可能的原因：</p>
+                            <ul style="margin-left: 20px; margin-top: 10px;">
+                                <li>网络连接问题</li>
+                                <li>服务器返回了非JSON格式的响应</li>
+                                <li>钉钉API服务异常</li>
+                                <li>AccessToken无效或已过期</li>
+                                <li>部门ID不存在或无权访问</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                getUsersBtn.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>
+

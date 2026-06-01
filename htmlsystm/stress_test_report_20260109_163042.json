@@ -1,0 +1,42 @@
+{
+  "test_time": "2026-01-09T16:30:42.457841",
+  "total_duration": 21.792226314544678,
+  "results": {
+    "announcement_read": {
+      "total": 343,
+      "success": 0,
+      "failed": 375,
+      "success_rate": 0.0,
+      "avg_response_time": 0,
+      "min_response_time": 0,
+      "max_response_time": 0
+    },
+    "notification_send": {
+      "total": 498,
+      "success": 0,
+      "failed": 500,
+      "success_rate": 0.0,
+      "avg_response_time": 0,
+      "min_response_time": 0,
+      "max_response_time": 0
+    },
+    "user_create": {
+      "total": 50,
+      "success": 0,
+      "failed": 50,
+      "success_rate": 0.0,
+      "avg_response_time": 0,
+      "min_response_time": 0,
+      "max_response_time": 0
+    },
+    "todo_complete": {
+      "total": 0,
+      "success": 0,
+      "failed": 0,
+      "success_rate": 0,
+      "avg_response_time": 0,
+      "min_response_time": 0,
+      "max_response_time": 0
+    }
+  }
+}

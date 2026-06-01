@@ -1,0 +1,754 @@
+/* NEO Hardware AI 管理系统共享样式 */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body.neo-systm-home {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #F3F8FC;
+    color: #0C334E;
+    min-height: 100vh;
+    line-height: 1.5;
+    background-image:
+        radial-gradient(circle at 5% 30%, rgba(0,180,216,0.06) 0%, transparent 35%),
+        radial-gradient(circle at 95% 70%, rgba(37,99,235,0.06) 0%, transparent 40%);
+}
+
+.neo-page-wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px 20px 40px;
+}
+
+/* ---- Header ---- */
+.neo-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    background: #ffffff;
+    border: 1px solid rgba(34, 116, 172, 0.12);
+    border-radius: 20px;
+    padding: 18px 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 14px 30px -18px rgba(20, 80, 120, 0.18);
+}
+
+.neo-header-brand,
+.neo-header-brand-index {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+}
+
+.neo-brand-logo,
+.brand-logo-top-index {
+    height: 26px !important;
+    max-height: 26px;
+    width: auto;
+    max-width: 220px;
+    object-fit: contain;
+    object-position: left center;
+    flex-shrink: 0;
+    display: block;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none;
+    box-shadow: none;
+}
+
+.neo-header-brand,
+.neo-header-brand-index,
+.header-brand-column {
+    background: transparent !important;
+}
+
+/* 子页面 header 品牌区：logo 与文字横排，效果对齐主页 */
+.neo-page-header .header-brand-column.neo-header-brand-inline {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.neo-page-header .header-brand-column.neo-header-brand-inline .header-brand-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.logo-text-index {
+    font-size: clamp(1.05rem, 2.2vw, 1.55rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    background: linear-gradient(150deg, #052137, #15507B);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.logo-text-index span {
+    background: linear-gradient(145deg, #2A7DE1, #0CA3B0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 800;
+}
+
+.sys-subtitle-index {
+    font-size: clamp(0.82rem, 1.4vw, 1.05rem);
+    font-weight: 700;
+    color: #194D66;
+    margin-top: 3px;
+}
+
+.sys-tagline-index {
+    font-size: clamp(0.72rem, 0.95vw, 0.82rem);
+    color: #3C6478;
+    margin-top: 2px;
+}
+
+.neo-page-header-stack {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.neo-header-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    width: 100%;
+    padding-top: 14px;
+    margin-top: 4px;
+    border-top: 1px solid rgba(34, 116, 172, 0.1);
+}
+
+.neo-page-main-full {
+    width: 100%;
+}
+
+.neo-brand-text { min-width: 0; }
+
+.neo-title {
+    font-size: clamp(1.05rem, 2vw, 1.45rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    background: linear-gradient(150deg, #052137, #15507B);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.neo-title span {
+    background: linear-gradient(145deg, #2A7DE1, #0CA3B0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 800;
+}
+
+.neo-subtitle {
+    font-size: clamp(0.82rem, 1.3vw, 0.95rem);
+    font-weight: 600;
+    color: #194D66;
+    margin-top: 2px;
+}
+
+.neo-tagline {
+    font-size: clamp(0.72rem, 0.95vw, 0.82rem);
+    color: #3C6478;
+    margin-top: 2px;
+}
+
+.neo-page-title {
+    font-size: clamp(1.2rem, 2.5vw, 1.75rem);
+    font-weight: 700;
+    color: #1F6C9E;
+}
+
+.neo-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* ---- Cards & Panels ---- */
+.neo-card {
+    background: #ffffff;
+    border: 1px solid rgba(34, 116, 172, 0.1);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 10px 28px -16px rgba(20, 80, 120, 0.2);
+}
+
+.neo-card + .neo-card { margin-top: 20px; }
+
+/* ---- Buttons ---- */
+.neo-btn,
+button.neo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    text-decoration: none;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    white-space: nowrap;
+}
+
+.neo-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.neo-btn-primary {
+    background: linear-gradient(145deg, #2AA6E4, #1F6C9E);
+    color: #fff;
+    box-shadow: 0 6px 16px -6px rgba(31, 108, 158, 0.5);
+}
+
+.neo-btn-primary:hover:not(:disabled) {
+    filter: brightness(1.06);
+    transform: translateY(-1px);
+}
+
+.neo-btn-secondary {
+    background: #EEF4F9;
+    color: #1F6C9E;
+    border: 1px solid rgba(34, 116, 172, 0.2);
+}
+
+.neo-btn-secondary:hover:not(:disabled) {
+    background: #E0ECF5;
+}
+
+.neo-btn-success {
+    background: linear-gradient(145deg, #34c759, #27ae60);
+    color: #fff;
+}
+
+.neo-btn-success:hover:not(:disabled) { filter: brightness(1.06); }
+
+.neo-btn-warning {
+    background: linear-gradient(145deg, #f5a623, #e67e22);
+    color: #fff;
+}
+
+.neo-btn-danger {
+    background: linear-gradient(145deg, #e74c3c, #c0392b);
+    color: #fff;
+}
+
+.neo-btn-ghost {
+    background: transparent;
+    color: #3C6478;
+    border: 1px solid rgba(34, 116, 172, 0.15);
+}
+
+/* ---- Forms ---- */
+.neo-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.neo-form-group label {
+    font-weight: 600;
+    color: #194D66;
+    font-size: 0.95rem;
+}
+
+.neo-input, .neo-select, .neo-textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid rgba(34, 116, 172, 0.2);
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    color: #0C334E;
+    background: #FAFCFE;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.neo-input:focus, .neo-select:focus, .neo-textarea:focus {
+    outline: none;
+    border-color: #2AA6E4;
+    box-shadow: 0 0 0 3px rgba(42, 166, 228, 0.15);
+}
+
+.neo-hint { font-size: 0.82rem; color: #3C6478; }
+
+/* ---- Tables ---- */
+.neo-table-wrap { overflow-x: auto; border-radius: 16px; }
+
+.neo-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+}
+
+.neo-table th {
+    background: #EEF4F9;
+    color: #194D66;
+    font-weight: 700;
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 2px solid rgba(34, 116, 172, 0.12);
+}
+
+.neo-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(34, 116, 172, 0.08);
+    color: #0C334E;
+}
+
+.neo-table tr:hover td { background: rgba(42, 166, 228, 0.04); }
+
+/* ---- Tabs ---- */
+.neo-tabs {
+    display: flex;
+    gap: 6px;
+    background: rgba(31, 108, 158, 0.06);
+    border-radius: 14px;
+    padding: 5px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.neo-tab {
+    flex: 1;
+    min-width: 100px;
+    padding: 12px 18px;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 10px;
+    font-weight: 600;
+    color: #3C6478;
+    transition: all 0.2s;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.92rem;
+}
+
+.neo-tab.active {
+    background: #ffffff;
+    color: #1F6C9E;
+    box-shadow: 0 4px 12px -4px rgba(20, 80, 120, 0.2);
+}
+
+.neo-tab:hover:not(.active) { color: #1F6C9E; }
+
+/* ---- Tags / Badges ---- */
+.neo-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.neo-badge-normal { background: #EEF4F9; color: #1F6C9E; }
+.neo-badge-high { background: #FEF3E2; color: #b57b0f; }
+.neo-badge-urgent { background: #FDECEA; color: #c0392b; }
+.neo-badge-approved { background: #E8F8EF; color: #27ae60; }
+.neo-badge-pending { background: #FEF3E2; color: #e67e22; }
+.neo-badge-draft { background: #EEF4F9; color: #3C6478; }
+
+/* ---- Progress bars (inline) ---- */
+.neo-progress-wrap {
+    margin: 12px 0;
+}
+
+.neo-progress-track {
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(145deg, #E7EEF6, #DCE8F3);
+    overflow: hidden;
+}
+
+.neo-progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #2AA6E4, #1F6C9E);
+    transition: width 0.25s ease;
+    min-width: 0;
+}
+
+.neo-progress-label {
+    font-size: 0.85rem;
+    color: #3C6478;
+    margin-top: 6px;
+}
+
+/* ---- Transfer overlay ---- */
+.neo-transfer-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: rgba(12, 51, 78, 0.55);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.neo-transfer-panel {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 32px 36px;
+    min-width: 320px;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 24px 60px -12px rgba(20, 80, 120, 0.35);
+    text-align: center;
+}
+
+.neo-transfer-panel h3 {
+    font-size: 1.1rem;
+    color: #0C334E;
+    margin-bottom: 8px;
+}
+
+.neo-transfer-panel p {
+    font-size: 0.88rem;
+    color: #3C6478;
+    margin-bottom: 20px;
+}
+
+.neo-transfer-panel .neo-progress-track {
+    height: 14px;
+}
+
+.neo-transfer-panel .neo-progress-fill {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 8px;
+    font-size: 0.72rem;
+    color: #fff;
+    font-weight: 700;
+    min-width: 36px;
+}
+
+.neo-transfer-warning {
+    margin-top: 14px;
+    font-size: 0.82rem;
+    color: #e67e22;
+    font-weight: 600;
+}
+
+/* ---- Attachments ---- */
+.neo-attachment-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+
+.neo-attachment-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #F7FAFD;
+    border: 1px solid rgba(34, 116, 172, 0.1);
+    border-radius: 12px;
+}
+
+.neo-attachment-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.neo-attachment-name { font-weight: 500; word-break: break-all; }
+.neo-attachment-size { font-size: 0.82rem; color: #3C6478; }
+
+/* ---- Messages ---- */
+.neo-message {
+    padding: 12px 18px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    font-size: 0.92rem;
+    font-weight: 500;
+}
+
+.neo-message-success { background: #E8F8EF; color: #1e8449; border: 1px solid #a9dfbf; }
+.neo-message-error { background: #FDECEA; color: #c0392b; border: 1px solid #f5b7b1; }
+.neo-message-info { background: #EEF4F9; color: #1F6C9E; border: 1px solid #aed6f1; }
+
+/* ---- Index page overrides ---- */
+.neo-systm-home .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
+.neo-systm-home .header {
+    background: #ffffff;
+    border: 1px solid rgba(34, 116, 172, 0.12);
+    box-shadow: 0 14px 30px -18px rgba(20, 80, 120, 0.18);
+    border-radius: 20px;
+}
+.neo-systm-home .header-top { align-items: stretch; gap: 0; }
+.neo-systm-home .header-brand-column {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+    flex: 1; min-width: 0; width: 100%;
+}
+.neo-systm-home .brand-logo-top-index {
+    height: 26px; width: auto; max-width: 220px; object-fit: contain;
+    flex-shrink: 0; display: block;
+}
+.neo-systm-home .header-brand-main {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 1.25rem; width: 100%;
+}
+.neo-systm-home .logo-text-index {
+    font-size: clamp(1.05rem, 2.2vw, 1.55rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.15;
+    background: linear-gradient(150deg, #052137, #15507B);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.neo-systm-home .logo-text-index span {
+    background: linear-gradient(145deg, #2A7DE1, #0CA3B0);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;
+}
+.neo-systm-home .sys-subtitle-index { font-size: clamp(0.82rem, 1.4vw, 1.05rem); font-weight: 700; color: #194D66; margin-top: 3px; }
+.neo-systm-home .sys-tagline-index { font-size: clamp(0.72rem, 0.95vw, 0.82rem); color: #3C6478; margin-top: 2px; }
+.neo-systm-home .card, .neo-systm-home .quick-links-section,
+.neo-systm-home .announcement-sidebar, .neo-systm-home .ai-sidebar {
+    border: 1px solid rgba(34, 116, 172, 0.1);
+    box-shadow: 0 10px 28px -16px rgba(20, 80, 120, 0.2);
+}
+.neo-systm-home .card-icon { background: rgba(31, 108, 158, 0.08); color: #1F6C9E; }
+.neo-systm-home .footer { color: #3C6478; }
+
+/* ---- Sidebar layout (announcement list) ---- */
+.neo-layout-with-sidebar {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.neo-main-col { flex: 1; min-width: 0; }
+.neo-side-col {
+    width: 280px;
+    flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+    .neo-layout-with-sidebar { flex-direction: column; }
+    .neo-side-col { width: 100%; }
+    .neo-page-header { flex-direction: column; align-items: flex-start; }
+    .neo-systm-home .header-brand-main { flex-direction: column; align-items: flex-start; gap: 12px; }
+}
+
+/* ---- 旧版公告/管理页深色主题覆盖 ---- */
+body.neo-systm-home .container,
+body.neo-systm-home .main-content,
+body.neo-systm-home .sidebar,
+body.neo-systm-home .panel,
+body.neo-systm-home .content-panel {
+    background: #ffffff !important;
+    color: #0C334E !important;
+    border: 1px solid rgba(34, 116, 172, 0.1) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 10px 28px -16px rgba(20, 80, 120, 0.2) !important;
+}
+
+body.neo-systm-home .header h1,
+body.neo-systm-home h1, body.neo-systm-home h2, body.neo-systm-home h3 {
+    color: #1F6C9E !important;
+}
+
+body.neo-systm-home label { color: #194D66 !important; }
+
+body.neo-systm-home .btn,
+body.neo-systm-home .btn-primary {
+    background: linear-gradient(145deg, #2AA6E4, #1F6C9E) !important;
+    color: #fff !important;
+    border-radius: 12px !important;
+    border: none !important;
+}
+
+body.neo-systm-home .btn-back { background: #EEF4F9 !important; color: #1F6C9E !important; border: 1px solid rgba(34,116,172,0.2) !important; }
+body.neo-systm-home .btn-publish, body.neo-systm-home .btn-submit, body.neo-systm-home .btn-save { border-radius: 12px !important; }
+body.neo-systm-home .btn-publish, body.neo-systm-home .btn-submit { background: linear-gradient(145deg, #34c759, #27ae60) !important; color: #fff !important; }
+body.neo-systm-home .btn-save { background: linear-gradient(145deg, #f5a623, #e67e22) !important; color: #fff !important; }
+body.neo-systm-home .btn-review { background: linear-gradient(145deg, #f5a623, #e67e22) !important; color: #fff !important; }
+body.neo-systm-home .btn-edit { background: linear-gradient(145deg, #f5a623, #e67e22) !important; color: #fff !important; }
+body.neo-systm-home .btn-download { background: linear-gradient(145deg, #2AA6E4, #1F6C9E) !important; color: #fff !important; }
+
+body.neo-systm-home input[type="text"],
+body.neo-systm-home input[type="search"],
+body.neo-systm-home input[type="email"],
+body.neo-systm-home input[type="password"],
+body.neo-systm-home select,
+body.neo-systm-home textarea {
+    background: #FAFCFE !important;
+    color: #0C334E !important;
+    border: 1px solid rgba(34, 116, 172, 0.2) !important;
+    border-radius: 12px !important;
+}
+
+body.neo-systm-home .rich-editor,
+body.neo-systm-home #content {
+    background: #FAFCFE !important;
+    color: #0C334E !important;
+    border: 1px solid rgba(34, 116, 172, 0.2) !important;
+    border-radius: 12px !important;
+}
+
+body.neo-systm-home .editor-toolbar,
+body.neo-systm-home .tool-btn {
+    background: #EEF4F9 !important;
+    color: #194D66 !important;
+    border-color: rgba(34,116,172,0.15) !important;
+}
+
+body.neo-systm-home .bulletin-tabs,
+body.neo-systm-home .neo-tabs {
+    background: rgba(31, 108, 158, 0.06) !important;
+}
+
+body.neo-systm-home .tab.active {
+    background: #ffffff !important;
+    color: #1F6C9E !important;
+}
+
+body.neo-systm-home .tab { color: #3C6478 !important; }
+
+body.neo-systm-home .announcement-item,
+body.neo-systm-home .attachment-item,
+body.neo-systm-home .list-item,
+body.neo-systm-home .review-item {
+    background: #F7FAFD !important;
+    border: 1px solid rgba(34, 116, 172, 0.1) !important;
+    color: #0C334E !important;
+}
+
+body.neo-systm-home .announcement-title,
+body.neo-systm-home .announcement-content,
+body.neo-systm-home .announcement-content p,
+body.neo-systm-home .announcement-content li,
+body.neo-systm-home .announcement-content span,
+body.neo-systm-home .announcement-content td,
+body.neo-systm-home .content-body,
+body.neo-systm-home .content-body p,
+body.neo-systm-home .content-body li,
+body.neo-systm-home .content-body span,
+body.neo-systm-home .content-body td,
+body.neo-systm-home .content-body th {
+    color: #000000 !important;
+}
+
+body.neo-systm-home .announcement-meta,
+body.neo-systm-home .announcement-meta span,
+body.neo-systm-home .meta-label,
+body.neo-systm-home .meta-value {
+    color: #000000 !important;
+}
+
+body.neo-systm-home .meta-label {
+    font-weight: 600;
+}
+
+body.neo-systm-home .meta-value.priority-tag {
+    color: #000000 !important;
+}
+
+body.neo-systm-home .tag,
+body.neo-systm-home .pending-title,
+body.neo-systm-home .pending-meta,
+body.neo-systm-home .attachment-size,
+body.neo-systm-home .stat-label,
+body.neo-systm-home .sub-board-label {
+    color: #000000 !important;
+}
+
+body.neo-systm-home .search-input,
+body.neo-systm-home .neo-search-input {
+    background: #FAFCFE !important;
+    color: #000000 !important;
+    border: 1px solid rgba(34, 116, 172, 0.2) !important;
+}
+
+body.neo-systm-home .search-input::placeholder,
+body.neo-systm-home .neo-search-input::placeholder {
+    color: #666666 !important;
+}
+
+body.neo-systm-home .loading {
+    color: #1F6C9E !important;
+}
+
+body.neo-systm-home .attachments h3,
+body.neo-systm-home .versions-section h3,
+body.neo-systm-home .version-title,
+body.neo-systm-home .version-meta,
+body.neo-systm-home .version-content,
+body.neo-systm-home .review-title,
+body.neo-systm-home .review-meta,
+body.neo-systm-home .review-content,
+body.neo-systm-home .review-item-title,
+body.neo-systm-home .review-item-meta,
+body.neo-systm-home .review-item-content,
+body.neo-systm-home .no-reviews,
+body.neo-systm-home .page-info,
+body.neo-systm-home #pagination-container,
+body.neo-systm-home #pagination-container span {
+    color: #000000 !important;
+}
+
+body.neo-systm-home #pagination-container {
+    background: transparent;
+}
+
+body.neo-systm-home small {
+    color: #333333 !important;
+}
+
+body.neo-systm-home .priority-tag {
+    color: #000000 !important;
+}
+
+body.neo-systm-home .announcement-meta .meta-item {
+    background: transparent;
+}
+
+body.neo-systm-home table th { background: #EEF4F9 !important; color: #194D66 !important; }
+body.neo-systm-home table td { color: #0C334E !important; border-color: rgba(34,116,172,0.08) !important; }
+body.neo-systm-home table tr:hover td { background: rgba(42,166,228,0.04) !important; }
+
+body.neo-systm-home .message.success,
+body.neo-systm-home .message-success { background: #E8F8EF !important; color: #1e8449 !important; }
+body.neo-systm-home .message.error,
+body.neo-systm-home .message-error { background: #FDECEA !important; color: #c0392b !important; }
+
+body.neo-systm-home .progress-bar-container,
+body.neo-systm-home .neo-progress-track {
+    background: linear-gradient(145deg, #E7EEF6, #DCE8F3) !important;
+}
+
+body.neo-systm-home .progress-bar,
+body.neo-systm-home .neo-progress-fill {
+    background: linear-gradient(90deg, #2AA6E4, #1F6C9E) !important;
+    color: #fff !important;
+}
+
+body.neo-systm-home .modal-content,
+body.neo-systm-home .modal-body {
+    background: #ffffff !important;
+    color: #0C334E !important;
+}
+
+body.neo-systm-home .preview-section,
+body.neo-systm-home .preview-announcement {
+    background: #F7FAFD !important;
+    color: #0C334E !important;
+    border: 1px solid rgba(34,116,172,0.1) !important;
+    border-radius: 16px !important;
+}
+
+body.neo-systm-home small { color: #3C6478 !important; }
+body.neo-systm-home .header { border-bottom-color: rgba(34,116,172,0.12) !important; }

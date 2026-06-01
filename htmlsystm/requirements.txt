@@ -1,0 +1,33 @@
+# 硬件研发部管理系统依赖包
+# Python版本要求: >= 3.6
+
+# Excel文件处理
+openpyxl==3.0.10
+
+# 密码加密
+bcrypt>=4.0.0; python_version >= '3.6'
+
+# 图形验证码
+Pillow>=10.0.0
+
+# HTTP请求库（用于钉钉API调用等）
+requests>=2.25.0
+
+# SSL警告禁用（通常随requests一起安装）
+urllib3>=1.26.0
+
+# WSGI服务器（用于Gunicorn部署）
+gunicorn>=20.1.0
+
+# MySQL驱动（用于数据库迁移）
+pymysql>=1.0.0
+# MySQL 8 默认 caching_sha2_password 时，PyMySQL 连接需要此包（含脚本 view_and_reset_admin_password.py）
+cryptography>=41.0.0
+
+# Gunicorn 动态 worker 计算（gunicorn_config.py）
+psutil>=5.9.0
+
+# 公告富文本 XSS 净化
+bleach>=6.0.0
+# 或者使用官方驱动（二选一）
+# mysql-connector-python>=8.0.0

@@ -1,0 +1,34 @@
+# 整机 Docker 栈开机自启（含 stack-gateway）
+# 由 migration/install-boot-service.sh 安装到 /etc/systemd/system/docker-stack.service
+# 启动逻辑在 /usr/local/lib/docker-stack/boot-stack.sh（不放在共享目录，避免挂载前无法执行）
+
+[Unit]
+Description=Hardware R&D Docker stack (compose up -d)
+Documentation=file:///media/sf_awei/docker版本/运维手册.md
+After=docker.service network-online.target local-fs.target
+Wants=docker.service network-online.target
+# VirtualBox 共享目录：install 脚本会写入 media-sf_awei.mount（Wants，非 Requires）
+# After=media-sf_awei.mount vboxadd-service.service
+# Wants=media-sf_awei.mount vboxadd-service.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# 运行 compose 的用户须能访问 docker.sock（docker 组）及 vboxsf 共享目录
+User=zzw
+Group=docker
+SupplementaryGroups=docker vboxsf
+Environment=HOME=/home/zzw
+Environment=STACK_DIR=/media/sf_awei/docker版本
+Environment=MOUNT_POINT=/media/sf_awei
+Environment=COMPOSE_PROJECT_NAME=docker
+
+ExecStartPre=/usr/local/lib/docker-stack/boot-stack.sh wait-ready
+# 带命令行进度条：更新/建表/健康检查完成后才解除登录维护门
+ExecStart=/usr/local/lib/docker-stack/stack-startup.sh
+ExecStartPost=/usr/local/lib/docker-stack/boot-stack.sh ensure-gateway
+
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target

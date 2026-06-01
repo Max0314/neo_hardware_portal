@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# 数据文件
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# 日志文件
+*.log
+logs/
+
+# 环境变量和配置文件（包含敏感信息）
+.mysql.env
+.env
+*.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 备份文件
+*.backup
+*.corrupted
+*.bak
+
+# 临时文件
+*.tmp
+*.temp
+.cache/
+
+# 锁文件
+*.lock
+

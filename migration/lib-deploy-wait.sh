@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# 部署/启动流水线公共函数：startup_lock、容器 health 等待、HTTPS 探活
+# 被 stack-startup.sh 与 deploy.sh source
+
+deploy_wait_init() {
+  PROJECT="${COMPOSE_PROJECT_NAME:-docker}"
+  VOLUME_DATA="${PROJECT}_htmlsystm_data"
+  PORT="${GATEWAY_PUBLISH_PORT:-8000}"
+}
+
+volume_write_lock() {
+  local pct="$1"
+  local msg="$2"
+  if ! docker volume inspect "$VOLUME_DATA" >/dev/null 2>&1; then
+    return 0
+  fi
+  local tmp
+  tmp="$(mktemp)"
+  MSG="$msg" PCT="$pct" python3 -c "
+import json, os
+p = int(os.environ.get('PCT', 0))
+print(json.dumps({'percent': p, 'message': os.environ.get('MSG', ''), 'ready': False}, ensure_ascii=False))
+" >"$tmp" 2>/dev/null || echo '{"percent":0,"message":"启动中","ready":false}' >"$tmp"
+  docker run --rm \
+    -v "${VOLUME_DATA}:/app/data" \
+    -v "${tmp}:/tmp/lock.json:ro" \
+    alpine:3.20 \
+    sh -c 'mkdir -p /app/data && cp /tmp/lock.json /app/data/.startup_lock.json && rm -f /app/data/.startup_ready' \
+    >/dev/null 2>&1 || true
+  rm -f "$tmp"
+}
+
+volume_clear_lock() {
+  if ! docker volume inspect "$VOLUME_DATA" >/dev/null 2>&1; then
+    return 0
+  fi
+  docker run --rm -v "${VOLUME_DATA}:/app/data" alpine:3.20 \
+    sh -c "rm -f /app/data/.startup_lock.json && date +%s > /app/data/.startup_ready" \
+    >/dev/null 2>&1 || true
+}
+
+sync_lock_to_container() {
+  local pct="$1"
+  local msg="$2"
+  local py_msg
+  py_msg="${msg//\'/\\\'}"
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^stack-htmlsystm$'; then
+    docker exec stack-htmlsystm python -c "
+from server.startup_gate import write_lock
+write_lock(${pct}, '${py_msg}')
+" 2>/dev/null || true
+  else
+    volume_write_lock "$pct" "$msg"
+  fi
+}
+
+clear_startup_lock_all() {
+  volume_clear_lock
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^stack-htmlsystm$'; then
+    docker exec stack-htmlsystm python -c \
+      "from server.startup_gate import clear_lock_and_mark_ready; clear_lock_and_mark_ready()" \
+      2>/dev/null || true
+  fi
+}
+
+wait_container_healthy() {
+  local name="$1"
+  local max="${2:-60}"
+  local i hs
+  for i in $(seq 1 "$max"); do
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$name"; then
+      hs="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}running{{end}}' "$name" 2>/dev/null || echo missing)"
+      if [[ "$hs" == "healthy" || "$hs" == "running" ]]; then
+        return 0
+      fi
+    fi
+    sleep 2
+  done
+  return 1
+}
+
+_curl_health_ok() {
+  local url="$1"
+  curl -sk "$url" 2>/dev/null | grep -qF '"ok"'
+}
+
+wait_https_health() {
+  local max="${1:-15}"
+  local i
+  for i in $(seq 1 "$max"); do
+    if _curl_health_ok "https://127.0.0.1:${PORT}/api/health"; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+
+wait_https_db_health() {
+  local max="${1:-10}"
+  local i
+  for i in $(seq 1 "$max"); do
+    if _curl_health_ok "https://127.0.0.1:${PORT}/api/health?db=1"; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+
+# 使用 stack-mysql 容器环境变量测试应用账号能否连库
+mysql_app_can_connect() {
+  docker ps --format '{{.Names}}' 2>/dev/null | grep -qx stack-mysql || return 1
+  docker exec stack-mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SELECT 1 AS ok" 2>/dev/null' \
+    | grep -q ok
+}
+
+# .env 改密后数据卷仍为旧密码时，自动对齐（不删卷）
+ensure_mysql_password_synced() {
+  local root="${1:-.}"
+  local _log
+  if declare -f progress_log >/dev/null 2>&1; then
+    _log() { progress_log "$@"; }
+  else
+    _log() { echo "$@"; }
+  fi
+  if mysql_app_can_connect; then
+    return 0
+  fi
+  _log "MySQL 卷内密码与 .env 不一致，自动执行 reset-mysql-password.sh（不删数据）..."
+  if bash "${root}/migration/reset-mysql-password.sh" >>/var/log/docker-stack-deploy.log 2>&1; then
+    _log "MySQL 密码已与 .env 对齐"
+    docker compose restart htmlsystm backend >>/var/log/docker-stack-deploy.log 2>&1 || true
+    wait_container_healthy stack-mysql 45 || return 1
+    wait_container_healthy stack-htmlsystm 90 || true
+    wait_container_healthy stack-neo-backend 90 || true
+    mysql_app_can_connect
+    return $?
+  fi
+  _log "警告: MySQL 密码自动对齐失败，请手动 bash migration/reset-mysql-password.sh"
+  return 1
+}
+
+deploy_on_exit_clear_lock() {
+  clear_startup_lock_all
+}

@@ -1,0 +1,20 @@
+# 由 migration/install-boot-service.sh 安装（INSTALL_LOG_COLLECTOR=1）
+# 每分钟采集 Docker 栈快照到 STACK_DIR/log/
+
+[Unit]
+Description=Hardware R&D Docker stack log collector (every minute)
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+User=zzw
+Group=docker
+SupplementaryGroups=docker vboxsf
+Environment=HOME=/home/zzw
+Environment=STACK_DIR=/media/sf_awei/docker版本
+Environment=STACK_LOG_DIR=/media/sf_awei/docker版本/log
+ExecStart=/usr/local/lib/docker-stack/collect-stack-logs.sh
+
+[Install]
+WantedBy=multi-user.target

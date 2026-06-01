@@ -1,0 +1,43 @@
+# 环境变量与密钥（切勿提交）
+.env
+.env.local
+.env.*.local
+migration/backups/
+**/admin_credentials.json
+
+# TLS 私钥
+gateway/certs/
+
+# 运行时数据与日志
+log/*
+!log/.gitkeep
+htmlsystm/logs/
+htmlsystm/data/
+htmlsystm/uploads/
+AI聊天室/.vault_master
+AI聊天室/chatroom.db
+AI聊天室/dashboard_metrics.db
+AI聊天室/chroma_db/
+AI聊天室/knowledge_bases/
+AI聊天室/knowledge_recycle_bin/
+AI聊天室/netlist_results/
+AI聊天室/saved_conversations/
+migration_backup_*/
+htmlsystm_data_full.tar.gz
+_web_vuln_extract.txt
+long_text_*.txt
+ervice -b --no-pager
+
+# Node / Python 缓存
+node_modules/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 编辑器与系统文件
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

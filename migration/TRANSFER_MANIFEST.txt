@@ -1,0 +1,32 @@
+=== Docker 离线迁移 — 拷贝清单 ===
+2026-05-29T17:33:01+08:00
+
+【必拷 — 项目目录】
+  整个目录: /media/sf_awei/docker版本
+  必须含: docker-compose.yml, gateway/, htmlsystm/, AI聊天室/, .env
+  可省略: node_modules/（目标机离线 up 时用已 load 镜像，无需 build）
+
+【必拷 — migration 脚本】
+  /media/sf_awei/docker版本/migration/
+
+【必拷 — 备份目录】
+  /media/sf_awei/docker版本/migration_backup_20260529_173201/
+    [有] migration_state.txt
+    [有] mysql_data.tar.gz
+    [有] htmlsystm_data.tar.gz
+    [有] htmlsystm_uploads.tar.gz
+    [有] ai_chatroom_data.tar.gz
+    [有] stack_images.tar
+    [有] images_list.txt
+
+【目标机可选】
+  Docker / Compose 离线 deb 或 compose 插件二进制
+  见 运维手册.md 第 2.1 节
+
+【目标机执行顺序】
+  1. 安装 Docker + Compose
+  2. 放置项目到目标路径（建议与源机相同的 COMPOSE_PROJECT_NAME）
+  3. ./migration/05-target-load-images.sh <备份目录>/stack_images.tar
+  4. ./migration/06-target-restore-volumes.sh <备份目录>
+  5. 编辑 .env 中 PUBLIC_BASE_URL 为新 IP
+  6. ./migration/07-target-up-verify.sh

@@ -1,0 +1,234 @@
+# 单机统一部署：MySQL + 硬件研发部管理系统（htmlsystm）+ NEO（AI聊天室）
+# 用法（在仓库根目录「docker版本」下）：
+#   1. cp .env.example .env 并填写 MYSQL_ROOT_PASSWORD、MYSQL_PASSWORD、API 密钥等
+#   2. bash migration/deploy.sh          # 推荐：build + 健康/DB 检查 + 开放登录
+#      bash migration/deploy.sh --no-build   # 仅重启，不重建镜像
+#   3. 浏览器访问 https://服务器IP:8000 — 管理系统在 / ，NEO 在 /neo/（端口见 GATEWAY_PUBLISH_PORT）
+#
+# 说明：若仅部署 AI 聊天室，仍可使用子目录 AI聊天室/docker-compose.yml
+
+# 北京时间：TZ 环境变量 + 挂载宿主机 localtime（宿主机须先执行 migration/setup-timezone.sh）
+
+x-stack-autoheal-labels: &stack_autoheal_labels
+  stack.autoheal: "true"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: stack-mysql
+    restart: unless-stopped
+    labels:
+      <<: *stack_autoheal_labels
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 中设置 MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-htmlsystm}
+      MYSQL_USER: ${MYSQL_USER:-htmlsystm_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 中设置 MYSQL_PASSWORD}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-time-zone=+08:00
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  htmlsystm:
+    build:
+      context: .
+      dockerfile: htmlsystm/Dockerfile
+    container_name: stack-htmlsystm
+    restart: unless-stopped
+    labels:
+      <<: *stack_autoheal_labels
+    env_file:
+      - .env
+    expose:
+      - "8000"
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_USER: ${MYSQL_USER:-htmlsystm_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-htmlsystm}
+      SERVER_PORT: "8000"
+      USE_MONITOR: "0"
+      NEO_INTERNAL_SECRET: ${NEO_INTERNAL_SECRET:?请在 .env 中设置 NEO_INTERNAL_SECRET}
+      NEO_INTERNAL_URL: http://backend:8000
+      SUPER_ADMIN_USERNAME: ${SUPER_ADMIN_USERNAME:-zzw}
+      DINGTALK_CLIENT_SECRET: ${DINGTALK_CLIENT_SECRET:-}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      # 知识库 ID 勿在此写 ${VAR:-}：未在 .env 配置时会注入空字符串，覆盖 config.py 默认值导致钉钉 API 404
+      # 需要覆盖时在 .env 中设置 DINGTALK_WORKSPACE_ID / DINGTALK_DOC_PARENT_NODE_ID / DINGTALK_DOC_OPERATOR_UNIONID
+      # 避免 master 阻塞钉钉全量同步导致 healthcheck 超时（RK3568 等）
+      SKIP_DINGTALK_SYNC_ON_START: ${SKIP_DINGTALK_SYNC_ON_START:-1}
+      # 启动后在后台批量抓取快捷链接图标（后台线程，不阻塞健康检查）；设为 1 可跳过
+      SKIP_QUICK_LINK_ICON_FETCH_ON_START: ${SKIP_QUICK_LINK_ICON_FETCH_ON_START:-1}
+      # 启动批量抓取时每条链接之间的间隔（秒）
+      QUICK_LINK_ICON_FETCH_INTERVAL_SEC: ${QUICK_LINK_ICON_FETCH_INTERVAL_SEC:-1.5}
+      # worker 就绪后再延迟多少秒开始抓取（避免与首屏请求抢资源）
+      QUICK_LINK_ICON_FETCH_DELAY_SEC: ${QUICK_LINK_ICON_FETCH_DELAY_SEC:-15}
+      # 单次 HTTP 超时（秒）；内网失败时越小越快结束批量任务
+      QUICK_LINK_ICON_FETCH_TIMEOUT: ${QUICK_LINK_ICON_FETCH_TIMEOUT:-3}
+      PYTHONDONTWRITEBYTECODE: "1"
+      # 便于 docker logs 看到启动过程（默认 WARNING 时日志几乎为空）
+      CONSOLE_LOG_LEVEL: INFO
+      HTMLSYSTM_GUNICORN_WORKERS: ${HTMLSYSTM_GUNICORN_WORKERS:-2}
+      HTMLSYSTM_GUNICORN_THREADS: ${HTMLSYSTM_GUNICORN_THREADS:-20}
+      AUTH_SESSION_SECRET: ${AUTH_SESSION_SECRET:-}
+      MAX_SESSIONS_PER_USER: ${MAX_SESSIONS_PER_USER:-10}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - htmlsystm_data:/app/data
+      - htmlsystm_uploads:/app/uploads
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5)",
+        ]
+      interval: 10s
+      timeout: 8s
+      retries: 12
+      start_period: 90s
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: ./AI聊天室
+      dockerfile: Dockerfile.backend
+    container_name: stack-neo-backend
+    restart: unless-stopped
+    labels:
+      <<: *stack_autoheal_labels
+    env_file:
+      - .env
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      CHATROOM_DATA_DIR: /data
+      HTMLSYSTM_INTERNAL_URL: http://htmlsystm:8000
+      HTMLSYSTM_AUTH_TIMEOUT_SEC: ${HTMLSYSTM_AUTH_TIMEOUT_SEC:-45}
+      NEO_INTERNAL_SECRET: ${NEO_INTERNAL_SECRET:?请在 .env 中设置 NEO_INTERNAL_SECRET}
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_USER: ${MYSQL_USER:-htmlsystm_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-htmlsystm}
+      # 嵌入式/低内存设备建议关闭 Chroma，避免启动失败
+      MEMORY_VECTOR_BACKEND: ${MEMORY_VECTOR_BACKEND:-none}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ai_chatroom_data:/data
+    expose:
+      - "8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/live', timeout=8)",
+        ]
+      interval: 15s
+      timeout: 12s
+      retries: 10
+      start_period: 120s
+    depends_on:
+      mysql:
+        condition: service_healthy
+      htmlsystm:
+        condition: service_healthy
+
+  web:
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    build:
+      context: ./AI聊天室
+      dockerfile: Dockerfile.web
+      args:
+        # 国内网络慢时可加速 npm ci；海外可设为空或 registry.npmjs.org
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
+    container_name: stack-neo-web
+    restart: unless-stopped
+    labels:
+      <<: *stack_autoheal_labels
+    expose:
+      - "80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:80/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  gateway:
+    image: nginx:alpine
+    container_name: stack-gateway
+    restart: unless-stopped
+    labels:
+      <<: *stack_autoheal_labels
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+    ports:
+      - "${GATEWAY_PUBLISH_PORT:-8000}:443"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "-q",
+          "-O",
+          "/dev/null",
+          "--no-check-certificate",
+          "https://127.0.0.1/gateway-health",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # 勿挂到 conf.d/：会被主配置在 http 层二次加载，导致 location 指令报错
+      - ./gateway/proxy_locations.conf:/etc/nginx/proxy_locations.conf:ro
+      - ./gateway/certs:/etc/nginx/certs:ro
+    depends_on:
+      htmlsystm:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+
+  # 默认不启动（需外网拉镜像）。启用: docker compose --profile autoheal up -d autoheal
+  autoheal:
+    profiles: ["autoheal"]
+    image: willfarrell/autoheal:latest
+    container_name: stack-autoheal
+    restart: always
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: stack.autoheal
+      AUTOHEAL_INTERVAL: ${AUTOHEAL_INTERVAL:-30}
+      AUTOHEAL_START_PERIOD: ${AUTOHEAL_START_PERIOD:-300}
+      AUTOHEAL_DEFAULT_STOP_TIMEOUT: ${AUTOHEAL_DEFAULT_STOP_TIMEOUT:-10}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  mysql_data:
+  ai_chatroom_data:
+  htmlsystm_data:
+  htmlsystm_uploads:

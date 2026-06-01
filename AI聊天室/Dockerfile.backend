@@ -1,0 +1,28 @@
+FROM debian:bookworm-slim AS tzlayer
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+FROM python:3.12-slim-bookworm
+
+COPY --from=tzlayer /usr/share/zoneinfo /usr/share/zoneinfo
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+WORKDIR /app
+
+# 不在镜像内 apt-get：部分嵌入式内核缺少 mqueue，RUN 阶段容器会报
+# "mount mqueue:/dev/mqueue ... no such device"。所列 Python 依赖在 arm64 通常有 wheel。
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+ENV PYTHONUNBUFFERED=1
+ENV CHATROOM_DATA_DIR=/data
+
+RUN mkdir -p /data
+
+EXPOSE 8000
+
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

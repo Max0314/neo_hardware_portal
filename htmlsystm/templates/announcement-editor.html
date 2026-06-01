@@ -1,0 +1,2466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发布公告 - 硬件研发部管理系统</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/neo-systm.css" />
+    <script src="/js/transfer-utils.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #1a252f, #2c3e50);
+            color: #ecf0f1;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(26, 37, 47, 0.8);
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #3498db;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .header h1 {
+            color: #3498db;
+            font-size: 2.2rem;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        .btn:disabled {
+            background: #7f8c8d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-back {
+            background: #34495e;
+        }
+        .btn-back:hover {
+            background: #2c3e50;
+        }
+        .btn-submit {
+            background: #27ae60;
+        }
+        .btn-submit:hover {
+            background: #219653;
+        }
+        .btn-save {
+            background: #f39c12;
+        }
+        .btn-save:hover {
+            background: #e67e22;
+        }
+        
+        .editor-form {
+            display: grid;
+            gap: 25px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        label {
+            font-weight: bold;
+            color: #3498db;
+            font-size: 1.1rem;
+        }
+        input, select {
+            padding: 12px 15px;
+            border: 2px solid #34495e;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ecf0f1;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        select option {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 10px;
+        }
+        select option:hover {
+            background: #3498db;
+        }
+        select option:checked {
+            background: #3498db;
+            color: #fff;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .attachments {
+            margin-top: 20px;
+        }
+        .attachment-list {
+            margin-top: 10px;
+        }
+        .attachment-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            margin-bottom: 8px;
+        }
+        .attachment-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+        .remove-attachment {
+            color: #e74c3c;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 5px;
+        }
+        .remove-attachment:hover {
+            background: rgba(231, 76, 60, 0.2);
+            border-radius: 3px;
+        }
+        .file-input {
+            display: none;
+        }
+        .btn-upload {
+            background: #9b59b6;
+        }
+        .btn-upload:hover {
+            background: #8e44ad;
+        }
+        .editor-toolbar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 0;
+            flex-wrap: wrap;
+            padding: 12px 15px;
+            background: rgba(52, 73, 94, 0.6);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+        }
+        .tool-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ecf0f1;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+        .tool-btn:hover {
+            background: rgba(52, 152, 219, 0.3);
+            border-color: #3498db;
+            transform: translateY(-1px);
+        }
+        .tool-btn.active {
+            background: rgba(52, 152, 219, 0.5);
+            border-color: #3498db;
+            color: #fff;
+        }
+        .color-picker-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        .color-picker-btn {
+            background: #34495e;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .color-picker-btn:hover {
+            background: #3498db;
+        }
+        .color-picker {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 1000;
+            background: rgba(26, 37, 47, 0.95);
+            border: 2px solid #3498db;
+            border-radius: 5px;
+            padding: 15px;
+            display: none;
+            flex-wrap: wrap;
+            gap: 10px;
+            width: 280px;
+            margin-top: 5px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+        .color-picker.show {
+            display: flex;
+        }
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 5px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .color-option:hover {
+            border-color: #3498db;
+            transform: scale(1.1);
+        }
+        .highlight-btn {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            font-weight: bold;
+        }
+        .highlight-btn:hover {
+            background: linear-gradient(135deg, #e67e22, #d35400);
+        }
+        .rich-editor {
+            min-height: 400px;
+            padding: 20px;
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #2c3e50;
+            font-size: 15px;
+            line-height: 1.7;
+            overflow-y: auto;
+            outline: none;
+            overflow-y: auto;
+            outline: none;
+        }
+        .rich-editor:focus {
+            border-color: #3498db;
+        }
+        .rich-editor img {
+            max-width: 100%;
+            height: auto;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .rich-editor table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        .rich-editor table td,
+        .rich-editor table th {
+            border: 1px solid #3498db;
+            padding: 8px;
+        }
+        .rich-editor table th {
+            background: rgba(52, 152, 219, 0.3);
+        }
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #34495e;
+        }
+        .message {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .message.success {
+            background: rgba(39, 174, 96, 0.2);
+            border: 1px solid #27ae60;
+            color: #2ecc71;
+        }
+        .message.error {
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+        }
+        .upload-progress {
+            margin-top: 10px;
+            display: none;
+        }
+        .progress-bar-container {
+            width: 100%;
+            height: 20px;
+            background: rgba(52, 73, 94, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8rem;
+        }
+        .upload-status {
+            margin-top: 5px;
+            font-size: 0.9rem;
+            color: #95a5a6;
+        }
+        .upload-status.uploading {
+            color: #3498db;
+        }
+        .upload-status.success {
+            color: #2ecc71;
+        }
+        .upload-status.error {
+            color: #e74c3c;
+        }
+        .submit-progress {
+            margin-top: 20px;
+            display: none;
+        }
+        .submit-progress .progress-bar-container {
+            width: 100%;
+            height: 25px;
+            background: rgba(52, 73, 94, 0.5);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        .submit-progress .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #27ae60, #219653);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        .submit-status {
+            margin-top: 10px;
+            font-size: 1rem;
+            color: #95a5a6;
+            text-align: center;
+        }
+        .submit-status.submitting {
+            color: #3498db;
+        }
+        .submit-status.success {
+            color: #2ecc71;
+        }
+        .submit-status.error {
+            color: #e74c3c;
+        }
+        
+        /* 预览区域样式 */
+        .preview-section {
+            margin-top: 30px;
+            background: rgba(26, 37, 47, 0.6);
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid rgba(52, 152, 219, 0.3);
+        }
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(52, 152, 219, 0.3);
+        }
+        .preview-header h3 {
+            color: #3498db;
+            font-size: 1.3rem;
+            margin: 0;
+        }
+        .btn-toggle-preview {
+            background: rgba(52, 152, 219, 0.3);
+            color: #3498db;
+            padding: 8px 16px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .btn-toggle-preview:hover {
+            background: rgba(52, 152, 219, 0.5);
+        }
+        .preview-content {
+            margin-top: 15px;
+        }
+        .preview-wrapper {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 6px;
+            padding: 25px;
+            min-height: 200px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .preview-announcement {
+            color: #2c3e50;
+        }
+        .preview-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e8e8e8;
+        }
+        .preview-meta {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e8e8e8;
+        }
+        .preview-meta span {
+            margin-right: 15px;
+        }
+        .preview-body {
+            font-size: 15px;
+            line-height: 1.8;
+            color: #333;
+        }
+        .preview-body h1, .preview-body h2, .preview-body h3 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        .preview-body h1 {
+            font-size: 2em;
+            border-bottom: 1px solid #eaecef;
+            padding-bottom: 0.3em;
+        }
+        .preview-body h2 {
+            font-size: 1.5em;
+            border-bottom: 1px solid #eaecef;
+            padding-bottom: 0.3em;
+        }
+        .preview-body p {
+            margin-bottom: 16px;
+        }
+        .preview-body ul, .preview-body ol {
+            margin-bottom: 16px;
+            padding-left: 2em;
+        }
+        .preview-body blockquote {
+            margin: 0 0 16px;
+            padding: 0 1em;
+            color: #6a737d;
+            border-left: 0.25em solid #dfe2e5;
+        }
+        .preview-body img {
+            max-width: 100%;
+            height: auto;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .preview-body table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        .preview-body table td,
+        .preview-body table th {
+            border: 1px solid #ddd;
+            padding: 10px 15px;
+            text-align: left;
+        }
+        .preview-body table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        .preview-body code {
+            padding: 0.2em 0.4em;
+            margin: 0;
+            font-size: 85%;
+            background-color: rgba(27,31,35,0.05);
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        }
+        .preview-body pre {
+            margin: 20px 0;
+            padding: 16px;
+            overflow: auto;
+            font-size: 14px;
+            line-height: 1.45;
+            background-color: #f6f8fa;
+            border-radius: 6px;
+        }
+        .preview-body pre code {
+            padding: 0;
+            background-color: transparent;
+            border-radius: 0;
+        }
+        
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+            .form-actions {
+                flex-direction: column;
+            }
+            .preview-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body class="neo-systm-home">
+    <div class="container neo-page-wrap">
+        <div class="neo-page-header">
+            <div class="header-brand-column neo-header-brand-inline">
+                <img src="/logo.png" alt="CHANGHONG NeoNet" class="brand-logo-top-index" />
+                <div class="header-brand-main">
+                    <div class="header-title" style="margin:0;">
+                        <div class="logo-text-index">NEO Hardware <span>AI</span></div>
+                        <div class="sys-subtitle-index">硬件研发部管理系统</div>
+                    </div>
+                </div>
+            </div>
+            <div class="neo-header-actions">
+                <span class="neo-page-title" id="editor-page-title">发布新公告</span>
+                <a href="/announcement" class="neo-btn neo-btn-secondary">← 返回公告栏</a>
+            </div>
+        </div>
+
+        <div class="message" id="message"></div>
+
+        <form class="editor-form" id="announcement-form">
+            <div class="form-group">
+                <label for="title">公告标题 *</label>
+                <input type="text" id="title" name="title" required placeholder="请输入公告标题">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="board_id">子公告栏 *</label>
+                    <select id="board_id" name="board_id" required>
+                        <option value="">请选择子公告栏</option>
+                        <option value="hardware">硬件研发部</option>
+                        <option value="circuit">电路设计组</option>
+                        <option value="structure">结构组</option>
+                        <option value="packaging">包装标签组</option>
+                        <option value="testing">测试组</option>
+                    </select>
+                </div>
+                <div class="form-group" id="sub-board-group">
+                    <label for="sub_board_id">二级公告栏</label>
+                    <select id="sub_board_id" name="sub_board_id">
+                        <option value="">无（使用默认分类）</option>
+                    </select>
+                    <small style="color: #95a5a6; display: block; margin-top: 5px;">选择二级公告栏可对公告进行更细的分类</small>
+                </div>
+                <div class="form-group">
+                    <label for="priority">优先级</label>
+                    <select id="priority" name="priority">
+                        <option value="low">低</option>
+                        <option value="normal" selected>普通</option>
+                        <option value="high">高</option>
+                        <option value="urgent">紧急</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="approver">审批人 *</label>
+                    <select id="approver" name="approver" required>
+                        <option value="">请选择审批人</option>
+                    </select>
+                    <small style="color: #95a5a6; display: block; margin-top: 5px;">选择审批人后，提交审核时将通知该审批人</small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="content">公告内容 *</label>
+                <div class="editor-toolbar">
+                    <button type="button" class="tool-btn" onclick="formatText('bold')"><b>粗体</b></button>
+                    <button type="button" class="tool-btn" onclick="formatText('italic')"><i>斜体</i></button>
+                    <button type="button" class="tool-btn" onclick="formatText('underline')"><u>下划线</u></button>
+                    <div class="color-picker-wrapper">
+                        <button type="button" class="color-picker-btn" onclick="toggleColorPicker('foreColor')">
+                            <span style="display: inline-block; width: 20px; height: 20px; background: #2c3e50; border: 1px solid #ecf0f1; border-radius: 3px; vertical-align: middle;"></span>
+                            字体颜色
+                        </button>
+                        <div class="color-picker" id="foreColorPicker">
+                            <div class="color-option" style="background: #2c3e50;" onclick="setTextColor('#2c3e50')" title="黑色"></div>
+                            <div class="color-option" style="background: #e74c3c;" onclick="setTextColor('#e74c3c')" title="红色"></div>
+                            <div class="color-option" style="background: #e67e22;" onclick="setTextColor('#e67e22')" title="橙色"></div>
+                            <div class="color-option" style="background: #f39c12;" onclick="setTextColor('#f39c12')" title="黄色"></div>
+                            <div class="color-option" style="background: #27ae60;" onclick="setTextColor('#27ae60')" title="绿色"></div>
+                            <div class="color-option" style="background: #3498db;" onclick="setTextColor('#3498db')" title="蓝色"></div>
+                            <div class="color-option" style="background: #9b59b6;" onclick="setTextColor('#9b59b6')" title="紫色"></div>
+                            <div class="color-option" style="background: #ecf0f1; border: 1px solid #2c3e50;" onclick="setTextColor('#ecf0f1')" title="白色"></div>
+                            <div class="color-option" style="background: #95a5a6;" onclick="setTextColor('#95a5a6')" title="灰色"></div>
+                            <div class="color-option" style="background: #1abc9c;" onclick="setTextColor('#1abc9c')" title="青色"></div>
+                            <div class="color-option" style="background: #16a085;" onclick="setTextColor('#16a085')" title="深青色"></div>
+                            <div class="color-option" style="background: #2980b9;" onclick="setTextColor('#2980b9')" title="深蓝色"></div>
+                        </div>
+                    </div>
+                    <div class="color-picker-wrapper">
+                        <button type="button" class="color-picker-btn" onclick="toggleColorPicker('backColor')">
+                            <span style="display: inline-block; width: 20px; height: 20px; background: #f39c12; border: 1px solid #ecf0f1; border-radius: 3px; vertical-align: middle;"></span>
+                            背景色
+                        </button>
+                        <div class="color-picker" id="backColorPicker">
+                            <div class="color-option" style="background: #f39c12;" onclick="setBackColor('#f39c12')" title="黄色（重点）"></div>
+                            <div class="color-option" style="background: #e74c3c;" onclick="setBackColor('#e74c3c')" title="红色"></div>
+                            <div class="color-option" style="background: #e67e22;" onclick="setBackColor('#e67e22')" title="橙色"></div>
+                            <div class="color-option" style="background: #27ae60;" onclick="setBackColor('#27ae60')" title="绿色"></div>
+                            <div class="color-option" style="background: #3498db;" onclick="setBackColor('#3498db')" title="蓝色"></div>
+                            <div class="color-option" style="background: #9b59b6;" onclick="setBackColor('#9b59b6')" title="紫色"></div>
+                            <div class="color-option" style="background: #ecf0f1; border: 1px solid #2c3e50;" onclick="setBackColor('#ecf0f1')" title="浅灰"></div>
+                            <div class="color-option" style="background: #d5dbdb;" onclick="setBackColor('#d5dbdb')" title="灰色"></div>
+                            <div class="color-option" style="background: #1abc9c;" onclick="setBackColor('#1abc9c')" title="青色"></div>
+                            <div class="color-option" style="background: #16a085;" onclick="setBackColor('#16a085')" title="深青色"></div>
+                            <div class="color-option" style="background: #2980b9;" onclick="setBackColor('#2980b9')" title="深蓝色"></div>
+                            <div class="color-option" style="background: #2c3e50;" onclick="setBackColor('#2c3e50')" title="深灰"></div>
+                        </div>
+                    </div>
+                    <div class="color-picker-wrapper">
+                        <button type="button" class="color-picker-btn" onclick="toggleFontSizePicker()">
+                            <span style="display: inline-block; font-size: 14px; vertical-align: middle;">字号</span>
+                        </button>
+                        <div class="color-picker" id="fontSizePicker">
+                            <div class="color-option" style="background: #fff; color: #333; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-size: 10px;" onclick="setFontSize('10px')" title="10px">10px</div>
+                            <div class="color-option" style="background: #fff; color: #333; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-size: 12px;" onclick="setFontSize('12px')" title="12px">12px</div>
+                            <div class="color-option" style="background: #fff; color: #333; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-size: 14px;" onclick="setFontSize('14px')" title="14px">14px</div>
+                            <div class="color-option" style="background: #fff; color: #333; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-size: 16px;" onclick="setFontSize('16px')" title="16px">16px</div>
+                            <div class="color-option" style="background: #fff; color: #333; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-size: 18px;" onclick="setFontSize('18px')" title="18px">18px</div>
+                            <div class="color-option" style="background: #fff; color: #333; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-size: 20px;" onclick="setFontSize('20px')" title="20px">20px</div>
+                            <div class="color-option" style="background: #fff; color: #333; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-size: 24px;" onclick="setFontSize('24px')" title="24px">24px</div>
+                            <div class="color-option" style="background: #fff; color: #333; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-size: 28px;" onclick="setFontSize('28px')" title="28px">28px</div>
+                            <div class="color-option" style="background: #fff; color: #333; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-size: 32px;" onclick="setFontSize('32px')" title="32px">32px</div>
+                        </div>
+                    </div>
+                    <button type="button" class="tool-btn highlight-btn" onclick="applyHighlight()">⭐ 重点标记</button>
+                    <button type="button" class="tool-btn" onclick="insertList('ul')">• 列表</button>
+                    <button type="button" class="tool-btn" onclick="insertList('ol')">1. 列表</button>
+                    <button type="button" class="tool-btn" onclick="insertTable()">插入表格</button>
+                    <button type="button" class="tool-btn" onclick="insertImage()">插入图片</button>
+                    <button type="button" class="tool-btn" onclick="clearFormat()">清除格式</button>
+                    <button type="button" class="tool-btn" onclick="pasteAsPlainText()" title="从Word/TXT粘贴（自动清理格式，保留段落结构）">📋 从Word/TXT粘贴</button>
+                </div>
+                <div id="content" class="rich-editor" contenteditable="true" placeholder="请输入公告内容..."></div>
+                <input type="hidden" id="content-hidden" name="content" required>
+            </div>
+
+            <div class="form-group attachments">
+                <label>附件上传</label>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="file" id="file-input" class="file-input" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.md,.jpg,.jpeg,.png,.gif,.webp,.bmp,.zip,.rar,.7z,.dwg,.dxf,.step,.stp">
+                    <button type="button" class="btn btn-upload" onclick="document.getElementById('file-input').click()">
+                        📎 选择文件
+                    </button>
+                    <span id="file-count">未选择文件</span>
+                </div>
+                <div class="upload-progress" id="upload-progress">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progress-bar">0%</div>
+                    </div>
+                    <div class="upload-status" id="upload-status"></div>
+                </div>
+                <div class="attachment-list" id="attachment-list"></div>
+            </div>
+
+            <div class="submit-progress" id="submit-progress">
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="submit-progress-bar">0%</div>
+                </div>
+                <div class="submit-status" id="submit-status"></div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" class="btn btn-save" onclick="saveDraft()" id="save-btn">💾 保存草稿</button>
+                <button type="submit" class="btn btn-submit" id="submit-btn">📤 提交审核</button>
+            </div>
+        </form>
+        
+        <!-- 预览区域 -->
+        <div class="preview-section">
+            <div class="preview-header">
+                <h3>📄 预览效果</h3>
+                <button type="button" class="btn-toggle-preview" onclick="togglePreview()" id="toggle-preview-btn">展开预览</button>
+            </div>
+            <div class="preview-content" id="preview-content" style="display: none;">
+                <div class="preview-wrapper" id="preview-wrapper">
+                    <div class="preview-announcement">
+                        <div class="preview-title" id="preview-title">公告标题将显示在这里</div>
+                        <div class="preview-meta" id="preview-meta">
+                            <span id="preview-board">公告栏</span> | 
+                            <span id="preview-priority">优先级</span> | 
+                            <span id="preview-date">日期</span>
+                        </div>
+                        <div class="preview-body" id="preview-body">
+                            <p style="color: #999;">编辑内容后，这里会显示预览效果...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let attachments = [];
+        let isUploading = false;
+        let previewExpanded = false;
+        
+        // 初始化预览功能
+        function initPreview() {
+            const editor = document.getElementById('content');
+            const titleInput = document.getElementById('title');
+            const boardSelect = document.getElementById('board_id');
+            const prioritySelect = document.getElementById('priority');
+            
+            // 监听编辑器内容变化
+            editor.addEventListener('input', updatePreview);
+            editor.addEventListener('paste', () => setTimeout(updatePreview, 10));
+            
+            // 监听标题变化
+            titleInput.addEventListener('input', updatePreview);
+            
+            // 监听公告栏和优先级变化
+            boardSelect.addEventListener('change', updatePreview);
+            prioritySelect.addEventListener('change', updatePreview);
+            
+            // 初始更新预览
+            updatePreview();
+        }
+        
+        // 更新预览内容
+        function updatePreview() {
+            const title = document.getElementById('title').value.trim() || '公告标题将显示在这里';
+            const content = document.getElementById('content').innerHTML.trim();
+            const boardId = document.getElementById('board_id').value;
+            const priority = document.getElementById('priority').value;
+            
+            // 更新标题
+            document.getElementById('preview-title').textContent = title;
+            
+            // 更新元信息
+            const boardText = boardId ? getBoardName(boardId) : '未选择';
+            const priorityText = getPriorityText(priority);
+            const dateText = new Date().toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            document.getElementById('preview-board').textContent = boardText;
+            document.getElementById('preview-priority').textContent = priorityText;
+            document.getElementById('preview-date').textContent = dateText;
+            
+            // 更新内容
+            const previewBody = document.getElementById('preview-body');
+            if (content && content !== '<br>' && content !== '<div><br></div>') {
+                previewBody.innerHTML = content;
+            } else {
+                previewBody.innerHTML = '<p style="color: #999;">编辑内容后，这里会显示预览效果...</p>';
+            }
+        }
+        
+        // 获取公告栏名称
+        function getBoardName(boardId) {
+            const boardNames = {
+                'hardware': '硬件研发部',
+                'circuit': '电路设计组',
+                'structure': '结构组',
+                'packaging': '包装标签组',
+                'testing': '测试组'
+            };
+            return boardNames[boardId] || boardId;
+        }
+        
+        // 获取优先级文本
+        function getPriorityText(priority) {
+            const priorityTexts = {
+                'low': '低',
+                'normal': '普通',
+                'high': '高',
+                'urgent': '紧急'
+            };
+            return priorityTexts[priority] || priority;
+        }
+        
+        // 切换预览显示/隐藏
+        function togglePreview() {
+            const previewContent = document.getElementById('preview-content');
+            const toggleBtn = document.getElementById('toggle-preview-btn');
+            
+            previewExpanded = !previewExpanded;
+            
+            if (previewExpanded) {
+                previewContent.style.display = 'block';
+                toggleBtn.textContent = '收起预览';
+            } else {
+                previewContent.style.display = 'none';
+                toggleBtn.textContent = '展开预览';
+            }
+        }
+        
+        // 加载二级公告栏选项
+        async function loadSubBoards(boardId) {
+            const subBoardSelect = document.getElementById('sub_board_id');
+            subBoardSelect.innerHTML = '<option value="">无（使用默认分类）</option>';
+            
+            if (!boardId) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/announcement/sub-boards?parent=${boardId}`);
+                if (response.ok) {
+                    const subBoards = await response.json();
+                    subBoards.forEach(subBoard => {
+                        const option = document.createElement('option');
+                        option.value = subBoard.sub_board_id;
+                        option.textContent = subBoard.name;
+                        subBoardSelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('加载二级公告栏失败:', error);
+            }
+        }
+        
+        async function loadApprovers() {
+            const approverSelect = document.getElementById('approver');
+            if (!approverSelect) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/announcement/approvers');
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.approvers) {
+                        // 清空现有选项（保留"请选择审批人"）
+                        approverSelect.innerHTML = '<option value="">请选择审批人</option>';
+                        
+                        // 添加审批人选项
+                        result.approvers.forEach(approver => {
+                            const option = document.createElement('option');
+                            // 使用identifier字段（优先userid，其次username，最后id）
+                            option.value = approver.identifier || approver.userid || approver.username || approver.id || '';
+                            option.textContent = approver.name || approver.identifier || '未知';
+                            approverSelect.appendChild(option);
+                        });
+                        
+                        if (result.approvers.length === 0) {
+                            console.warn('未找到管理组用户作为审批人');
+                            showMessage('未找到管理组用户，请先设置用户为管理组角色', 'warning');
+                        }
+                    } else {
+                        console.error('获取审批人列表失败:', result.error);
+                        showMessage('获取审批人列表失败，请刷新页面重试', 'error');
+                    }
+                } else {
+                    console.error('获取审批人列表失败:', response.statusText);
+                    showMessage('获取审批人列表失败，请刷新页面重试', 'error');
+                }
+            } catch (error) {
+                console.error('加载审批人列表失败:', error);
+                showMessage('加载审批人列表失败，请刷新页面重试', 'error');
+            }
+        }
+        
+        let isEditMode = false;
+        let editAnnouncementId = null;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查用户权限
+            checkUserPermissions();
+            
+            // 加载审批人列表
+            loadApprovers();
+            
+            // 检查是否是编辑模式
+            const urlParams = new URLSearchParams(window.location.search);
+            const editId = urlParams.get('edit');
+            if (editId) {
+                isEditMode = true;
+                editAnnouncementId = editId;
+                loadAnnouncementForEdit(editId);
+            }
+            
+            // 初始化富文本编辑器
+            initRichEditor();
+            
+            // 文件选择事件
+            document.getElementById('file-input').addEventListener('change', function(e) {
+                handleFileSelect(e.target.files);
+            });
+            
+            // 表单提交事件
+            document.getElementById('announcement-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (isEditMode) {
+                    // 编辑模式：不传status，让后端根据原状态自动处理
+                    // 如果原状态是approved，后端会自动改为pending
+                    updateAnnouncement(null);
+                } else {
+                    submitAnnouncement('pending');
+                }
+            });
+            
+            // 监听一级公告栏变化，动态加载二级公告栏
+            const boardSelect = document.getElementById('board_id');
+            if (boardSelect) {
+                boardSelect.addEventListener('change', function() {
+                    const boardId = this.value;
+                    loadSubBoards(boardId);
+                });
+                
+                // 初始化：如果已选择一级公告栏，加载对应的二级公告栏
+                const boardId = boardSelect.value;
+                if (boardId) {
+                    loadSubBoards(boardId);
+                }
+            }
+        });
+        
+        function loadAnnouncementForEdit(announcementId) {
+            fetch(`/api/announcement/announcement/${announcementId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('加载公告失败');
+                    }
+                    return response.json();
+                })
+                .then(announcement => {
+                    // 填充表单
+                    document.getElementById('title').value = announcement.title || '';
+                    document.getElementById('content').innerHTML = announcement.content || '';
+                    document.getElementById('board_id').value = announcement.board_id || '';
+                    document.getElementById('priority').value = announcement.priority || 'normal';
+                    
+                    // 加载现有附件（编辑模式下）
+                    if (announcement.attachments && announcement.attachments.length > 0) {
+                        // 注意：编辑模式下，现有附件需要从服务器下载，这里先标记为已有附件
+                        // 实际附件数据会在提交时从服务器获取，或者用户需要重新上传
+                        // 为了简化，我们只显示附件列表，不包含base64数据
+                        // 用户可以选择保留现有附件或上传新附件
+                        announcement.attachments.forEach(att => {
+                            // 标记为已有附件（从服务器获取，不需要base64数据）
+                            attachments.push({
+                                name: att.name,
+                                size: att.size || 0,
+                                type: att.type || 'application/octet-stream',
+                                data: null,  // 已有附件不需要base64数据
+                                isExisting: true  // 标记为已有附件
+                            });
+                        });
+                        updateAttachmentList();
+                    }
+                    
+                    // 加载二级公告栏
+                    if (announcement.board_id) {
+                        loadSubBoards(announcement.board_id);
+                        // 等待二级公告栏加载完成后再设置值
+                        setTimeout(() => {
+                            const subBoardSelect = document.getElementById('sub_board_id');
+                            if (subBoardSelect && announcement.sub_board_id) {
+                                subBoardSelect.value = announcement.sub_board_id;
+                            }
+                        }, 500);
+                    }
+                    
+                    // 更新页面标题（页头为 .neo-page-title，无 h1）
+                    const pageTitleEl = document.getElementById('editor-page-title');
+                    if (pageTitleEl) {
+                        pageTitleEl.textContent = '编辑公告';
+                    }
+                    
+                    // 更新提交按钮文本（编辑草稿时显示"提交审核"）
+                    const submitBtn = document.getElementById('submit-btn');
+                    if (submitBtn) {
+                        // 如果是草稿状态，显示"提交审核"；如果是已发布状态，显示"保存更新"
+                        if (announcement.status === 'draft') {
+                            submitBtn.textContent = '📤 提交审核';
+                        } else {
+                        submitBtn.textContent = '💾 保存更新';
+                        }
+                    }
+                    
+                    // 显示提示信息
+                    if (announcement.status === 'approved') {
+                        showMessage('注意：编辑已发布公告后需要重新审核', 'info');
+                    }
+                    
+                    // 加载历史版本，显示上一个版本的链接
+                    loadPreviousVersion(announcementId);
+                })
+                .catch(error => {
+                    console.error('加载公告失败:', error);
+                    alert('加载公告失败: ' + error.message);
+                    window.location.href = '/announcement';
+                });
+        }
+        
+        function loadPreviousVersion(announcementId) {
+            fetch(`/api/announcement/versions/${announcementId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        return [];
+                    }
+                    return response.json();
+                })
+                .then(versions => {
+                    if (versions && versions.length > 0) {
+                        // 获取最新的历史版本（第一个，因为已按时间降序排序）
+                        const latestVersion = versions[0];
+                        displayPreviousVersionLink(announcementId, latestVersion);
+                    }
+                })
+                .catch(error => {
+                    console.error('加载历史版本失败:', error);
+                });
+        }
+        
+        function displayPreviousVersionLink(announcementId, version) {
+            // 在表单顶部显示上一个版本的链接
+            const form = document.getElementById('announcement-form');
+            if (!form) return;
+            
+            // 检查是否已经显示了历史版本链接
+            let versionLinkDiv = document.getElementById('previous-version-link');
+            if (versionLinkDiv) {
+                versionLinkDiv.remove();
+            }
+            
+            const versionDate = formatDate(version.version || version.publish_time || version.created_time);
+            versionLinkDiv = document.createElement('div');
+            versionLinkDiv.id = 'previous-version-link';
+            versionLinkDiv.style.cssText = 'margin-bottom: 20px; padding: 15px; background: rgba(155, 89, 182, 0.2); border-radius: 5px; border-left: 3px solid #9b59b6;';
+            versionLinkDiv.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-history" style="color: #9b59b6; font-size: 1.2rem;"></i>
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold; color: #9b59b6; margin-bottom: 5px;">上一个版本</div>
+                        <div style="color: #ecf0f1; font-size: 0.9rem;">版本号: ${version.version || versionDate}</div>
+                    </div>
+                    <a href="/announcement-version/${announcementId}/${version.version || versionDate}" class="btn" style="padding: 8px 16px; font-size: 0.9rem; background: #9b59b6;">
+                        <i class="fas fa-eye"></i> 查看上一个版本
+                    </a>
+                </div>
+            `;
+            
+            // 插入到表单的第一个子元素之前
+            form.insertBefore(versionLinkDiv, form.firstChild);
+        }
+        
+        function formatDate(isoString) {
+            if (!isoString) return '未知';
+            const date = new Date(isoString);
+            return date.toLocaleString('zh-CN');
+        }
+        
+        function updateAnnouncement(status) {
+            const title = document.getElementById('title').value.trim();
+            const content = document.getElementById('content').innerHTML;
+            const boardId = document.getElementById('board_id').value;
+            const subBoardId = document.getElementById('sub_board_id').value || null;
+            const priority = document.getElementById('priority').value;
+            
+            if (!title) {
+                showMessage('公告标题不能为空', 'error');
+                return;
+            }
+            
+            const textContent = document.getElementById('content').textContent || document.getElementById('content').innerText;
+            if (!textContent) {
+                showMessage('公告内容不能为空', 'error');
+                return;
+            }
+            
+            // 禁用按钮
+            const saveBtn = document.getElementById('save-btn');
+            const submitBtn = document.getElementById('submit-btn');
+            saveBtn.disabled = true;
+            submitBtn.disabled = true;
+            submitBtn.textContent = '提交中...';
+            
+            // 获取附件列表（包含所有附件，包括新上传的和已有的）
+            const attachmentList = document.getElementById('attachment-list');
+            const attachmentsToUpload = [];
+            if (attachmentList) {
+                attachmentList.querySelectorAll('.attachment-item').forEach(item => {
+                    const name = item.getAttribute('data-name');
+                    const size = item.getAttribute('data-size');
+                    const type = item.getAttribute('data-type');
+                    const data = item.getAttribute('data-content');
+                    const isExisting = item.getAttribute('data-existing') === 'true';
+                    
+                    // 如果有新数据，上传新附件
+                    if (name && data && data.length > 0) {
+                        attachmentsToUpload.push({
+                            name: name,
+                            size: parseInt(size) || 0,
+                            type: type || 'application/octet-stream',
+                            data: data  // 新上传的附件，包含base64数据
+                        });
+                    }
+                    // 如果是已有附件但没有新数据，也传递附件信息（让后端知道要保留）
+                    // 注意：这里不传data或传null，后端会保留旧附件
+                    else if (name && isExisting) {
+                        // 已有附件，不传data，后端会保留
+                        attachmentsToUpload.push({
+                            name: name,
+                            size: parseInt(size) || 0,
+                            type: type || 'application/octet-stream'
+                            // 不传data字段，后端会识别为已有附件
+                        });
+                    }
+                });
+            }
+            
+            // 编辑已发布公告时，强制状态为pending（需要重新审核）
+            // 后端也会强制改为pending，这里传递pending确保一致性
+            const finalStatus = 'pending';
+            
+            // 获取选择的审批人
+            const approverSelect = document.getElementById('approver');
+            const selectedApprover = approverSelect ? approverSelect.value : '';
+            
+            // 如果状态为pending且未选择审批人，提示用户
+            if (finalStatus === 'pending' && !selectedApprover) {
+                saveBtn.disabled = false;
+                submitBtn.disabled = false;
+                submitBtn.textContent = '📤 提交审核';
+                showMessage('请选择审批人', 'error');
+                return;
+            }
+            
+            const announcementData = {
+                title: title,
+                content: content,
+                board_id: boardId,
+                sub_board_id: subBoardId,
+                priority: priority,
+                status: finalStatus,  // 强制为pending，确保编辑后需要重新审核
+                attachments: attachmentsToUpload,  // 传递所有附件（新上传的+已有的）
+                approver: selectedApprover || null  // 审批人userid（可选）
+            };
+            
+            TransferUtils.xhrUpload(`/api/announcement/update/${editAnnouncementId}`, announcementData, {
+                title: '正在更新公告',
+                status: '正在上传数据到服务器...'
+            })
+            .then(result => {
+                saveBtn.disabled = false;
+                submitBtn.disabled = false;
+                submitBtn.textContent = '📤 提交审核';
+
+                if (result.success) {
+                    let updateMsg = '公告更新成功！已提交审核，等待管理员审批。';
+                    if (result.approval_notification_sent === true) {
+                        updateMsg += ' 已向审批人发送工作通知。';
+                    } else if (result.approval_notification_error) {
+                        showMessage('【审批通知】' + result.approval_notification_error, 'error');
+                    }
+                    showMessage(updateMsg, 'success');
+                    setTimeout(() => {
+                        window.location.href = `/announcement-detail/${editAnnouncementId}`;
+                    }, 2000);
+                } else {
+                    showMessage(result.message || result.error || '更新失败', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                saveBtn.disabled = false;
+                submitBtn.disabled = false;
+                submitBtn.textContent = '📤 提交审核';
+                showMessage(error.message || '网络错误，请稍后重试', 'error');
+            });
+        }
+        
+        function checkUserPermissions() {
+            const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+            if (!user.id) {
+                window.location.href = '/login';
+                return;
+            }
+        }
+        
+        function initRichEditor() {
+            const editor = document.getElementById('content');
+            
+            // 保存编辑器内容的函数
+            function saveEditorContent() {
+                const content = editor.innerHTML;
+                sessionStorage.setItem('announcement_editor_content', content);
+            }
+            
+            // 恢复编辑器内容的函数
+            function restoreEditorContent() {
+                const savedContent = sessionStorage.getItem('announcement_editor_content');
+                if (savedContent && editor.innerHTML.trim() === '') {
+                    editor.innerHTML = savedContent;
+                }
+            }
+            
+            // 定期保存编辑器内容（防止意外丢失）
+            setInterval(saveEditorContent, 2000);
+            
+            // 在页面加载时恢复内容
+            restoreEditorContent();
+            
+            // 设置占位符
+            editor.addEventListener('focus', function() {
+                // 不再清空内容，只处理占位符
+            });
+            
+            editor.addEventListener('blur', function() {
+                // 保存内容
+                saveEditorContent();
+            });
+            
+            // 内容变化时保存
+            editor.addEventListener('input', function() {
+                saveEditorContent();
+            });
+            
+            // 支持粘贴图片和自动清理格式
+            let isPasteHandlerActive = true; // 控制是否处理粘贴事件
+            
+            editor.addEventListener('paste', function(e) {
+                // 如果粘贴处理器被禁用（正在使用"从Word/TXT粘贴"功能），不处理
+                if (!isPasteHandlerActive) {
+                    return;
+                }
+                
+                e.preventDefault();
+                const clipboardData = e.clipboardData || window.clipboardData;
+                
+                // 检查是否有图片
+                if (clipboardData.items) {
+                    for (let i = 0; i < clipboardData.items.length; i++) {
+                        const item = clipboardData.items[i];
+                        if (item.type.indexOf('image') !== -1) {
+                            const file = item.getAsFile();
+                            insertImageFromFile(file);
+                            return;
+                        }
+                    }
+                }
+                
+                // 检查是否有表格（从Excel等粘贴）
+                const html = clipboardData.getData('text/html');
+                if (html && html.includes('<table')) {
+                    // 清理表格格式，保留基本结构
+                    const cleanedHtml = cleanWordFormat(html);
+                    insertHTML(cleanedHtml);
+                    return;
+                }
+                
+                // 处理Word/TXT粘贴：自动清理格式
+                if (html) {
+                    // 从Word等粘贴的内容，清理格式但保留基本结构
+                    const cleanedHtml = cleanWordFormat(html);
+                    insertHTML(cleanedHtml);
+                } else {
+                    // 纯文本粘贴
+                    const text = clipboardData.getData('text/plain');
+                    if (text) {
+                        insertText(text);
+                    }
+                }
+            });
+            
+            // 将isPasteHandlerActive暴露给pasteAsPlainText函数使用
+            window.isPasteHandlerActive = isPasteHandlerActive;
+            window.setPasteHandlerActive = function(active) {
+                isPasteHandlerActive = active;
+            };
+            
+            // 支持拖拽图片
+            editor.addEventListener('dragover', function(e) {
+                e.preventDefault();
+            });
+            
+            editor.addEventListener('drop', function(e) {
+                e.preventDefault();
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    for (let file of files) {
+                        if (file.type.startsWith('image/')) {
+                            insertImageFromFile(file);
+                        }
+                    }
+                }
+            });
+        }
+        
+        function insertImageFromFile(file) {
+            if (!TransferUtils.isAllowedImage(file.name)) {
+                showMessage('不支持的图片格式，仅允许 JPG/PNG/GIF/WebP/BMP', 'error');
+                return;
+            }
+            if (file.size > 100 * 1024 * 1024) { // 100MB限制
+                showMessage('图片大小不能超过100MB', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+                
+                const editor = document.getElementById('content');
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    range.deleteContents();
+                    range.insertNode(img);
+                    range.collapse(false);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                } else {
+                    editor.appendChild(img);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function insertText(text) {
+            const editor = document.getElementById('content');
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                range.deleteContents();
+                const textNode = document.createTextNode(text);
+                range.insertNode(textNode);
+                range.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            } else {
+                editor.appendChild(document.createTextNode(text));
+            }
+        }
+        
+        function handleFileSelect(files) {
+            if (isUploading) {
+                showMessage('正在上传文件，请稍候...', 'error');
+                return;
+            }
+            
+            // 保存当前编辑器内容，防止丢失
+            const editor = document.getElementById('content');
+            const currentContent = editor.innerHTML;
+            sessionStorage.setItem('announcement_editor_content', currentContent);
+            
+            const filesArray = Array.from(files);
+            let processedCount = 0;
+            let errorCount = 0;
+            
+            showUploadProgress(0, '准备上传...');
+            
+            filesArray.forEach((file, index) => {
+                if (!TransferUtils.isAllowedAttachment(file.name)) {
+                    showMessage('不支持的文件类型: ' + file.name + '。允许: ' + TransferUtils.ALLOWED_ATTACHMENT_EXTENSIONS.join(', '), 'error');
+                    errorCount++;
+                    processedCount++;
+                    updateUploadProgress(processedCount, filesArray.length, errorCount);
+                    return;
+                }
+                if (file.size > 100 * 1024 * 1024) { // 100MB限制
+                    showMessage('文件大小不能超过100MB: ' + file.name, 'error');
+                    errorCount++;
+                    processedCount++;
+                    updateUploadProgress(processedCount, filesArray.length, errorCount);
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        // 移除data URL前缀，获取base64数据
+                        const base64Data = e.target.result.split(',')[1];
+                        attachments.push({
+                            name: file.name,
+                            size: file.size,
+                            type: file.type || 'application/octet-stream',
+                            data: base64Data,  // 保存base64数据
+                            isExisting: false  // 标记为新上传的附件
+                        });
+                        processedCount++;
+                        updateUploadProgress(processedCount, filesArray.length, errorCount);
+                        
+                        if (processedCount === filesArray.length) {
+                            setTimeout(() => {
+                                hideUploadProgress();
+                                updateAttachmentList();
+                                
+                                // 确保编辑器内容没有被清空，如果被清空则恢复
+                                const editor = document.getElementById('content');
+                                if (editor.innerHTML.trim() === '') {
+                                    const savedContent = sessionStorage.getItem('announcement_editor_content');
+                                    if (savedContent) {
+                                        editor.innerHTML = savedContent;
+                                    }
+                                }
+                            }, 500);
+                        }
+                    } catch (err) {
+                        console.error('处理文件失败:', err);
+                        errorCount++;
+                        processedCount++;
+                        updateUploadProgress(processedCount, filesArray.length, errorCount);
+                        showMessage('处理文件失败: ' + file.name, 'error');
+                    }
+                };
+                
+                reader.onerror = function() {
+                    errorCount++;
+                    processedCount++;
+                    updateUploadProgress(processedCount, filesArray.length, errorCount);
+                    showMessage('读取文件失败: ' + file.name, 'error');
+                };
+                
+                reader.readAsDataURL(file);
+            });
+            
+            // 清空文件输入，但不影响编辑器内容
+            document.getElementById('file-input').value = '';
+            
+            // 确保编辑器内容没有被清空
+            setTimeout(() => {
+                const editor = document.getElementById('content');
+                if (editor.innerHTML.trim() === '') {
+                    const savedContent = sessionStorage.getItem('announcement_editor_content');
+                    if (savedContent) {
+                        editor.innerHTML = savedContent;
+                    }
+                }
+            }, 100);
+        }
+        
+        function showUploadProgress(current, total, errors) {
+            const progressDiv = document.getElementById('upload-progress');
+            progressDiv.style.display = 'block';
+            isUploading = true;
+            TransferUtils.showOverlay('正在读取文件', '准备处理附件...', 0);
+            TransferUtils.lockPageElements();
+            updateUploadProgress(current, total, errors);
+        }
+        
+        function updateUploadProgress(current, total, errors) {
+            const progressBar = document.getElementById('progress-bar');
+            const statusDiv = document.getElementById('upload-status');
+            
+            const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
+            progressBar.style.width = percentage + '%';
+            progressBar.textContent = percentage + '%';
+            TransferUtils.updateOverlay(
+                current < total ? `正在读取 ${current}/${total} 个文件...` : (errors > 0 ? `完成，${errors} 个失败` : `全部完成，共 ${total} 个文件`),
+                percentage
+            );
+            
+            if (current < total) {
+                statusDiv.textContent = `正在处理 ${current}/${total} 个文件...`;
+                statusDiv.className = 'upload-status uploading';
+            } else {
+                if (errors > 0) {
+                    statusDiv.textContent = `完成！成功 ${current - errors} 个，失败 ${errors} 个`;
+                    statusDiv.className = 'upload-status error';
+                } else {
+                    statusDiv.textContent = `全部完成！共 ${total} 个文件`;
+                    statusDiv.className = 'upload-status success';
+                }
+            }
+        }
+        
+        function hideUploadProgress() {
+            setTimeout(() => {
+                const progressDiv = document.getElementById('upload-progress');
+                progressDiv.style.display = 'none';
+                isUploading = false;
+                TransferUtils.hideOverlay();
+                TransferUtils.unlockPageElements();
+            }, 2000);
+        }
+        
+        function updateAttachmentList() {
+            const list = document.getElementById('attachment-list');
+            const count = document.getElementById('file-count');
+            
+            count.textContent = `已选择 ${attachments.length} 个文件`;
+            
+            if (attachments.length === 0) {
+                list.innerHTML = '<div style="color: #95a5a6; padding: 10px;">暂无附件</div>';
+                return;
+            }
+            
+            let html = '';
+            attachments.forEach((attachment, index) => {
+                const size = attachment.size > 1024 ? 
+                    (attachment.size / 1024).toFixed(1) + ' KB' : 
+                    attachment.size + ' B';
+                // 保存附件数据到data属性中，以便提交时使用
+                const dataContent = attachment.data || '';
+                const isExisting = attachment.isExisting ? 'true' : 'false';
+                html += `
+                    <div class="attachment-item" 
+                         data-name="${attachment.name}" 
+                         data-size="${attachment.size}" 
+                         data-type="${attachment.type || 'application/octet-stream'}"
+                         data-content="${dataContent}"
+                         data-existing="${isExisting}">
+                        <div class="attachment-info">
+                            <span>📎</span>
+                            <span>${attachment.name} (${size})${attachment.isExisting ? ' <span style="color: #95a5a6; font-size: 0.9em;">(已有)</span>' : ''}</span>
+                        </div>
+                        <span class="remove-attachment" onclick="removeAttachment(${index})" title="删除">×</span>
+                    </div>
+                `;
+            });
+            list.innerHTML = html;
+        }
+        
+        function removeAttachment(index) {
+            attachments.splice(index, 1);
+            updateAttachmentList();
+        }
+        
+        function formatText(command) {
+            document.getElementById('content').focus();
+            document.execCommand(command, false, null);
+            updatePreview();
+        }
+        
+        function insertList(type) {
+            document.getElementById('content').focus();
+            document.execCommand('insert' + (type === 'ul' ? 'UnorderedList' : 'OrderedList'), false, null);
+            updatePreview();
+        }
+        
+        // 颜色选择器相关函数
+        let currentColorPicker = null;
+        let savedRange = null; // 保存选择范围
+        
+        // 保存当前选择范围
+        function saveSelection() {
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                savedRange = selection.getRangeAt(0).cloneRange();
+            } else {
+                savedRange = null;
+            }
+        }
+        
+        // 恢复选择范围
+        function restoreSelection() {
+            if (savedRange) {
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(savedRange);
+            }
+        }
+        
+        function toggleColorPicker(type) {
+            // 保存当前选择
+            saveSelection();
+            
+            const pickerId = type === 'foreColor' ? 'foreColorPicker' : 'backColorPicker';
+            const picker = document.getElementById(pickerId);
+            
+            // 如果点击的是当前打开的选择器，则关闭它
+            if (currentColorPicker === picker) {
+                picker.classList.remove('show');
+                currentColorPicker = null;
+            } else {
+                // 关闭其他选择器
+                if (currentColorPicker) {
+                    currentColorPicker.classList.remove('show');
+                }
+                // 打开当前选择器
+                picker.classList.add('show');
+                currentColorPicker = picker;
+            }
+        }
+        
+        function toggleFontSizePicker() {
+            // 保存当前选择
+            saveSelection();
+            
+            const picker = document.getElementById('fontSizePicker');
+            
+            // 如果点击的是当前打开的选择器，则关闭它
+            if (currentColorPicker === picker) {
+                picker.classList.remove('show');
+                currentColorPicker = null;
+            } else {
+                // 关闭其他选择器
+                if (currentColorPicker) {
+                    currentColorPicker.classList.remove('show');
+                }
+                // 打开当前选择器
+                picker.classList.add('show');
+                currentColorPicker = picker;
+            }
+        }
+        
+        function setTextColor(color) {
+            const editor = document.getElementById('content');
+            editor.focus();
+            
+            // 恢复选择范围
+            restoreSelection();
+            
+            // 使用 setTimeout 确保焦点和选择都正确
+            setTimeout(() => {
+                try {
+                    const selection = window.getSelection();
+                    
+                    // 检查是否有选中文本
+                    if (selection.rangeCount > 0 && !selection.isCollapsed) {
+                        // 直接使用 DOM 操作，更可靠
+                        applyColorToSelection(color, 'color');
+                    } else if (savedRange && !savedRange.collapsed) {
+                        // 使用保存的范围
+                        const selection = window.getSelection();
+                        selection.removeAllRanges();
+                        selection.addRange(savedRange);
+                        applyColorToSelection(color, 'color');
+                    } else {
+                        // 如果没有选中文本，尝试在光标位置插入带颜色的文本
+                        const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : savedRange;
+                        if (range) {
+                            const span = document.createElement('span');
+                            span.style.color = color;
+                            span.textContent = '文字';
+                            range.insertNode(span);
+                            // 将光标移到插入的文字后面
+                            range.setStartAfter(span);
+                            range.collapse(true);
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                        }
+                    }
+                } catch (e) {
+                    console.error('设置字体颜色失败:', e);
+                }
+                updatePreview();
+            }, 10);
+            
+            // 关闭颜色选择器
+            if (currentColorPicker) {
+                currentColorPicker.classList.remove('show');
+                currentColorPicker = null;
+            }
+            savedRange = null;
+        }
+        
+        function setBackColor(color) {
+            const editor = document.getElementById('content');
+            editor.focus();
+            
+            // 恢复选择范围
+            restoreSelection();
+            
+            // 使用 setTimeout 确保焦点和选择都正确
+            setTimeout(() => {
+                try {
+                    const selection = window.getSelection();
+                    
+                    // 检查是否有选中文本
+                    if (selection.rangeCount > 0 && !selection.isCollapsed) {
+                        // 直接使用 DOM 操作，更可靠
+                        applyColorToSelection(color, 'backgroundColor');
+                    } else if (savedRange && !savedRange.collapsed) {
+                        // 使用保存的范围
+                        const selection = window.getSelection();
+                        selection.removeAllRanges();
+                        selection.addRange(savedRange);
+                        applyColorToSelection(color, 'backgroundColor');
+                    } else {
+                        // 如果没有选中文本，尝试在光标位置插入带背景色的文本
+                        const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : savedRange;
+                        if (range) {
+                            const span = document.createElement('span');
+                            span.style.backgroundColor = color;
+                            span.textContent = '文字';
+                            range.insertNode(span);
+                            // 将光标移到插入的文字后面
+                            range.setStartAfter(span);
+                            range.collapse(true);
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                        }
+                    }
+                } catch (e) {
+                    console.error('设置背景色失败:', e);
+                }
+                updatePreview();
+            }, 10);
+            
+            // 关闭颜色选择器
+            if (currentColorPicker) {
+                currentColorPicker.classList.remove('show');
+                currentColorPicker = null;
+            }
+            savedRange = null;
+        }
+        
+        // 辅助函数：直接操作 DOM 来应用颜色
+        function applyColorToSelection(color, property) {
+            const selection = window.getSelection();
+            if (selection.rangeCount === 0) return;
+            
+            const range = selection.getRangeAt(0);
+            const selectedText = range.toString();
+            
+            if (selectedText) {
+                // 创建带样式的 span
+                const span = document.createElement('span');
+                if (property === 'color') {
+                    span.style.color = color;
+                } else if (property === 'backgroundColor') {
+                    span.style.backgroundColor = color;
+                }
+                span.textContent = selectedText;
+                
+                // 删除选中的文本并插入新的 span
+                range.deleteContents();
+                range.insertNode(span);
+                
+                // 恢复选择到新插入的元素
+                const newRange = document.createRange();
+                newRange.selectNodeContents(span);
+                selection.removeAllRanges();
+                selection.addRange(newRange);
+            }
+        }
+        
+        // 重点标记：在文字前加星星符号并加粗
+        function applyHighlight() {
+            const editor = document.getElementById('content');
+            editor.focus();
+            
+            // 保存并恢复选择
+            saveSelection();
+            restoreSelection();
+            
+            // 使用 setTimeout 确保焦点和选择都正确
+            setTimeout(() => {
+                try {
+                    const selection = window.getSelection();
+                    
+                    // 检查是否有选中文本
+                    if (selection.rangeCount > 0 && !selection.isCollapsed) {
+                        const range = selection.getRangeAt(0);
+                        const selectedText = range.toString();
+                        
+                        if (selectedText) {
+                            // 创建带星星符号和加粗的 span
+                            const span = document.createElement('span');
+                            span.style.fontWeight = 'bold';
+                            span.innerHTML = '⭐ ' + selectedText;
+                            
+                            // 删除选中的文本并插入新的 span
+                            range.deleteContents();
+                            range.insertNode(span);
+                            
+                            // 恢复选择到新插入的元素
+                            const newRange = document.createRange();
+                            newRange.selectNodeContents(span);
+                            selection.removeAllRanges();
+                            selection.addRange(newRange);
+                        }
+                    } else if (savedRange && !savedRange.collapsed) {
+                        // 使用保存的范围
+                        const selection = window.getSelection();
+                        selection.removeAllRanges();
+                        selection.addRange(savedRange);
+                        const range = selection.getRangeAt(0);
+                        const selectedText = range.toString();
+                        
+                        if (selectedText) {
+                            const span = document.createElement('span');
+                            span.style.fontWeight = 'bold';
+                            span.innerHTML = '⭐ ' + selectedText;
+                            
+                            range.deleteContents();
+                            range.insertNode(span);
+                            
+                            const newRange = document.createRange();
+                            newRange.selectNodeContents(span);
+                            selection.removeAllRanges();
+                            selection.addRange(newRange);
+                        }
+                    } else {
+                        // 如果没有选中文本，提示用户
+                        alert('请先选中要标记的文字');
+                    }
+                } catch (e) {
+                    console.error('应用重点标记失败:', e);
+                }
+                updatePreview();
+            }, 10);
+            savedRange = null;
+        }
+        
+        // 设置字号大小
+        function setFontSize(size) {
+            const editor = document.getElementById('content');
+            editor.focus();
+            
+            // 恢复选择范围（使用在toggleFontSizePicker时保存的选择）
+            restoreSelection();
+            
+            // 使用 setTimeout 确保焦点和选择都正确
+            setTimeout(() => {
+                try {
+                    const selection = window.getSelection();
+                    
+                    // 优先使用保存的范围
+                    let range = null;
+                    let selectedText = '';
+                    
+                    if (savedRange && !savedRange.collapsed) {
+                        // 使用保存的范围
+                        selection.removeAllRanges();
+                        selection.addRange(savedRange);
+                        range = savedRange;
+                        selectedText = range.toString();
+                    } else if (selection.rangeCount > 0 && !selection.isCollapsed) {
+                        // 使用当前选择
+                        range = selection.getRangeAt(0);
+                        selectedText = range.toString();
+                    }
+                    
+                    if (range && selectedText) {
+                        // 创建带字号样式的 span
+                        const span = document.createElement('span');
+                        span.style.fontSize = size;
+                        span.textContent = selectedText;
+                        
+                        // 删除选中的文本并插入新的 span
+                        range.deleteContents();
+                        range.insertNode(span);
+                        
+                        // 恢复选择到新插入的元素
+                        const newRange = document.createRange();
+                        newRange.selectNodeContents(span);
+                        selection.removeAllRanges();
+                        selection.addRange(newRange);
+                    } else {
+                        // 如果没有选中文本，在光标位置插入带字号的文本
+                        const insertRange = selection.rangeCount > 0 ? selection.getRangeAt(0) : (savedRange || null);
+                        if (insertRange) {
+                            const span = document.createElement('span');
+                            span.style.fontSize = size;
+                            span.textContent = '文字';
+                            insertRange.insertNode(span);
+                            insertRange.setStartAfter(span);
+                            insertRange.collapse(true);
+                            selection.removeAllRanges();
+                            selection.addRange(insertRange);
+                        } else {
+                            alert('请先选中要修改字号的文字');
+                        }
+                    }
+                } catch (e) {
+                    console.error('设置字号失败:', e);
+                }
+                updatePreview();
+            }, 10);
+            
+            // 关闭字号选择器
+            if (currentColorPicker) {
+                currentColorPicker.classList.remove('show');
+                currentColorPicker = null;
+            }
+            savedRange = null;
+        }
+        
+        // 点击其他地方时关闭颜色选择器和字号选择器
+        document.addEventListener('click', function(e) {
+            if (currentColorPicker && !currentColorPicker.contains(e.target) && 
+                !e.target.closest('.color-picker-wrapper')) {
+                currentColorPicker.classList.remove('show');
+                currentColorPicker = null;
+                savedRange = null;
+            }
+        });
+        
+        // 在编辑器失去焦点时保存选择
+        document.getElementById('content').addEventListener('mouseup', function() {
+            saveSelection();
+        });
+        
+        document.getElementById('content').addEventListener('keyup', function() {
+            saveSelection();
+        });
+        
+        function insertTable() {
+            const rows = prompt('请输入表格行数:', '3');
+            const cols = prompt('请输入表格列数:', '3');
+            
+            if (rows && cols) {
+                let tableHTML = '<table style="width:100%; border-collapse:collapse; margin:10px 0;">';
+                tableHTML += '<tr>';
+                for (let i = 0; i < cols; i++) {
+                    tableHTML += `<th style="border:1px solid #3498db; padding:8px; background:rgba(52,152,219,0.3);">标题${i+1}</th>`;
+                }
+                tableHTML += '</tr>';
+                
+                for (let i = 0; i < rows; i++) {
+                    tableHTML += '<tr>';
+                    for (let j = 0; j < cols; j++) {
+                        tableHTML += `<td style="border:1px solid #3498db; padding:8px;">内容${i+1}-${j+1}</td>`;
+                    }
+                    tableHTML += '</tr>';
+                }
+                tableHTML += '</table>';
+                
+                insertHTML(tableHTML);
+            }
+        }
+        
+        function insertImage() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = function(e) {
+                if (e.target.files.length > 0) {
+                    insertImageFromFile(e.target.files[0]);
+                }
+            };
+            input.click();
+        }
+        
+        function insertHTML(html) {
+            const editor = document.getElementById('content');
+            editor.focus();
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                range.deleteContents();
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                const fragment = document.createDocumentFragment();
+                while (tempDiv.firstChild) {
+                    fragment.appendChild(tempDiv.firstChild);
+                }
+                range.insertNode(fragment);
+                range.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            } else {
+                editor.insertAdjacentHTML('beforeend', html);
+            }
+        }
+        
+        function clearFormat() {
+            document.getElementById('content').focus();
+            document.execCommand('removeFormat', false, null);
+        }
+        
+        // 清理Word/TXT格式，保留基本段落和换行
+        function cleanWordFormat(html) {
+            if (!html) return '';
+            
+            // 创建临时div来解析HTML
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            
+            // 清理不需要的标签和属性
+            const unwantedTags = ['meta', 'script', 'style', 'link', 'xml', 'o:p'];
+            unwantedTags.forEach(tag => {
+                const elements = tempDiv.querySelectorAll(tag);
+                elements.forEach(el => el.remove());
+            });
+            
+            // 清理所有元素的样式属性（保留表格结构）
+            const allElements = tempDiv.querySelectorAll('*');
+            allElements.forEach(el => {
+                // 保留表格相关元素的边框等基本样式
+                if (el.tagName === 'TABLE' || el.tagName === 'TD' || el.tagName === 'TH' || el.tagName === 'TR') {
+                    // 保留表格基本样式
+                    el.removeAttribute('class');
+                    el.removeAttribute('id');
+                    // 清理复杂的style，只保留基本边框
+                    if (el.hasAttribute('style')) {
+                        const style = el.getAttribute('style');
+                        // 只保留border相关样式
+                        const borderMatch = style.match(/border[^;]*/gi);
+                        if (borderMatch) {
+                            el.setAttribute('style', borderMatch.join('; '));
+                        } else {
+                            el.removeAttribute('style');
+                        }
+                    }
+                } else {
+                    // 非表格元素，完全清理样式
+                    el.removeAttribute('style');
+                    el.removeAttribute('class');
+                    el.removeAttribute('id');
+                    el.removeAttribute('lang');
+                    el.removeAttribute('xml:lang');
+                }
+            });
+            
+            // 转换Word特定的标签
+            // Word的<p>标签转换为标准段落
+            const paragraphs = tempDiv.querySelectorAll('p');
+            paragraphs.forEach(p => {
+                if (p.parentNode) {
+                    const newP = document.createElement('p');
+                    newP.innerHTML = p.innerHTML;
+                    p.parentNode.replaceChild(newP, p);
+                }
+            });
+            
+            // 处理换行：将<br>和多个连续空格转换为标准格式
+            let cleanedHtml = tempDiv.innerHTML;
+            
+            // 清理Word的特殊字符和格式
+            cleanedHtml = cleanedHtml
+                .replace(/<!--[\s\S]*?-->/g, '') // 删除注释
+                .replace(/<o:p>\s*<\/o:p>/gi, '') // 删除Word的o:p标签
+                .replace(/<span[^>]*>/gi, '') // 删除span开始标签
+                .replace(/<\/span>/gi, '') // 删除span结束标签
+                .replace(/<font[^>]*>/gi, '') // 删除font开始标签
+                .replace(/<\/font>/gi, '') // 删除font结束标签
+                .replace(/&nbsp;/g, ' ') // 转换&nbsp;为普通空格
+                .replace(/<p[^>]*>/gi, '<p>') // 简化p标签
+                .replace(/<div[^>]*>/gi, '<div>') // 简化div标签
+                .replace(/<br\s*\/?>/gi, '<br>') // 标准化br标签
+                .trim();
+            
+            // 先处理段落内的多个空格（在合并段落之前）
+            // 使用更精确的正则，只处理段落内的空格，不影响标签
+            cleanedHtml = cleanedHtml.replace(/>\s{2,}</g, '> <'); // 标签之间的多个空格合并为一个
+            
+            // 合并连续的多个空段落为单个空段落（最多保留一个空段落作为段落间距）
+            cleanedHtml = cleanedHtml
+                .replace(/(<p>\s*<\/p>\s*){3,}/gi, '<p><br></p>') // 3个或更多空段落合并为一个
+                .replace(/(<p><br><\/p>\s*){2,}/gi, '<p><br></p>'); // 多个带br的空段落合并为一个
+            
+            // 删除段落开头和结尾的空段落
+            cleanedHtml = cleanedHtml
+                .replace(/^(<p>\s*<\/p>\s*)+/gi, '') // 删除开头的空段落
+                .replace(/(<p>\s*<\/p>\s*)+$/gi, '') // 删除结尾的空段落
+                .replace(/^(<p><br><\/p>\s*)+/gi, '') // 删除开头的带br的空段落
+                .replace(/(<p><br><\/p>\s*)+$/gi, ''); // 删除结尾的带br的空段落
+            
+            // 如果清理后只剩下空白，返回空字符串
+            const textOnly = cleanedHtml.replace(/<[^>]*>/g, '').trim();
+            if (!textOnly) {
+                return '';
+            }
+            
+            return cleanedHtml;
+        }
+        
+        // 从Word/TXT粘贴（完全清理格式，但保留段落结构）
+        function pasteAsPlainText() {
+            const editor = document.getElementById('content');
+            editor.focus();
+            
+            // 临时禁用默认粘贴处理器，防止重复处理
+            if (window.setPasteHandlerActive) {
+                window.setPasteHandlerActive(false);
+            }
+            
+            // 直接读取剪贴板内容（使用现代API）
+            if (navigator.clipboard && navigator.clipboard.readText) {
+                navigator.clipboard.readText().then(text => {
+                    if (text) {
+                        processPlainTextPaste(text);
+                        // 重新启用默认粘贴处理器
+                        setTimeout(() => {
+                            if (window.setPasteHandlerActive) {
+                                window.setPasteHandlerActive(true);
+                            }
+                        }, 500);
+                    } else {
+                        showMessage('剪贴板中没有文本内容，请先复制Word/TXT内容', 'error');
+                        if (window.setPasteHandlerActive) {
+                            window.setPasteHandlerActive(true);
+                        }
+                    }
+                }).catch(err => {
+                    console.error('读取剪贴板失败:', err);
+                    // 降级方案：提示用户手动粘贴
+                    showMessage('请使用 Ctrl+V (或 Cmd+V) 粘贴Word/TXT内容', 'info');
+                    setupPasteHandler();
+                });
+            } else {
+                // 降级方案：使用传统方式
+                showMessage('请使用 Ctrl+V (或 Cmd+V) 粘贴Word/TXT内容', 'info');
+                setupPasteHandler();
+            }
+        }
+        
+        // 设置粘贴事件处理器（降级方案）
+        function setupPasteHandler() {
+            const editor = document.getElementById('content');
+            let pasteHandled = false;
+            
+            // 临时禁用默认粘贴处理器
+            if (window.setPasteHandlerActive) {
+                window.setPasteHandlerActive(false);
+            }
+            
+            // 创建一个临时的paste事件监听器
+            const pasteHandler = function(e) {
+                if (pasteHandled) {
+                    return; // 防止重复处理
+                }
+                pasteHandled = true;
+                
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const clipboardData = e.clipboardData || window.clipboardData;
+                
+                // 只获取纯文本
+                const text = clipboardData.getData('text/plain');
+                if (text) {
+                    processPlainTextPaste(text);
+                }
+                
+                // 重新启用默认粘贴处理器
+                setTimeout(() => {
+                    if (window.setPasteHandlerActive) {
+                        window.setPasteHandlerActive(true);
+                    }
+                    editor.removeEventListener('paste', pasteHandler);
+                    pasteHandled = false;
+                }, 500);
+            };
+            
+            // 添加临时监听器（只触发一次）
+            editor.addEventListener('paste', pasteHandler, { once: true });
+        }
+        
+        // 处理纯文本粘贴内容
+        function processPlainTextPaste(text) {
+            // 将文本按行分割，智能处理段落
+            const lines = text.split(/\r?\n/);
+            let html = '';
+            let currentParagraph = '';
+            let emptyLineCount = 0;
+            
+            lines.forEach((line, index) => {
+                const trimmedLine = line.trim();
+                
+                if (trimmedLine) {
+                    // 有内容的行
+                    // 如果之前有空行，先结束当前段落
+                    if (emptyLineCount > 0 && currentParagraph) {
+                        html += '<p>' + escapeHtml(currentParagraph.trim()) + '</p>';
+                        currentParagraph = '';
+                        // 如果有多个空行，添加一个空段落作为间距
+                        if (emptyLineCount > 1) {
+                            html += '<p><br></p>';
+                        }
+                        emptyLineCount = 0;
+                    }
+                    
+                    // 处理列表项（以●、•、-、*等开头的行）
+                    if (/^[●•\-\*]\s/.test(trimmedLine)) {
+                        // 如果当前段落有内容，先结束它
+                        if (currentParagraph) {
+                            html += '<p>' + escapeHtml(currentParagraph.trim()) + '</p>';
+                            currentParagraph = '';
+                        }
+                        // 列表项单独成段
+                        html += '<p>' + escapeHtml(trimmedLine) + '</p>';
+                    } else {
+                        // 普通文本，添加到当前段落
+                        if (currentParagraph) {
+                            currentParagraph += ' ' + trimmedLine;
+                        } else {
+                            currentParagraph = trimmedLine;
+                        }
+                    }
+                } else {
+                    // 空行
+                    emptyLineCount++;
+                    // 如果当前段落有内容，结束它
+                    if (currentParagraph) {
+                        html += '<p>' + escapeHtml(currentParagraph.trim()) + '</p>';
+                        currentParagraph = '';
+                    }
+                }
+            });
+            
+            // 处理最后一段
+            if (currentParagraph) {
+                html += '<p>' + escapeHtml(currentParagraph.trim()) + '</p>';
+            }
+            
+            // 如果没有生成任何内容，至少保留原始文本
+            if (!html) {
+                html = '<p>' + escapeHtml(text.trim()) + '</p>';
+            }
+            
+            // 清理多余的空段落
+            html = html
+                .replace(/(<p><br><\/p>\s*){2,}/gi, '<p><br></p>') // 合并多个空段落
+                .replace(/^(<p><br><\/p>\s*)+/gi, '') // 删除开头的空段落
+                .replace(/(<p><br><\/p>\s*)+$/gi, ''); // 删除结尾的空段落
+            
+            // 插入清理后的内容
+            insertHTML(html);
+        }
+        
+        // HTML转义函数
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function saveDraft() {
+            submitAnnouncement('draft');
+        }
+        
+        function submitAnnouncement(status) {
+            if (isUploading) {
+                showMessage('文件正在上传中，请稍候...', 'error');
+                return;
+            }
+            
+            const title = document.getElementById('title').value.trim();
+            const content = document.getElementById('content').innerHTML.trim();
+            const boardId = document.getElementById('board_id').value;
+            const subBoardId = document.getElementById('sub_board_id').value || null;
+            const priority = document.getElementById('priority').value;
+            
+            // 验证必填字段
+            if (!title || !content || !boardId) {
+                showMessage('请填写所有必填字段', 'error');
+                return;
+            }
+            
+            // 检查内容是否为空
+            const textContent = document.getElementById('content').textContent.trim();
+            if (!textContent) {
+                showMessage('公告内容不能为空', 'error');
+                return;
+            }
+            
+            // 禁用按钮
+            const saveBtn = document.getElementById('save-btn');
+            const submitBtn = document.getElementById('submit-btn');
+            saveBtn.disabled = true;
+            submitBtn.disabled = true;
+            submitBtn.textContent = '提交中...';
+            
+            // 显示提交进度条
+            showSubmitProgress(0, '准备提交公告...');
+            
+            // 如果有附件，先验证附件是否都已准备好
+            if (attachments.length > 0) {
+                updateSubmitProgress(20, '验证附件...');
+                // 检查附件数据完整性
+                let hasError = false;
+                for (let i = 0; i < attachments.length; i++) {
+                    if (!attachments[i].data || attachments[i].data.length === 0) {
+                        hasError = true;
+                        break;
+                    }
+                }
+                if (hasError) {
+                    hideSubmitProgress();
+                    saveBtn.disabled = false;
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '📤 提交审核';
+                    showMessage('附件数据不完整，请重新选择文件', 'error');
+                    return;
+                }
+                updateSubmitProgress(30, `已确认 ${attachments.length} 个附件准备就绪`);
+            } else {
+                updateSubmitProgress(30, '无附件，继续提交...');
+            }
+            
+            // 获取选择的审批人
+            const approverSelect = document.getElementById('approver');
+            const selectedApprover = approverSelect ? approverSelect.value : '';
+            
+            // 如果状态为pending且未选择审批人，提示用户
+            if (status === 'pending' && !selectedApprover) {
+                hideSubmitProgress();
+                saveBtn.disabled = false;
+                submitBtn.disabled = false;
+                submitBtn.textContent = '📤 提交审核';
+                showMessage('请选择审批人', 'error');
+                return;
+            }
+            
+            const announcementData = {
+                title: title,
+                content: content,
+                board_id: boardId,
+                sub_board_id: subBoardId,
+                priority: priority,
+                status: status,
+                attachments: attachments,
+                approver: selectedApprover || null  // 审批人userid（可选）
+            };
+            
+            updateSubmitProgress(40, '正在上传数据到服务器...');
+            hideSubmitProgress();
+
+            TransferUtils.xhrUpload('/api/announcement/create', announcementData, {
+                title: status === 'draft' ? '正在保存草稿' : '正在提交审核',
+                status: '正在上传数据到服务器...'
+            })
+            .then(result => {
+                saveBtn.disabled = false;
+                submitBtn.disabled = false;
+                submitBtn.textContent = '📤 提交审核';
+
+                if (result.success) {
+                    const action = status === 'draft' ? '保存草稿' : '提交审核';
+                    const attachmentInfo = attachments.length > 0 ? `，已成功上传 ${attachments.length} 个附件` : '';
+                    let successMsg = `${action}成功！${attachmentInfo}${status === 'pending' ? '等待管理员审核。' : ''}`;
+                    if (status === 'pending' && result.approval_notification_sent === true) {
+                        successMsg += ' 已向审批人发送工作通知。';
+                    }
+                    showMessage(successMsg, 'success');
+                    if (status === 'pending' && result.approval_notification_error) {
+                        showMessage('【审批通知】' + result.approval_notification_error, 'error');
+                    }
+
+                    if (status === 'pending') {
+                        setTimeout(() => { window.location.href = '/announcement'; }, 2000);
+                    }
+                } else {
+                    showMessage(result.error || result.message || '操作失败', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                saveBtn.disabled = false;
+                submitBtn.disabled = false;
+                submitBtn.textContent = '📤 提交审核';
+                showMessage(error.message || '网络错误，请稍后重试', 'error');
+            });
+        }
+        
+        function showSubmitProgress(percentage, status) {
+            const progressDiv = document.getElementById('submit-progress');
+            const progressBar = document.getElementById('submit-progress-bar');
+            const statusDiv = document.getElementById('submit-status');
+            
+            progressDiv.style.display = 'block';
+            progressBar.style.width = percentage + '%';
+            progressBar.textContent = percentage + '%';
+            statusDiv.textContent = status;
+            statusDiv.className = 'submit-status submitting';
+        }
+        
+        function updateSubmitProgress(percentage, status) {
+            const progressBar = document.getElementById('submit-progress-bar');
+            const statusDiv = document.getElementById('submit-status');
+            
+            progressBar.style.width = percentage + '%';
+            progressBar.textContent = percentage + '%';
+            statusDiv.textContent = status;
+            
+            if (percentage === 100) {
+                statusDiv.className = 'submit-status success';
+            }
+        }
+        
+        function hideSubmitProgress() {
+            setTimeout(() => {
+                const progressDiv = document.getElementById('submit-progress');
+                progressDiv.style.display = 'none';
+            }, 2000);
+        }
+        
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+            
+            // 自动隐藏成功消息
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+        // 页面加载完成后初始化预览功能
+        document.addEventListener('DOMContentLoaded', function() {
+            initPreview();
+        });
+        
+        // 如果DOM已经加载完成，直接初始化
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initPreview);
+        } else {
+            initPreview();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,2431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>硬件研发部管理系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --accent: #e74c3c;
+            --ai-color: #9b59b6;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --card-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            --hover-shadow: 0 15px 30px rgba(0,0,0,0.15);
+            --dashboard-gap: 25px; /* 大图标之间的间距 */
+            --dashboard-columns: 4; /* 大图标列数 */
+            
+            /* 自适应缩放变量 - 根据视口宽度动态调整 */
+            --scale-factor: 1; /* 默认缩放比例 */
+            --card-icon-size: 60px; /* 大图标大小 */
+            --card-icon-font: 1.5rem; /* 大图标字体 */
+            --card-padding: 20px; /* 卡片内边距 */
+            --card-title-font: 1.1rem; /* 卡片标题字体 */
+            --card-desc-font: 0.9rem; /* 卡片描述字体 */
+            --quick-link-icon-size: 40px; /* 快捷链接图标大小 */
+            --quick-link-icon-font: 1.2rem; /* 快捷链接图标字体 */
+            --quick-link-padding: 15px; /* 快捷链接内边距 */
+            --quick-link-title-font: 0.9rem; /* 快捷链接标题字体 */
+            --quick-link-desc-font: 0.75rem; /* 快捷链接描述字体 */
+            --sidebar-container-width: 650px; /* 侧边栏容器宽度 */
+            --sidebar-padding: 20px; /* 侧边栏内边距 */
+            --sidebar-gap: 20px; /* 侧边栏之间的间距 */
+        }
+        
+        /* CSS重置 - 确保跨浏览器一致性 */
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-box-sizing: border-box;
+            -moz-box-sizing: border-box;
+        }
+        
+        /* 确保跨浏览器渲染一致性 */
+        html {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+            font-size: 16px; /* 设置基准字体大小 */
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+            overflow-x: hidden; /* 防止横向滚动 */
+        }
+        
+        /* 重置列表样式 */
+        ul, ol {
+            list-style: none;
+        }
+        
+        /* 重置链接样式 */
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+        
+        /* 重置按钮样式 */
+        button {
+            background: none;
+            border: none;
+            padding: 0;
+            font: inherit;
+            cursor: pointer;
+            outline: none;
+        }
+        
+        /* 重置输入框样式 */
+        input, textarea, select {
+            font: inherit;
+            border: none;
+            outline: none;
+        }
+        
+        /* 确保图片响应式 */
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .container {
+            max-width: 1600px; /* 从2000px改为1600px，与参考文件一致 */
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* 头部样式 */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px 30px;
+            margin-bottom: 25px;
+            box-shadow: var(--card-shadow);
+            backdrop-filter: blur(10px);
+        }
+        
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .header-title h1 {
+            color: var(--primary);
+            font-size: 2.2rem;
+            margin-bottom: 5px;
+        }
+        
+        .header-title p {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+        
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .user-name {
+            font-weight: bold;
+            color: var(--primary);
+        }
+        
+        .user-role {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        .user-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+        
+        .btn-primary {
+            background: var(--secondary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: var(--light);
+            color: var(--dark);
+        }
+        
+        .btn-secondary:hover {
+            background: #dde4e6;
+        }
+        
+        /* 主要内容布局 - 参考代码逻辑 */
+        .main-layout {
+            display: flex;
+            gap: 25px;
+            align-items: flex-start;
+        }
+        
+        /* 主内容区域 - 超大屏幕下增加比例 */
+        .main-content-area {
+            flex: 1.8; /* 增加主内容区域的比例 */
+            min-width: 0;
+        }
+        
+        /* 兼容旧类名 */
+        .main-content-wrapper {
+            display: flex;
+            gap: 25px;
+            align-items: flex-start;
+            width: 100%;
+        }
+        
+        .main-content {
+            flex: 1.8;
+            min-width: 0;
+        }
+        
+        /* 仪表盘卡片 - 参考代码逻辑：小方块布局 */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 4列小方块 */
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        /* 真正的小方块卡片样式 - 完全按照参考文件 */
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            /* 使用宽高比技巧创建正方形 */
+            height: 0;
+            padding-bottom: 100%; /* 关键：创建1:1宽高比 */
+        }
+        
+        .card-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between; /* 均匀分布内容 */
+            padding: 15px;
+        }
+        
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--hover-shadow);
+        }
+        
+        .card-icon {
+            width: 60px; /* 适当增大图标 */
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(52, 152, 219, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 10px;
+            font-size: 1.5rem; /* 适当增大图标 */
+            color: var(--secondary);
+        }
+        
+        .card-title {
+            color: var(--primary);
+            font-size: 1.05rem; /* 适当增大字体 */
+            line-height: 1.3;
+            font-weight: 600;
+            margin: 5px 0;
+            /* 限制标题行数 */
+            display: -webkit-box;
+            -webkit-line-clamp: 2; /* 最多显示2行 */
+            line-clamp: 2; /* 标准属性 */
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-height: 2.6em; /* 确保两行文本 */
+        }
+        
+        .btn-card {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 8px 12px; /* 适当增大内边距 */
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            width: 80%; /* 按钮宽度80% */
+            font-size: 0.9rem; /* 适当增大字体 */
+            margin-bottom: 5px;
+        }
+        
+        .btn-card:hover {
+            background: #2980b9;
+        }
+        
+        /* 快捷链接区域 */
+        .quick-links-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 30px;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--light);
+        }
+        
+        .section-header h2 {
+            color: var(--primary);
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .quick-links-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr); /* 改为每行5个 */
+            gap: 15px; /* 稍微减小间距以适应5列布局 */
+        }
+        
+        .quick-link-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: var(--quick-link-padding);
+            transition: all 0.3s;
+            cursor: pointer;
+            text-align: center;
+            border: 1px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(120px * var(--scale-factor));
+            position: relative;
+        }
+        
+        .quick-link-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+            background: white;
+        }
+        
+        .quick-link-icon {
+            font-size: var(--quick-link-icon-font);
+            margin-bottom: calc(10px * var(--scale-factor));
+            color: var(--secondary);
+            width: var(--quick-link-icon-size);
+            height: var(--quick-link-icon-size);
+            border-radius: 50%;
+            background: rgba(52, 152, 219, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .quick-link-title {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: calc(5px * var(--scale-factor));
+            font-size: var(--quick-link-title-font);
+        }
+        
+        .quick-link-desc {
+            color: #7f8c8d;
+            font-size: var(--quick-link-desc-font);
+            line-height: 1.3;
+        }
+        
+        .btn-delete-link {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(231, 76, 60, 0.9);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 0.8em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            z-index: 100;
+            line-height: 1;
+            padding: 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .btn-delete-link:hover {
+            background: rgba(231, 76, 60, 1);
+            transform: scale(1.15);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+        }
+        
+        /* ========== 侧边栏区域 - 参考代码逻辑：并排显示版本 ========== */
+        .sidebar-area {
+            width: 650px; /* 固定侧边栏宽度 */
+            min-width: 650px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            position: sticky;
+            top: 20px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+        
+        /* 侧边栏容器 - 两个侧边栏并排 */
+        .sidebar-container {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+        }
+        
+        /* 公告栏侧边栏 */
+        .announcement-sidebar {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: var(--card-shadow);
+            flex: 1;
+            overflow-y: auto;
+            min-height: 500px;
+            max-height: 600px;
+        }
+        
+        /* AI智能体侧边栏 */
+        .ai-sidebar {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: var(--card-shadow);
+            flex: 1;
+            overflow-y: auto;
+            min-height: 500px;
+            max-height: 600px;
+        }
+        
+        .ai-sidebar .section-header h2 {
+            color: var(--ai-color);
+        }
+        
+        .ai-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 18px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--ai-color);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .ai-item:hover {
+            transform: translateX(5px);
+            background: white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        .ai-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        
+        .ai-title {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 8px;
+            font-size: 1.05rem;
+        }
+        
+        .ai-content {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+        
+        .ai-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: #95a5a6;
+        }
+        
+        .ai-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            background: rgba(155, 89, 182, 0.2);
+            color: var(--ai-color);
+        }
+        
+        .ai-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .btn-ai {
+            background: var(--ai-color);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .btn-ai:hover {
+            background: #8e44ad;
+        }
+        
+        .announcement-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 18px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--secondary);
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        /* 紧急程度颜色指示器 */
+        .announcement-priority-indicator {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .announcement-priority-indicator.priority-urgent {
+            background: #e74c3c; /* 红色 - 紧急 */
+        }
+        
+        .announcement-priority-indicator.priority-high {
+            background: #f39c12; /* 黄色 - 重要 */
+        }
+        
+        .announcement-priority-indicator.priority-normal {
+            background: #3498db; /* 蓝色 - 普通 */
+        }
+        
+        .announcement-priority-indicator.priority-low {
+            background: #2ecc71; /* 绿色 - 低优先级 */
+        }
+        
+        .announcement-item.urgent {
+            border-left-color: var(--accent);
+            background: rgba(231, 76, 60, 0.05);
+        }
+        
+        .announcement-item.important {
+            border-left-color: var(--warning);
+            background: rgba(243, 156, 18, 0.05);
+        }
+        
+        .announcement-item.normal {
+            border-left-color: var(--secondary);
+            background: rgba(52, 152, 219, 0.05);
+        }
+        
+        .announcement-item.low {
+            border-left-color: var(--success);
+            background: rgba(46, 204, 113, 0.05);
+        }
+        
+        .announcement-item:hover {
+            transform: translateX(5px);
+            background: white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        .announcement-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        
+        .announcement-title {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 8px;
+            font-size: 1.05rem;
+        }
+        
+        .announcement-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .tag-urgent {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c; /* 红色 */
+        }
+        
+        .tag-important {
+            background: rgba(243, 156, 18, 0.2);
+            color: #f39c12; /* 黄色 */
+        }
+        
+        .tag-normal {
+            background: rgba(52, 152, 219, 0.2);
+            color: #3498db; /* 蓝色 */
+        }
+        
+        .tag-low {
+            background: rgba(46, 204, 113, 0.2);
+            color: #2ecc71; /* 绿色 */
+        }
+        
+        .announcement-content {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+        
+        .announcement-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: #95a5a6;
+        }
+        
+        /* 页脚 */
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: white;
+            padding: 20px;
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        /* 调试面板 */
+        .debug-panel {
+            position: fixed;
+            top: 50%;
+            right: -400px;
+            transform: translateY(-50%);
+            width: 400px;
+            max-height: 90vh;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 10px 0 0 10px;
+            box-shadow: -5px 0 20px rgba(0,0,0,0.3);
+            padding: 20px;
+            z-index: 10000;
+            transition: right 0.3s ease;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+        
+        .debug-panel.active {
+            right: 0;
+        }
+        
+        .debug-toggle-btn {
+            position: fixed;
+            top: 50%;
+            right: 0;
+            transform: translateY(-50%);
+            background: #3498db;
+            color: white;
+            padding: 15px 10px;
+            border-radius: 10px 0 0 10px;
+            cursor: pointer;
+            z-index: 10001;
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            font-weight: bold;
+            box-shadow: -3px 0 10px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .debug-toggle-btn:hover {
+            background: #2980b9;
+            padding-right: 15px;
+        }
+        
+        .debug-panel h3 {
+            margin: 0 0 15px 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .debug-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .debug-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 13px;
+        }
+        
+        .debug-group input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        
+        .debug-group .value-display {
+            display: inline-block;
+            min-width: 60px;
+            padding: 3px 8px;
+            background: white;
+            border-radius: 4px;
+            font-weight: bold;
+            color: #3498db;
+            text-align: center;
+            font-size: 12px;
+        }
+        
+        .debug-group input[type="number"] {
+            width: 80px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-left: 10px;
+        }
+        
+        .debug-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .debug-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .debug-btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .debug-btn-primary:hover {
+            background: #2980b9;
+        }
+        
+        .debug-btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .debug-btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        .debug-code {
+            margin-top: 15px;
+            padding: 10px;
+            background: #2c3e50;
+            color: #2ecc71;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        /* ========== 响应式设计 - 参考代码逻辑 ========== */
+        /* 超大屏幕优化（2000px及以上） */
+        @media (min-width: 2000px) {
+            .container {
+                max-width: 1900px; /* 增加最大宽度 */
+                padding: 30px; /* 增加内边距 */
+            }
+            
+            .main-layout {
+                gap: 30px;
+            }
+            
+            .main-content-area {
+                flex: 2.2; /* 进一步增加主内容区域比例 */
+            }
+            
+            .sidebar-area {
+                width: 700px;
+                min-width: 700px;
+            }
+            
+            .dashboard {
+                grid-template-columns: repeat(5, 1fr); /* 超大屏幕显示5列 */
+                gap: 25px; /* 增加间距 */
+            }
+            
+            .quick-links-grid {
+                grid-template-columns: repeat(6, 1fr); /* 快捷链接显示6列 */
+                gap: 20px;
+            }
+            
+            .card-icon {
+                width: 65px;
+                height: 65px;
+                font-size: 1.6rem;
+            }
+            
+            .card-title {
+                font-size: 1.1rem;
+            }
+            
+            .btn-card {
+                padding: 9px 14px;
+                font-size: 0.95rem;
+            }
+            
+            .announcement-sidebar,
+            .ai-sidebar {
+                padding: 25px;
+                min-height: 550px;
+                max-height: 650px;
+            }
+        }
+        
+        /* 超超大屏幕优化（2500px及以上） */
+        @media (min-width: 2500px) {
+            .container {
+                max-width: 2200px; /* 进一步增加最大宽度 */
+                padding: 35px;
+            }
+            
+            .main-content-area {
+                flex: 2.5; /* 主内容区域占更大比例 */
+            }
+            
+            .sidebar-area {
+                width: 750px;
+                min-width: 750px;
+            }
+            
+            .dashboard {
+                grid-template-columns: repeat(6, 1fr); /* 超超大屏幕显示6列 */
+                gap: 30px;
+            }
+            
+            .quick-links-grid {
+                grid-template-columns: repeat(7, 1fr); /* 快捷链接显示7列 */
+                gap: 25px;
+            }
+            
+            .card-icon {
+                width: 70px;
+                height: 70px;
+                font-size: 1.7rem;
+            }
+            
+            .card-title {
+                font-size: 1.15rem;
+            }
+            
+            .btn-card {
+                padding: 10px 16px;
+                font-size: 1rem;
+            }
+            
+            .announcement-sidebar,
+            .ai-sidebar {
+                padding: 30px;
+                min-height: 600px;
+                max-height: 700px;
+            }
+        }
+        
+        /* 中等屏幕（1200px-1599px） */
+        @media (min-width: 1200px) and (max-width: 1599px) {
+            .container {
+                max-width: 1200px;
+            }
+            
+            .main-layout {
+                gap: 20px;
+            }
+            
+            .sidebar-area {
+                width: 600px;
+                min-width: 600px;
+            }
+            
+            .dashboard {
+                grid-template-columns: repeat(4, 1fr); /* 中等屏幕显示4列 */
+            }
+        }
+        
+        /* 主要响应式断点：主内容与侧边栏堆叠 */
+        @media (max-width: 1199px) {
+            .main-layout {
+                flex-direction: column;
+                gap: 25px;
+            }
+            
+            .main-content-area {
+                width: 100%;
+                flex: none;
+            }
+            
+            .sidebar-area {
+                width: 100%;
+                min-width: 100%;
+                position: relative;
+                top: 0;
+                max-height: none;
+            }
+            
+            .sidebar-container {
+                flex-direction: row; /* 保持并排 */
+                gap: 20px;
+            }
+            
+            .announcement-sidebar,
+            .ai-sidebar {
+                min-height: 450px;
+                max-height: 500px;
+            }
+            
+            .dashboard {
+                grid-template-columns: repeat(4, 1fr); /* 在小屏幕并排时保持4列 */
+            }
+        }
+        
+        /* 较小屏幕（992px以下） */
+        @media (max-width: 992px) {
+            .dashboard {
+                grid-template-columns: repeat(3, 1fr); /* 显示3列 */
+            }
+            
+            .quick-links-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+            
+            .sidebar-container {
+                flex-direction: row; /* 继续保持并排 */
+                gap: 15px;
+            }
+            
+            .announcement-sidebar,
+            .ai-sidebar {
+                min-height: 400px;
+            }
+        }
+        
+        /* 平板尺寸（768px以下） */
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: repeat(2, 1fr); /* 显示2列 */
+                gap: 15px;
+            }
+            
+            .quick-links-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+            }
+            
+            .header-top {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .user-info {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .user-actions {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+            
+            .btn {
+                flex: 1;
+                min-width: 120px;
+                justify-content: center;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            /* 小屏幕下侧边栏变为上下堆叠 */
+            .sidebar-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .announcement-sidebar,
+            .ai-sidebar {
+                min-height: auto;
+                max-height: 400px;
+                width: 100%;
+            }
+        }
+        
+        /* 手机尺寸（480px以下） */
+        @media (max-width: 480px) {
+            .dashboard {
+                grid-template-columns: repeat(2, 1fr); /* 手机屏幕保持2列 */
+            }
+            
+            .quick-links-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .user-info {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .user-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+            
+            .quick-link-item {
+                padding: 12px;
+                min-height: 100px;
+            }
+            
+            .quick-link-icon {
+                width: 35px;
+                height: 35px;
+                font-size: 1rem;
+            }
+            
+            .quick-link-title {
+                font-size: 0.85rem;
+            }
+            
+            .sidebar-container {
+                gap: 12px;
+            }
+        }
+        
+        /* 非常小的手机（360px以下） */
+        @media (max-width: 360px) {
+            .dashboard {
+                grid-template-columns: 1fr; /* 非常小的屏幕显示1列 */
+                gap: 10px;
+            }
+            
+            .quick-links-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <div class="header">
+            <div class="header-top">
+                <div class="header-title">
+                    <h1>硬件研发部管理系统</h1>
+                    <p>专业、高效、可靠的硬件研发管理平台</p>
+                </div>
+                <div class="user-info" id="userInfo" style="display: none;">
+                    <div class="user-avatar" id="userAvatar">用</div>
+                    <div class="user-details">
+                        <div class="user-name" id="userName">用户</div>
+                        <div class="user-role" id="userRole">角色</div>
+                    </div>
+                    <div class="user-actions">
+                        <button class="btn btn-primary" onclick="manageUsers()" id="adminBtn" style="display: none;">
+                            <i class="fas fa-users"></i> 用户管理
+                        </button>
+                        <button class="btn btn-primary" onclick="manageLibraries()" id="libraryBtn" style="display: none;">
+                            <i class="fas fa-database"></i> 库管理
+                        </button>
+                        <button class="btn btn-primary" onclick="window.location.href='/board-management-unified'" id="boardBtn" style="display: none;">
+                            <i class="fas fa-bullhorn"></i> 公告栏管理
+                        </button>
+                        <button class="btn btn-primary" onclick="showAddLinkDialog()" id="addLinkBtn" style="display: none;">
+                            <i class="fas fa-plus"></i> 添加快捷链接
+                        </button>
+                        <button class="btn btn-secondary" onclick="logout()">
+                            <i class="fas fa-sign-out-alt"></i> 退出
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 主要内容区域 - 参考代码逻辑 -->
+        <div class="main-layout">
+            <div class="main-content-area">
+                <!-- 主要功能卡片 -->
+                <div class="dashboard" id="dashboard">
+                    <div class="card" onclick="navigateTo('announcement')">
+                        <div class="card-content">
+                            <div class="card-icon">
+                                <i class="fas fa-bullhorn"></i>
+                            </div>
+                            <div class="card-title">公告栏</div>
+                            <button class="btn-card">进入</button>
+                        </div>
+                    </div>
+                    
+                    <div class="card" onclick="navigateTo('material')">
+                        <div class="card-content">
+                            <div class="card-icon">
+                                <i class="fas fa-boxes"></i>
+                            </div>
+                            <div class="card-title">物料管理系统</div>
+                            <button class="btn-card">进入</button>
+                        </div>
+                    </div>
+                    
+                    <div class="card" onclick="navigateTo('bom-matching')">
+                        <div class="card-content">
+                            <div class="card-icon">
+                                <i class="fas fa-link"></i>
+                            </div>
+                            <div class="card-title">BOM匹配</div>
+                            <button class="btn-card">进入</button>
+                        </div>
+                    </div>
+                    
+                    <div class="card" onclick="navigateTo('bom-comparison')">
+                        <div class="card-content">
+                            <div class="card-icon">
+                                <i class="fas fa-chart-bar"></i>
+                            </div>
+                            <div class="card-title">BOM对比</div>
+                            <button class="btn-card">进入</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 钉钉测试功能（仅最高管理员可见） - 迷你按钮形式 -->
+                    <div id="dingtalkTestCards" style="display: none; grid-column: 1 / -1; margin-top: 10px;">
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn btn-secondary" style="background:#9b59b6; color:#fff; padding:10px 14px; border-radius:6px; font-size:0.9rem;" onclick="navigateTo('dingtalk-token-test')">
+                                <i class="fas fa-key"></i> 钉钉Token测试
+                            </button>
+                            <button class="btn btn-secondary" style="background:#16a085; color:#fff; padding:10px 14px; border-radius:6px; font-size:0.9rem;" onclick="navigateTo('dingtalk-department-test')">
+                                <i class="fas fa-building"></i> 钉钉部门列表
+                            </button>
+                            <button class="btn btn-secondary" style="background:#e67e22; color:#fff; padding:10px 14px; border-radius:6px; font-size:0.9rem;" onclick="navigateTo('dingtalk-user-test')">
+                                <i class="fas fa-users"></i> 钉钉部门用户
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 快捷链接区域 -->
+                <div class="quick-links-section">
+                    <div class="section-header">
+                        <h2><i class="fas fa-rocket"></i> 快捷链接</h2>
+                        <button class="btn btn-primary" onclick="showAddLinkDialog()" id="addLinkBtnSection" style="display: none;">
+                            <i class="fas fa-plus"></i> 添加链接
+                        </button>
+                    </div>
+                    <div class="quick-links-grid" id="quick-links-container">
+                        <!-- 快捷链接将在这里动态加载 -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 侧边栏区域 - 参考代码逻辑：并排显示版本 -->
+            <div class="sidebar-area">
+                <!-- 侧边栏容器，包含两个并排的侧边栏 -->
+                <div class="sidebar-container">
+                <!-- 公告栏侧边栏 -->
+                <div class="announcement-sidebar">
+                    <div class="section-header">
+                        <h2><i class="fas fa-bullhorn"></i> 最新公告</h2>
+                        <a href="/announcement" style="color: var(--secondary); text-decoration: none; font-weight: 600;">查看全部</a>
+                    </div>
+                    <div id="announcement-sidebar-content">
+                        <div style="text-align: center; padding: 20px; color: #7f8c8d;">正在加载公告...</div>
+                    </div>
+                </div>
+                
+                <!-- AI智能体侧边栏 -->
+                <div class="ai-sidebar">
+                    <div class="section-header">
+                        <h2><i class="fas fa-robot"></i> 新网AI智能体</h2>
+                        <a href="#" style="color: var(--ai-color); text-decoration: none; font-weight: 600;">更多功能</a>
+                    </div>
+                    
+                    <div class="ai-item">
+                        <div class="ai-header">
+                            <div class="ai-title">BOM智能分析</div>
+                            <span class="ai-tag">推荐</span>
+                        </div>
+                        <div class="ai-content">
+                            基于AI的BOM表智能分析，自动识别元器件兼容性和替代方案，提高设计效率。支持多维度成本分析和供应链风险评估。
+                        </div>
+                        <div class="ai-meta">
+                            <span>AI智能体</span>
+                            <span>在线</span>
+                        </div>
+                        <div class="ai-actions">
+                            <button class="btn-ai">
+                                <i class="fas fa-play"></i> 立即使用
+                            </button>
+                            <button class="btn-ai" style="background: #7f8c8d;">
+                                <i class="fas fa-info-circle"></i> 了解详情
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="ai-item">
+                        <div class="ai-header">
+                            <div class="ai-title">电路设计助手</div>
+                            <span class="ai-tag">新功能</span>
+                        </div>
+                        <div class="ai-content">
+                            智能电路设计助手，提供元器件选型建议、电路优化方案和故障排查指导。支持原理图自动检查和设计规则验证。
+                        </div>
+                        <div class="ai-meta">
+                            <span>AI智能体</span>
+                            <span>在线</span>
+                        </div>
+                        <div class="ai-actions">
+                            <button class="btn-ai">
+                                <i class="fas fa-play"></i> 立即使用
+                            </button>
+                            <button class="btn-ai" style="background: #7f8c8d;">
+                                <i class="fas fa-info-circle"></i> 了解详情
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="ai-item">
+                        <div class="ai-header">
+                            <div class="ai-title">PCB布局优化</div>
+                            <span class="ai-tag">热门</span>
+                        </div>
+                        <div class="ai-content">
+                            AI驱动的PCB布局优化工具，自动检测布局问题并提供优化建议，减少电磁干扰。支持自动布线和散热分析。
+                        </div>
+                        <div class="ai-meta">
+                            <span>AI智能体</span>
+                            <span>在线</span>
+                        </div>
+                        <div class="ai-actions">
+                            <button class="btn-ai">
+                                <i class="fas fa-play"></i> 立即使用
+                            </button>
+                            <button class="btn-ai" style="background: #7f8c8d;">
+                                <i class="fas fa-info-circle"></i> 了解详情
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="ai-item">
+                        <div class="ai-header">
+                            <div class="ai-title">元器件寿命预测</div>
+                            <span class="ai-tag">专业版</span>
+                        </div>
+                        <div class="ai-content">
+                            基于大数据和机器学习的元器件寿命预测系统，分析元器件在不同环境下的可靠性，为产品设计提供寿命评估。
+                        </div>
+                        <div class="ai-meta">
+                            <span>AI智能体</span>
+                            <span>在线</span>
+                        </div>
+                        <div class="ai-actions">
+                            <button class="btn-ai">
+                                <i class="fas fa-play"></i> 立即使用
+                            </button>
+                            <button class="btn-ai" style="background: #7f8c8d;">
+                                <i class="fas fa-info-circle"></i> 了解详情
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="ai-item">
+                        <div class="ai-header">
+                            <div class="ai-title">设计文档自动生成</div>
+                            <span class="ai-tag">高效</span>
+                        </div>
+                        <div class="ai-content">
+                            AI驱动的设计文档自动生成工具，根据设计文件自动生成技术文档、测试报告和用户手册，大幅提高文档编写效率。
+                        </div>
+                        <div class="ai-meta">
+                            <span>AI智能体</span>
+                            <span>在线</span>
+                        </div>
+                        <div class="ai-actions">
+                            <button class="btn-ai">
+                                <i class="fas fa-play"></i> 立即使用
+                            </button>
+                            <button class="btn-ai" style="background: #7f8c8d;">
+                                <i class="fas fa-info-circle"></i> 了解详情
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 页脚 -->
+        <div class="footer">
+            <p>硬件研发部管理系统 &copy; 2024 - 专业、高效、可靠的硬件研发管理平台</p>
+        </div>
+    </div>
+
+    <script>
+        // 检查用户登录状态
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/auth/check');
+                const result = await response.json();
+                
+                if (result.authenticated) {
+                    // 显示用户信息
+                    const userInfo = document.getElementById('userInfo');
+                    const userAvatar = document.getElementById('userAvatar');
+                    const userName = document.getElementById('userName');
+                    const userRole = document.getElementById('userRole');
+                    const adminBtn = document.getElementById('adminBtn');
+                    const libraryBtn = document.getElementById('libraryBtn');
+                    const boardBtn = document.getElementById('boardBtn');
+                    const addLinkBtn = document.getElementById('addLinkBtn');
+                    const addLinkBtnSection = document.getElementById('addLinkBtnSection');
+                    
+                    userInfo.style.display = 'flex';
+                    
+                    // 设置用户头像（取姓名第一个字）
+                    const name = result.user.name || '用户';
+                    userAvatar.textContent = name.charAt(0);
+                    userName.textContent = name;
+                    
+                    const roles = result.user.roles || [];
+                    const primaryRole = roles[0] || result.user.role || '用户';
+                    userRole.textContent = translateRole(primaryRole);
+                    
+                    const isAdmin = roles.includes('admin') || roles.includes('super_admin');
+                    const isSuperAdmin = roles.includes('super_admin') || result.user.username === 'zzw';
+                    const isManagement = roles.includes('management') || isAdmin || result.user.username === 'zzw';
+                    const isLibraryManager = roles.some(role => role.includes('_manager'));
+                    
+                    if (isAdmin) {
+                        adminBtn.style.display = 'flex';
+                        libraryBtn.style.display = 'flex';
+                        addLinkBtn.style.display = 'flex';
+                        addLinkBtnSection.style.display = 'flex';
+                    }
+                    
+                    if (isLibraryManager || isAdmin) {
+                        libraryBtn.style.display = 'flex';
+                    }
+                    
+                    if (isManagement) {
+                        boardBtn.style.display = 'flex';
+                    }
+                    
+                    // 仅最高管理员可见钉钉测试功能
+                    if (isSuperAdmin) {
+                        const dingtalkTestCards = document.getElementById('dingtalkTestCards');
+                        if (dingtalkTestCards) {
+                            dingtalkTestCards.style.display = 'block';
+                        }
+                    }
+                    
+                    // 保存用户信息到sessionStorage
+                    sessionStorage.setItem('user', JSON.stringify(result.user));
+                } else {
+                    // 未登录，跳转到登录页面
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('认证检查失败:', error);
+                window.location.href = '/login';
+            }
+        }
+        
+        function navigateTo(page) {
+            switch(page) {
+                case 'announcement':
+                    window.location.href = '/announcement';
+                    break;
+                case 'material':
+                    window.location.href = '/material';
+                    break;
+                case 'bom-matching':
+                    window.location.href = '/bom-matching';
+                    break;
+                case 'bom-comparison':
+                    window.location.href = '/bom-comparison';
+                    break;
+                case 'material-approval':
+                    window.location.href = '/material-management-center?tab=pending';
+                    break;
+                case 'dingtalk-token-test':
+                    window.location.href = '/dingtalk-token-test';
+                    break;
+                case 'dingtalk-department-test':
+                    window.location.href = '/dingtalk-department-test';
+                    break;
+                case 'dingtalk-user-test':
+                    window.location.href = '/dingtalk-user-test';
+                    break;
+                default:
+                    alert('功能开发中...');
+            }
+        }
+        
+        function translateRole(role) {
+            const map = {
+                'super_admin': '超级管理员',
+                'admin': '管理员',
+                'management': '管理组',
+                'circuit': '电路设计组',
+                'structure': '结构设计组',
+                'packaging': '包装设计组',
+                'testing': '测试设计组'
+            };
+            return map[role] || role;
+        }
+        
+        function manageUsers() {
+            window.location.href = '/user-management';
+        }
+        
+        function manageLibraries() {
+            window.location.href = '/library-management';
+        }
+        
+        async function logout() {
+            // 设置退出标记
+            sessionStorage.setItem('just_logged_out', 'true');
+            
+            // 清除自动登录标记（但保留记住密码的数据，用于下次自动填充）
+            localStorage.removeItem('auto_login');
+            
+            // 先调用服务器端退出接口，清除服务器session和cookie
+            try {
+                await fetch('/api/auth/logout', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+            } catch (error) {
+                console.error('退出登录请求失败:', error);
+            }
+            
+            // 清除本地sessionStorage
+            sessionStorage.removeItem('user');
+            
+            // 跳转到登录页面，带上logout参数
+            window.location.href = '/login?logout=true';
+        }
+        
+        // 加载快捷链接
+        async function loadQuickLinks() {
+            try {
+                const response = await fetch('/api/quick-links', {
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    const links = await response.json();
+                    displayQuickLinks(links);
+                }
+            } catch (error) {
+                console.error('加载快捷链接失败:', error);
+            }
+        }
+        
+        // 显示快捷链接（使用grid布局，每行4个）
+        function displayQuickLinks(links) {
+            const container = document.getElementById('quick-links-container');
+            if (!container) return;
+            
+            if (links.length === 0) {
+                container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #7f8c8d;">暂无快捷链接</div>';
+                return;
+            }
+            
+            // 反转数组，让最新的链接在右边（最后添加的在最右边）
+            const reversedLinks = [...links].reverse();
+            
+            let html = '';
+            
+            reversedLinks.forEach(link => {
+                html += `
+                    <div class="quick-link-item" data-link-id="${link.id}">
+                        <a href="${link.url}" target="_blank" style="text-decoration: none; color: inherit; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                            <div class="quick-link-icon">${link.icon || '<i class="fas fa-link"></i>'}</div>
+                            <div class="quick-link-title">${link.name}</div>
+                            <div class="quick-link-desc">${link.description || '快捷链接'}</div>
+                        </a>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+            
+            // 为管理员添加删除按钮
+            const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+            const roles = user.roles || [];
+            const isAdmin = roles.includes('admin') || roles.includes('super_admin');
+            
+            if (isAdmin) {
+                container.querySelectorAll('.quick-link-item[data-link-id]').forEach(item => {
+                    const linkId = item.getAttribute('data-link-id');
+                    if (!linkId) return;
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'btn-delete-link';
+                    deleteBtn.innerHTML = '×';
+                    deleteBtn.title = '删除链接';
+                    deleteBtn.onclick = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        deleteQuickLink(linkId);
+                    };
+                    item.appendChild(deleteBtn);
+                });
+            }
+        }
+        
+        // 删除快捷链接
+        async function deleteQuickLink(linkId) {
+            if (!confirm('确定要删除这个快捷链接吗？')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/quick-links/${linkId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    loadQuickLinks();
+                } else {
+                    alert(result.error || '删除失败');
+                }
+            } catch (error) {
+                console.error('删除快捷链接失败:', error);
+                alert('删除失败: ' + error.message);
+            }
+        }
+        
+        // 显示添加快捷链接对话框
+        function showAddLinkDialog() {
+            const name = prompt('请输入链接名称:', '');
+            if (!name) return;
+            
+            const url = prompt('请输入链接URL:', 'https://');
+            if (!url) return;
+            
+            const icon = prompt('请输入图标（可选，默认为🔗，也可以使用Font Awesome图标类名，如: fas fa-link）:', '🔗') || '🔗';
+            const description = prompt('请输入描述（可选）:', '') || '';
+            
+            addQuickLink(name, url, icon, description);
+        }
+        
+        // 添加快捷链接
+        async function addQuickLink(name, url, icon, description) {
+            try {
+                const response = await fetch('/api/quick-links', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        name: name,
+                        url: url,
+                        icon: icon,
+                        description: description
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('服务器响应错误:', response.status, errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert('添加成功！');
+                    loadQuickLinks();
+                } else {
+                    alert(result.error || '添加失败');
+                }
+            } catch (error) {
+                console.error('添加快捷链接失败:', error);
+                alert('添加失败: ' + (error.message || '网络错误，请检查服务器连接'));
+            }
+        }
+        
+        // 加载公告栏侧边栏内容
+        async function loadAnnouncementSidebar() {
+            const contentDiv = document.getElementById('announcement-sidebar-content');
+            if (!contentDiv) return;
+            
+            try {
+                const timestamp = new Date().getTime();
+                const response = await fetch(`/api/announcement/list?status=approved&_t=${timestamp}`, {
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('加载公告失败');
+                }
+                
+                const announcements = await response.json();
+                
+                // 按发布时间排序，最新的在前
+                announcements.sort((a, b) => {
+                    const timeA = new Date(a.publish_time || a.create_time || 0);
+                    const timeB = new Date(b.publish_time || b.create_time || 0);
+                    return timeB - timeA;
+                });
+                
+                // 只显示最新的5条
+                const latestAnnouncements = announcements.slice(0, 5);
+                
+                if (latestAnnouncements.length === 0) {
+                    contentDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: #7f8c8d;">暂无公告</div>';
+                    return;
+                }
+                
+                let html = '';
+                latestAnnouncements.forEach(ann => {
+                    const title = ann.title || '无标题';
+                    const content = (ann.content || '').replace(/<[^>]*>/g, '').substring(0, 80);
+                    const author = ann.author || '未知';
+                    const publishTime = ann.publish_time || ann.create_time || '';
+                    const priority = ann.priority || 'normal';
+                    
+                    // 格式化时间
+                    let timeStr = '';
+                    if (publishTime) {
+                        const time = new Date(publishTime);
+                        const now = new Date();
+                        const diff = now - time;
+                        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                        
+                        if (days === 0) {
+                            const hours = Math.floor(diff / (1000 * 60 * 60));
+                            if (hours === 0) {
+                                const minutes = Math.floor(diff / (1000 * 60));
+                                timeStr = minutes <= 0 ? '刚刚' : `${minutes}分钟前`;
+                            } else {
+                                timeStr = `${hours}小时前`;
+                            }
+                        } else if (days < 7) {
+                            timeStr = `${days}天前`;
+                        } else {
+                            timeStr = time.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+                        }
+                    }
+                    
+                    // 根据优先级设置标签和样式
+                    let tagClass, tagText, itemClass, priorityClass;
+                    switch(priority) {
+                        case 'urgent':
+                            tagClass = 'tag-urgent';
+                            tagText = '紧急';
+                            itemClass = 'urgent';
+                            priorityClass = 'priority-urgent';
+                            break;
+                        case 'high':
+                            tagClass = 'tag-important';
+                            tagText = '重要';
+                            itemClass = 'important';
+                            priorityClass = 'priority-high';
+                            break;
+                        case 'low':
+                            tagClass = 'tag-low';
+                            tagText = '低优先级';
+                            itemClass = 'low';
+                            priorityClass = 'priority-low';
+                            break;
+                        default: // normal
+                            tagClass = 'tag-normal';
+                            tagText = '普通';
+                            itemClass = 'normal';
+                            priorityClass = 'priority-normal';
+                            break;
+                    }
+                    
+                    html += `
+                        <div class="announcement-item ${itemClass}" onclick="window.location.href='/announcement-detail/${ann.id}'">
+                            <span class="announcement-priority-indicator ${priorityClass}" title="${tagText}"></span>
+                            <div class="announcement-header">
+                                <div class="announcement-title">${title}</div>
+                                <span class="announcement-tag ${tagClass}">${tagText}</span>
+                            </div>
+                            <div class="announcement-content">${content}${content.length >= 80 ? '...' : ''}</div>
+                            <div class="announcement-meta">
+                                <span>${author}</span>
+                                <span>${timeStr}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                contentDiv.innerHTML = html;
+            } catch (error) {
+                console.error('加载公告栏失败:', error);
+                contentDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: #7f8c8d;">加载失败，请稍后重试</div>';
+            }
+        }
+        
+        // 根据视口宽度计算自适应缩放比例
+        function calculateScaleFactor() {
+            const viewportWidth = window.innerWidth;
+            let scaleFactor = 1;
+            let sidebarScaleFactor = 1;
+            let sidebarWidth = 650; // 默认宽度
+            
+            // 根据视口宽度计算缩放比例
+            // 基准宽度：1600px，缩放范围：0.75 - 1.0
+            if (viewportWidth >= 2000) {
+                // 超大屏幕：稍微缩小，避免元素过大
+                scaleFactor = 0.85;
+                sidebarScaleFactor = 0.75; // 侧边栏缩小更多，节省空间
+                sidebarWidth = 650 * 0.75;
+            } else if (viewportWidth >= 1800) {
+                scaleFactor = 0.9;
+                sidebarScaleFactor = 0.8;
+                sidebarWidth = 650 * 0.8;
+            } else if (viewportWidth >= 1600) {
+                scaleFactor = 0.95;
+                sidebarScaleFactor = 0.85;
+                sidebarWidth = 650 * 0.85;
+            } else if (viewportWidth >= 1400) {
+                scaleFactor = 1.0;
+                sidebarScaleFactor = 0.9;
+                sidebarWidth = 650 * 0.9;
+            } else {
+                // 小屏幕（<1400px）：使用列布局，侧边栏宽度为100%
+                scaleFactor = viewportWidth >= 1200 ? 0.95 : (viewportWidth >= 1000 ? 0.9 : 0.85);
+                sidebarScaleFactor = 1.0;
+                sidebarWidth = '100%'; // 小屏幕下侧边栏占满宽度
+            }
+            
+            // 应用缩放比例到CSS变量
+            document.documentElement.style.setProperty('--scale-factor', scaleFactor);
+            
+            // 计算并应用各个元素的大小
+            const baseCardIconSize = 60;
+            const baseQuickLinkIconSize = 40;
+            const baseSidebarPadding = 20;
+            const baseSidebarGap = 20;
+            
+            document.documentElement.style.setProperty('--card-icon-size', (baseCardIconSize * scaleFactor) + 'px');
+            document.documentElement.style.setProperty('--card-icon-font', (1.5 * scaleFactor) + 'rem');
+            document.documentElement.style.setProperty('--card-padding', (20 * scaleFactor) + 'px');
+            document.documentElement.style.setProperty('--card-title-font', (1.1 * scaleFactor) + 'rem');
+            document.documentElement.style.setProperty('--card-desc-font', (0.9 * scaleFactor) + 'rem');
+            
+            document.documentElement.style.setProperty('--quick-link-icon-size', (baseQuickLinkIconSize * scaleFactor) + 'px');
+            document.documentElement.style.setProperty('--quick-link-icon-font', (1.2 * scaleFactor) + 'rem');
+            document.documentElement.style.setProperty('--quick-link-padding', (15 * scaleFactor) + 'px');
+            document.documentElement.style.setProperty('--quick-link-title-font', (0.9 * scaleFactor) + 'rem');
+            document.documentElement.style.setProperty('--quick-link-desc-font', (0.75 * scaleFactor) + 'rem');
+            
+            // 应用侧边栏宽度（小屏幕下使用100%，大屏幕下使用计算后的像素值）
+            if (viewportWidth < 1400) {
+                document.documentElement.style.setProperty('--sidebar-container-width', '100%');
+            } else {
+                document.documentElement.style.setProperty('--sidebar-container-width', sidebarWidth + 'px');
+            }
+            document.documentElement.style.setProperty('--sidebar-padding', (baseSidebarPadding * sidebarScaleFactor) + 'px');
+            document.documentElement.style.setProperty('--sidebar-gap', (baseSidebarGap * sidebarScaleFactor) + 'px');
+            
+            console.log('缩放比例已更新:', scaleFactor, '侧边栏缩放:', sidebarScaleFactor, '侧边栏宽度:', sidebarWidth, '视口宽度:', viewportWidth);
+        }
+        
+        // 计算并设置布局，确保跨浏览器兼容性
+        function calculateSidebarPosition() {
+            const mainContent = document.querySelector('.main-content');
+            const sidebarContainer = document.querySelector('.sidebar-container');
+            const dashboard = document.querySelector('.dashboard');
+            const container = document.querySelector('.container');
+            const wrapper = document.querySelector('.main-content-wrapper');
+            
+            if (!mainContent || !sidebarContainer || !dashboard || !container || !wrapper) return;
+            
+            // 等待一帧，确保浏览器完成布局计算
+            requestAnimationFrame(function() {
+                // 获取视口和容器的实际宽度
+                const viewportWidth = window.innerWidth;
+                const containerRect = container.getBoundingClientRect();
+                const containerWidth = Math.round(containerRect.width);
+                const wrapperRect = wrapper.getBoundingClientRect();
+                const wrapperWidth = Math.round(wrapperRect.width);
+                
+                // 获取侧边栏的实际宽度（从计算后的样式，考虑响应式变化）
+                const sidebarRect = sidebarContainer.getBoundingClientRect();
+                const sidebarWidth = Math.round(sidebarRect.width);
+                const gap = parseInt(window.getComputedStyle(mainContent).marginRight) || 25;
+                
+                // 容器padding（左右各20px）
+                const containerPadding = 40;
+                
+                // 如果视口宽度小于1400px，使用列布局（由CSS媒体查询处理）
+                // 否则，确保主内容有足够的空间
+                if (viewportWidth >= 1400) {
+                    // 确保wrapper使用行布局（使用setProperty设置!important）
+                    wrapper.style.setProperty('flex-direction', 'row', 'important');
+                    wrapper.style.setProperty('align-items', 'flex-start', 'important');
+                    
+                    // 计算主内容的最大宽度，确保不会与侧边栏重叠
+                    const mainContentMaxWidth = containerWidth - sidebarWidth - gap - containerPadding;
+                    
+                    // 设置主内容的最大宽度（使用像素值，确保跨浏览器一致性）
+                    // 确保最小宽度为300px，避免内容过于狭窄
+                    mainContent.style.maxWidth = Math.max(300, Math.round(mainContentMaxWidth)) + 'px';
+                    mainContent.style.flex = '1 1 auto';
+                    mainContent.style.marginRight = gap + 'px';
+                    mainContent.style.width = 'auto';
+                    
+                    // 确保侧边栏使用CSS变量设置的宽度（清除内联样式，让CSS变量生效）
+                    sidebarContainer.style.removeProperty('width');
+                    sidebarContainer.style.removeProperty('min-width');
+                    sidebarContainer.style.removeProperty('max-width');
+                    sidebarContainer.style.removeProperty('flex-basis');
+                    sidebarContainer.style.setProperty('position', 'sticky', 'important');
+                    sidebarContainer.style.setProperty('top', '20px', 'important');
+                    sidebarContainer.style.setProperty('margin-top', '0', 'important');
+                    
+                    console.log('大屏幕布局已设置: flex-direction=row, 侧边栏宽度=', sidebarWidth, 'px');
+                } else {
+                    // 小屏幕时移除最大宽度限制，让CSS媒体查询处理列布局
+                    mainContent.style.maxWidth = 'none';
+                    mainContent.style.marginRight = '0';
+                    mainContent.style.width = '100%';
+                    mainContent.style.flex = 'none';
+                    
+                    // 确保wrapper使用列布局（使用setProperty设置!important）
+                    wrapper.style.setProperty('flex-direction', 'column', 'important');
+                    wrapper.style.setProperty('align-items', 'stretch', 'important');
+                    
+                    // 确保侧边栏在小屏幕下占满宽度
+                    sidebarContainer.style.setProperty('width', '100%', 'important');
+                    sidebarContainer.style.setProperty('min-width', '100%', 'important');
+                    sidebarContainer.style.setProperty('max-width', '100%', 'important');
+                    sidebarContainer.style.setProperty('flex-basis', '100%', 'important');
+                    sidebarContainer.style.setProperty('position', 'relative', 'important');
+                    sidebarContainer.style.setProperty('top', '0', 'important');
+                    sidebarContainer.style.setProperty('margin-top', '20px', 'important');
+                    sidebarContainer.style.setProperty('flex-shrink', '0', 'important');
+                    
+                    console.log('小屏幕布局已设置: flex-direction=column, 视口宽度=', viewportWidth);
+                }
+                
+                // 强制重新计算布局（触发重排）
+                void mainContent.offsetWidth;
+                void sidebarContainer.offsetWidth;
+                
+                // 获取dashboard的实际宽度（100%的主内容宽度）
+                const dashboardRect = dashboard.getBoundingClientRect();
+                const dashboardWidth = Math.round(dashboardRect.width);
+                
+                // 计算大图标宽度：4列，3个gap（20px，与CSS一致）
+                const dashboardGap = 20; /* 从25px改为20px，与参考文件一致 */
+                const dashboardColumns = 4;
+                const cardWidth = (dashboardWidth - dashboardGap * (dashboardColumns - 1)) / dashboardColumns;
+                
+                // 确保侧边栏容器的margin-left为0（使用flex布局，不需要margin）
+                sidebarContainer.style.marginLeft = '0px';
+                
+                // 强制浏览器重新渲染，确保样式应用
+                void sidebarContainer.offsetWidth;
+                
+                // 在控制台输出调试信息（跨浏览器兼容）
+                if (console && console.log) {
+                    const mainContentRect = mainContent.getBoundingClientRect();
+                    const sidebarRect = sidebarContainer.getBoundingClientRect();
+                    const actualGap = sidebarRect.left - mainContentRect.right;
+                    
+                    console.log('=== 布局计算调试信息（跨浏览器兼容） ===');
+                    console.log('容器宽度:', containerWidth + 'px');
+                    console.log('Wrapper宽度:', wrapperWidth + 'px');
+                    console.log('主内容实际宽度:', Math.round(mainContentRect.width) + 'px');
+                    console.log('Dashboard宽度:', dashboardWidth + 'px');
+                    console.log('每个大图标卡片宽度:', cardWidth.toFixed(2) + 'px');
+                    console.log('侧边栏容器宽度:', Math.round(sidebarRect.width) + 'px');
+                    console.log('主内容右边缘:', Math.round(mainContentRect.right) + 'px');
+                    console.log('侧边栏左边缘:', Math.round(sidebarRect.left) + 'px');
+                    console.log('实际间距:', actualGap.toFixed(2) + 'px');
+                    console.log('浏览器:', navigator.userAgent);
+                    console.log('设备像素比:', window.devicePixelRatio || 1);
+                }
+            });
+        }
+        
+        // 页面加载时检查认证
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+            loadQuickLinks();
+            loadAnnouncementSidebar();
+            
+            // 计算自适应缩放比例
+            calculateScaleFactor();
+            
+            // 计算并设置公告栏位置 - 使用多个时机确保兼容性
+            // 立即执行一次
+            calculateSidebarPosition();
+            
+            // DOM完全加载后
+            setTimeout(function() {
+                calculateScaleFactor();
+                calculateSidebarPosition();
+            }, 100);
+            
+            // 所有资源加载完成后
+            if (document.readyState === 'complete') {
+                calculateScaleFactor();
+                calculateSidebarPosition();
+            } else {
+                window.addEventListener('load', function() {
+                    calculateScaleFactor();
+                    calculateSidebarPosition();
+                });
+            }
+            
+            // 窗口大小改变时重新计算（使用防抖优化性能）
+            let resizeTimer;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(function() {
+                    calculateScaleFactor();
+                    calculateSidebarPosition();
+                }, 150);
+            });
+            
+            // 页面加载动画
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                
+                setTimeout(() => {
+                    card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
+        });
+        
+        // ========== 调试面板功能 ==========
+        let debugParams = {
+            cardColumns: 4,
+            cardPadding: 15,
+            iconSize: 60,
+            iconFont: 1.5,
+            titleFont: 1.1,
+            iconMargin: 12,
+            cardGap: 20,
+            cardMinWidth: 0,
+            cardMaxWidth: 0,
+            sidebarWidth: 650,
+            sidebarPadding: 20,
+            sidebarGap: 20
+        };
+        
+        function toggleDebugPanel() {
+            const panel = document.getElementById('debugPanel');
+            if (panel) {
+                panel.classList.toggle('active');
+            }
+        }
+        
+        function updateCardColumns(value) {
+            debugParams.cardColumns = parseInt(value);
+            const valueDisplay = document.getElementById('cardColumnsValue');
+            if (valueDisplay) valueDisplay.textContent = value;
+            const dashboard = document.querySelector('.dashboard');
+            if (dashboard) {
+                dashboard.style.gridTemplateColumns = `repeat(${value}, 1fr)`;
+            }
+            updateDebugCode();
+        }
+        
+        function updateCardPadding(value) {
+            debugParams.cardPadding = parseInt(value);
+            const valueDisplay = document.getElementById('cardPaddingValue');
+            if (valueDisplay) valueDisplay.textContent = value + 'px';
+            // 注意：padding应该应用在.card-content上，而不是.card上
+            const cardContents = document.querySelectorAll('.card-content');
+            cardContents.forEach(content => {
+                content.style.padding = value + 'px';
+            });
+            updateDebugCode();
+        }
+        
+        function updateIconSize(value) {
+            debugParams.iconSize = parseInt(value);
+            const valueDisplay = document.getElementById('iconSizeValue');
+            if (valueDisplay) valueDisplay.textContent = value + 'px';
+            const icons = document.querySelectorAll('.card-icon');
+            icons.forEach(icon => {
+                icon.style.width = value + 'px';
+                icon.style.height = value + 'px';
+            });
+            updateDebugCode();
+        }
+        
+        function updateIconFont(value) {
+            debugParams.iconFont = parseFloat(value);
+            const valueDisplay = document.getElementById('iconFontValue');
+            if (valueDisplay) valueDisplay.textContent = value + 'rem';
+            const icons = document.querySelectorAll('.card-icon');
+            icons.forEach(icon => {
+                icon.style.fontSize = value + 'rem';
+            });
+            updateDebugCode();
+        }
+        
+        function updateTitleFont(value) {
+            debugParams.titleFont = parseFloat(value);
+            const valueDisplay = document.getElementById('titleFontValue');
+            if (valueDisplay) valueDisplay.textContent = value + 'rem';
+            const titles = document.querySelectorAll('.card-title');
+            titles.forEach(title => {
+                title.style.fontSize = value + 'rem';
+            });
+            updateDebugCode();
+        }
+        
+        function updateIconMargin(value) {
+            debugParams.iconMargin = parseInt(value);
+            const valueDisplay = document.getElementById('iconMarginValue');
+            if (valueDisplay) valueDisplay.textContent = value + 'px';
+            const icons = document.querySelectorAll('.card-icon');
+            icons.forEach(icon => {
+                // 注意：参考文件使用的是margin-top，不是margin-bottom
+                icon.style.marginTop = value + 'px';
+                icon.style.marginBottom = '0px';
+            });
+            updateDebugCode();
+        }
+        
+        function updateCardGap(value) {
+            debugParams.cardGap = parseInt(value);
+            const valueDisplay = document.getElementById('cardGapValue');
+            if (valueDisplay) valueDisplay.textContent = value + 'px';
+            const dashboard = document.querySelector('.dashboard');
+            if (dashboard) {
+                dashboard.style.gap = value + 'px';
+            }
+            updateDebugCode();
+        }
+        
+        function updateCardMinWidth(value) {
+            debugParams.cardMinWidth = parseInt(value);
+            const valueDisplay = document.getElementById('cardMinWidthValue');
+            if (valueDisplay) {
+                valueDisplay.textContent = value === '0' ? '0px (自动)' : value + 'px';
+            }
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => {
+                if (value === '0') {
+                    card.style.removeProperty('min-width');
+                } else {
+                    card.style.minWidth = value + 'px';
+                }
+            });
+            updateDebugCode();
+        }
+        
+        function updateCardMaxWidth(value) {
+            debugParams.cardMaxWidth = parseInt(value);
+            const valueDisplay = document.getElementById('cardMaxWidthValue');
+            if (valueDisplay) {
+                valueDisplay.textContent = value === '0' ? '0px (无限制)' : value + 'px';
+            }
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => {
+                if (value === '0') {
+                    card.style.removeProperty('max-width');
+                } else {
+                    card.style.maxWidth = value + 'px';
+                }
+            });
+            updateDebugCode();
+        }
+        
+        function updateSidebarWidth(value) {
+            debugParams.sidebarWidth = parseInt(value);
+            const valueDisplay = document.getElementById('sidebarWidthValue');
+            if (valueDisplay) valueDisplay.textContent = value + 'px';
+            const sidebarContainer = document.querySelector('.sidebar-container');
+            if (sidebarContainer) {
+                sidebarContainer.style.width = value + 'px';
+                sidebarContainer.style.minWidth = value + 'px';
+                sidebarContainer.style.maxWidth = value + 'px';
+                sidebarContainer.style.flexBasis = value + 'px';
+            }
+            // 同时更新CSS变量
+            document.documentElement.style.setProperty('--sidebar-container-width', value + 'px');
+            updateDebugCode();
+        }
+        
+        function updateSidebarPadding(value) {
+            debugParams.sidebarPadding = parseInt(value);
+            const valueDisplay = document.getElementById('sidebarPaddingValue');
+            if (valueDisplay) valueDisplay.textContent = value + 'px';
+            const sidebars = document.querySelectorAll('.announcement-sidebar, .quick-links-sidebar');
+            sidebars.forEach(sidebar => {
+                sidebar.style.padding = value + 'px';
+            });
+            // 同时更新CSS变量
+            document.documentElement.style.setProperty('--sidebar-padding', value + 'px');
+            updateDebugCode();
+        }
+        
+        function updateSidebarGap(value) {
+            debugParams.sidebarGap = parseInt(value);
+            const valueDisplay = document.getElementById('sidebarGapValue');
+            if (valueDisplay) valueDisplay.textContent = value + 'px';
+            const sidebarContainer = document.querySelector('.sidebar-container');
+            if (sidebarContainer) {
+                const children = sidebarContainer.children;
+                for (let i = 0; i < children.length - 1; i++) {
+                    children[i].style.marginRight = value + 'px';
+                }
+            }
+            // 同时更新CSS变量
+            document.documentElement.style.setProperty('--sidebar-gap', value + 'px');
+            updateDebugCode();
+        }
+        
+        function updateDebugCode() {
+            const codeEl = document.getElementById('debugCode');
+            if (codeEl) {
+                codeEl.textContent = `// 调试参数（复制这些值给我）
+cardColumns: ${debugParams.cardColumns},
+cardPadding: ${debugParams.cardPadding}px,
+iconSize: ${debugParams.iconSize}px,
+iconFont: ${debugParams.iconFont}rem,
+titleFont: ${debugParams.titleFont}rem,
+iconMargin: ${debugParams.iconMargin}px,
+cardGap: ${debugParams.cardGap}px,
+cardMinWidth: ${debugParams.cardMinWidth}px,
+cardMaxWidth: ${debugParams.cardMaxWidth}px,
+sidebarWidth: ${debugParams.sidebarWidth}px,
+sidebarPadding: ${debugParams.sidebarPadding}px,
+sidebarGap: ${debugParams.sidebarGap}px`;
+            }
+        }
+        
+        function exportDebugParams() {
+            const cardMinWidthStyle = debugParams.cardMinWidth > 0 ? `    min-width: ${debugParams.cardMinWidth}px;\n` : '';
+            const cardMaxWidthStyle = debugParams.cardMaxWidth > 0 ? `    max-width: ${debugParams.cardMaxWidth}px;\n` : '';
+            
+            const code = `// 卡片样式参数（注意：.card本身不应该有padding，只有padding-bottom: 100%）
+.card-content {
+    padding: ${debugParams.cardPadding}px;
+}
+
+.card-icon {
+    width: ${debugParams.iconSize}px;
+    height: ${debugParams.iconSize}px;
+    font-size: ${debugParams.iconFont}rem;
+    margin-top: ${debugParams.iconMargin}px;
+}
+
+.card-title {
+    font-size: ${debugParams.titleFont}rem;
+}
+
+.dashboard {
+    grid-template-columns: repeat(${debugParams.cardColumns}, 1fr);
+    gap: ${debugParams.cardGap}px;
+}
+
+// 侧边栏参数
+.sidebar-area {
+    width: ${debugParams.sidebarWidth}px;
+    min-width: ${debugParams.sidebarWidth}px;
+}
+
+.sidebar-container {
+    gap: ${debugParams.sidebarGap}px;
+}
+
+.announcement-sidebar,
+.ai-sidebar {
+    padding: ${debugParams.sidebarPadding}px;
+}`;
+            
+            // 复制到剪贴板
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(code).then(() => {
+                    alert('参数已复制到剪贴板！\n\n请将参数发送给我。');
+                }).catch(() => {
+                    const codeEl = document.getElementById('debugCode');
+                    if (codeEl) codeEl.textContent = code;
+                    alert('请手动复制上面的代码');
+                });
+            } else {
+                const codeEl = document.getElementById('debugCode');
+                if (codeEl) codeEl.textContent = code;
+                alert('请手动复制上面的代码');
+            }
+        }
+        
+        function resetDebugParams() {
+            debugParams = {
+                cardColumns: 4,
+                cardPadding: 15,
+                iconSize: 60,
+                iconFont: 1.5,
+                titleFont: 1.1,
+                iconMargin: 12,
+                cardGap: 20,
+                cardMinWidth: 0,
+                cardMaxWidth: 0,
+                sidebarWidth: 650,
+                sidebarPadding: 20,
+                sidebarGap: 20
+            };
+            
+            const inputs = {
+                cardColumns: 4,
+                cardPadding: 15,
+                iconSize: 60,
+                iconFont: 1.5,
+                titleFont: 1.1,
+                iconMargin: 12,
+                cardGap: 20,
+                cardMinWidth: 0,
+                cardMaxWidth: 0,
+                sidebarWidth: 650,
+                sidebarPadding: 20,
+                sidebarGap: 20
+            };
+            
+            Object.keys(inputs).forEach(key => {
+                const input = document.getElementById(key);
+                if (input) input.value = inputs[key];
+            });
+            
+            updateCardColumns(4);
+            updateCardPadding(15);
+            updateIconSize(60);
+            updateIconFont(1.5);
+            updateTitleFont(1.1);
+            updateIconMargin(12);
+            updateCardGap(20);
+            updateCardMinWidth(0);
+            updateCardMaxWidth(0);
+            updateSidebarWidth(650);
+            updateSidebarPadding(20);
+            updateSidebarGap(20);
+        }
+    </script>
+    
+    <!-- 调试面板 -->
+    <div class="debug-toggle-btn" onclick="toggleDebugPanel()">🔧 调试</div>
+    <div class="debug-panel" id="debugPanel">
+        <h3>🎨 卡片样式调试工具</h3>
+        
+        <div class="debug-group">
+            <label>卡片列数 (grid-template-columns):</label>
+            <input type="range" id="cardColumns" min="2" max="6" value="4" oninput="updateCardColumns(this.value)">
+            <span class="value-display" id="cardColumnsValue">4</span>
+        </div>
+        
+        <div class="debug-group">
+            <label>卡片内边距 (padding):</label>
+            <input type="range" id="cardPadding" min="5" max="40" value="15" oninput="updateCardPadding(this.value)">
+            <span class="value-display" id="cardPaddingValue">15px</span>
+        </div>
+        
+        <div class="debug-group">
+            <label>图标大小 (icon size):</label>
+            <input type="range" id="iconSize" min="30" max="100" value="60" oninput="updateIconSize(this.value)">
+            <span class="value-display" id="iconSizeValue">60px</span>
+        </div>
+        
+        <div class="debug-group">
+            <label>图标字体大小 (icon font):</label>
+            <input type="range" id="iconFont" min="0.8" max="2.5" step="0.1" value="1.5" oninput="updateIconFont(this.value)">
+            <span class="value-display" id="iconFontValue">1.5rem</span>
+        </div>
+        
+        <div class="debug-group">
+            <label>标题字体大小 (title font):</label>
+            <input type="range" id="titleFont" min="0.8" max="1.8" step="0.1" value="1.1" oninput="updateTitleFont(this.value)">
+            <span class="value-display" id="titleFontValue">1.1rem</span>
+        </div>
+        
+        <div class="debug-group">
+            <label>图标与标题间距 (icon margin):</label>
+            <input type="range" id="iconMargin" min="5" max="30" value="12" oninput="updateIconMargin(this.value)">
+            <span class="value-display" id="iconMarginValue">12px</span>
+        </div>
+        
+        <div class="debug-group">
+            <label>卡片间距 (gap):</label>
+            <input type="range" id="cardGap" min="10" max="40" value="20" oninput="updateCardGap(this.value)">
+            <span class="value-display" id="cardGapValue">20px</span>
+        </div>
+        
+        <div class="debug-group" style="border-left-color: #e74c3c;">
+            <label style="color: #e74c3c; font-weight: bold;">📐 卡片尺寸控制</label>
+        </div>
+        
+        <div class="debug-group">
+            <label>卡片最小宽度 (min-width, 0=自动):</label>
+            <input type="range" id="cardMinWidth" min="0" max="300" value="0" oninput="updateCardMinWidth(this.value)">
+            <span class="value-display" id="cardMinWidthValue">0px (自动)</span>
+        </div>
+        
+        <div class="debug-group">
+            <label>卡片最大宽度 (max-width, 0=无限制):</label>
+            <input type="range" id="cardMaxWidth" min="0" max="500" value="0" oninput="updateCardMaxWidth(this.value)">
+            <span class="value-display" id="cardMaxWidthValue">0px (无限制)</span>
+        </div>
+        
+        <div class="debug-group" style="border-left-color: #9b59b6;">
+            <label style="color: #9b59b6; font-weight: bold;">📋 侧边栏控制</label>
+        </div>
+        
+        <div class="debug-group">
+            <label>侧边栏宽度 (sidebar width):</label>
+            <input type="range" id="sidebarWidth" min="300" max="1000" value="650" oninput="updateSidebarWidth(this.value)">
+            <span class="value-display" id="sidebarWidthValue">650px</span>
+        </div>
+        
+        <div class="debug-group">
+            <label>侧边栏内边距 (sidebar padding):</label>
+            <input type="range" id="sidebarPadding" min="10" max="50" value="20" oninput="updateSidebarPadding(this.value)">
+            <span class="value-display" id="sidebarPaddingValue">20px</span>
+        </div>
+        
+        <div class="debug-group">
+            <label>侧边栏间距 (sidebar gap):</label>
+            <input type="range" id="sidebarGap" min="10" max="50" value="20" oninput="updateSidebarGap(this.value)">
+            <span class="value-display" id="sidebarGapValue">20px</span>
+        </div>
+        
+        <div class="debug-actions">
+            <button class="debug-btn debug-btn-primary" onclick="exportDebugParams()">📋 导出参数</button>
+            <button class="debug-btn debug-btn-secondary" onclick="resetDebugParams()">🔄 重置</button>
+        </div>
+        
+        <div class="debug-code" id="debugCode">
+            <!-- 参数代码将显示在这里 -->
+        </div>
+    </div>
+</body>
+</html>

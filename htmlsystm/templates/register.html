@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册账号 - 硬件研发部管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #12c2e9 0%, #c471ed 50%, #f64f59 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .register-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            padding: 35px;
+            width: 100%;
+            max-width: 520px;
+        }
+        .register-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .register-header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.8em;
+        }
+        .register-header p {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #9b59b6;
+        }
+        .role-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 10px;
+        }
+        .role-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .role-option input {
+            width: auto;
+        }
+        .role-option:hover {
+            border-color: #9b59b6;
+            background: #f4e9fb;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            background: #9b59b6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 10px;
+        }
+        .btn-primary:hover {
+            background: #8e44ad;
+        }
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        .footer a {
+            color: #9b59b6;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <div class="register-header">
+            <h1>创建新账号</h1>
+            <p>提交注册申请，等待管理组审批</p>
+        </div>
+
+        <div class="message" id="message"></div>
+
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="username">账户名 *</label>
+                <input type="text" id="username" required placeholder="请输入登录账户名">
+            </div>
+            <div class="form-group">
+                <label for="name">姓名 *</label>
+                <input type="text" id="name" required placeholder="请输入您的真实姓名">
+            </div>
+            <div class="form-group">
+                <label for="department">所在部门</label>
+                <input type="text" id="department" placeholder="例如：电路设计组">
+            </div>
+            <div class="form-group">
+                <label for="password">密码 *</label>
+                <div style="position: relative;">
+                    <input type="password" id="password" required placeholder="请输入登录密码" autocomplete="new-password" style="padding-right: 45px;">
+                    <button type="button" id="togglePassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1.2em; color: #7f8c8d; padding: 5px 8px; transition: color 0.3s;" title="显示/隐藏密码" onmouseover="this.style.color='#9b59b6'" onmouseout="this.style.color='#7f8c8d'">
+                        👁️
+                    </button>
+                </div>
+                <small id="passwordHint" style="color: #7f8c8d; font-size: 0.85em; display: block; margin-top: 5px; line-height: 1.5;">
+                    密码要求：至少12位，必须包含大小写字母、数字和特殊符号
+                </small>
+                <div id="passwordStrength" style="margin-top: 8px; font-size: 0.85em;"></div>
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">确认密码 *</label>
+                <div style="position: relative;">
+                    <input type="password" id="confirmPassword" required placeholder="请再次输入密码" autocomplete="new-password" style="padding-right: 45px;">
+                    <button type="button" id="toggleConfirmPassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1.2em; color: #7f8c8d; padding: 5px 8px; transition: color 0.3s;" title="显示/隐藏密码" onmouseover="this.style.color='#9b59b6'" onmouseout="this.style.color='#7f8c8d'">
+                        👁️
+                    </button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>选择岗位身份 *</label>
+                <div class="role-options" id="jobRolesContainer">
+                    <div>加载岗位列表...</div>
+                </div>
+            </div>
+            <div class="form-group" id="captchaGroup" style="display: none;">
+                <label for="captchaCode">验证码 *</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="text" id="captchaCode" placeholder="请输入验证码" style="flex: 1;">
+                    <img id="captchaImage" src="" alt="验证码" style="cursor: pointer; border: 1px solid #ddd; border-radius: 4px; height: 40px;" title="点击刷新验证码">
+                    <input type="hidden" id="captchaToken">
+                </div>
+                <small style="color: #7f8c8d; font-size: 0.85em; display: block; margin-top: 5px;">
+                    点击图片可刷新验证码
+                </small>
+            </div>
+            <button type="submit" class="btn-primary" id="registerBtn">提交注册申请</button>
+        </form>
+
+        <div class="footer">
+            已有账号？<a href="/login">返回登录</a>
+        </div>
+    </div>
+
+    <script>
+        const jobRolesContainer = document.getElementById('jobRolesContainer');
+        const messageBox = document.getElementById('message');
+        const registerBtn = document.getElementById('registerBtn');
+        let jobRoles = [];
+
+        async function loadJobRoles() {
+            try {
+                const response = await fetch('/api/auth/job-roles');
+                jobRoles = await response.json();
+                renderRoleOptions();
+            } catch (error) {
+                jobRolesContainer.innerHTML = '<div style="color:#e74c3c;">岗位列表加载失败，请稍后刷新</div>';
+            }
+        }
+
+        function renderRoleOptions() {
+            if (!jobRoles.length) {
+                jobRolesContainer.innerHTML = '<div style="color:#666;">暂无岗位配置，请联系管理员</div>';
+                return;
+            }
+            jobRolesContainer.innerHTML = jobRoles.map(role => `
+                <label class="role-option">
+                    <input type="checkbox" value="${role.id}">
+                    <span>${role.label}</span>
+                </label>
+            `).join('');
+        }
+
+        function showMessage(text, type) {
+            messageBox.textContent = text;
+            messageBox.className = `message ${type}`;
+            messageBox.style.display = 'block';
+        }
+
+        // 密码强度检查
+        function checkPasswordStrength(password) {
+            if (!password) {
+                return { valid: false, score: 0, message: '密码不能为空' };
+            }
+            
+            let score = 0;
+            const issues = [];
+            
+            // 长度检查
+            if (password.length >= 12) {
+                score += 1;
+            } else {
+                issues.push('长度不足12位');
+            }
+            
+            // 复杂度检查
+            const hasLower = /[a-z]/.test(password);
+            const hasUpper = /[A-Z]/.test(password);
+            const hasDigit = /\d/.test(password);
+            const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>/?]/.test(password);
+            
+            if (hasLower) score += 1; else issues.push('缺少小写字母');
+            if (hasUpper) score += 1; else issues.push('缺少大写字母');
+            if (hasDigit) score += 1; else issues.push('缺少数字');
+            if (hasSpecial) score += 1; else issues.push('缺少特殊符号');
+            
+            const valid = score === 5;
+            const message = valid ? '密码强度符合要求' : `密码强度不足：${issues.join('、')}`;
+            
+            return { valid, score, message, issues };
+        }
+
+        // 更新密码强度显示
+        function updatePasswordStrength(password) {
+            const strengthDiv = document.getElementById('passwordStrength');
+            const result = checkPasswordStrength(password);
+            
+            if (!password) {
+                strengthDiv.innerHTML = '';
+                return;
+            }
+            
+            let color = '#e74c3c'; // 红色
+            let text = '弱';
+            
+            if (result.score === 5) {
+                color = '#2ecc71'; // 绿色
+                text = '强';
+            } else if (result.score >= 3) {
+                color = '#f39c12'; // 橙色
+                text = '中';
+            }
+            
+            strengthDiv.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="color: ${color}; font-weight: bold;">密码强度：${text}</span>
+                    <div style="flex: 1; height: 6px; background: #ecf0f1; border-radius: 3px; overflow: hidden;">
+                        <div style="width: ${(result.score / 5) * 100}%; height: 100%; background: ${color}; transition: all 0.3s;"></div>
+                    </div>
+                </div>
+                ${result.valid ? '' : `<div style="color: ${color}; margin-top: 5px; font-size: 0.8em;">${result.message}</div>`}
+            `;
+        }
+
+        // 获取验证码
+        async function loadCaptcha() {
+            try {
+                const response = await fetch('/api/captcha');
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('captchaImage').src = data.image;
+                    document.getElementById('captchaToken').value = data.token;
+                }
+            } catch (error) {
+                console.error('加载验证码失败:', error);
+            }
+        }
+
+        // 监听密码输入
+        document.getElementById('password').addEventListener('input', function(e) {
+            updatePasswordStrength(e.target.value);
+            // 如果密码输入了，显示验证码
+            if (e.target.value.length > 0) {
+                document.getElementById('captchaGroup').style.display = 'block';
+                if (!document.getElementById('captchaToken').value) {
+                    loadCaptcha();
+                }
+            }
+        });
+
+        // 验证码图片点击刷新
+        document.getElementById('captchaImage').addEventListener('click', function() {
+            loadCaptcha();
+        });
+
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const name = document.getElementById('name').value.trim();
+            const department = document.getElementById('department').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const captchaCode = document.getElementById('captchaCode').value.trim();
+            const captchaToken = document.getElementById('captchaToken').value;
+
+            // 验证密码强度
+            const strengthResult = checkPasswordStrength(password);
+            if (!strengthResult.valid) {
+                showMessage(strengthResult.message, 'error');
+                return;
+            }
+
+            const selectedRoles = Array.from(jobRolesContainer.querySelectorAll('input:checked')).map(input => input.value);
+            if (!selectedRoles.length) {
+                showMessage('请至少选择一个岗位身份', 'error');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showMessage('两次输入的密码不一致', 'error');
+                return;
+            }
+
+            // 验证码检查（如果显示了验证码）
+            if (document.getElementById('captchaGroup').style.display !== 'none') {
+                if (!captchaCode || !captchaToken) {
+                    showMessage('请输入验证码', 'error');
+                    return;
+                }
+            }
+
+            registerBtn.disabled = true;
+            registerBtn.textContent = '提交中...';
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username,
+                        name,
+                        department,
+                        password,
+                        roles: selectedRoles,
+                        captcha_token: captchaToken,
+                        captcha_code: captchaCode
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showMessage(result.message || '注册申请已提交，请等待审批', 'success');
+                    document.getElementById('registerForm').reset();
+                    jobRolesContainer.querySelectorAll('input').forEach(input => input.checked = false);
+                } else {
+                    showMessage(result.error || '提交失败，请稍后重试', 'error');
+                }
+            } catch (error) {
+                showMessage('网络错误，请稍后再试', 'error');
+            } finally {
+                registerBtn.disabled = false;
+                registerBtn.textContent = '提交注册申请';
+            }
+        });
+
+        // 切换密码显示/隐藏
+        function togglePasswordVisibility(inputId, buttonId) {
+            const passwordInput = document.getElementById(inputId);
+            const toggleBtn = document.getElementById(buttonId);
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleBtn.textContent = '🙈';
+                toggleBtn.title = '隐藏密码';
+            } else {
+                passwordInput.type = 'password';
+                toggleBtn.textContent = '👁️';
+                toggleBtn.title = '显示密码';
+            }
+        }
+        
+        // 绑定显示密码按钮
+        document.addEventListener('DOMContentLoaded', function() {
+            const togglePasswordBtn = document.getElementById('togglePassword');
+            const toggleConfirmPasswordBtn = document.getElementById('toggleConfirmPassword');
+            
+            if (togglePasswordBtn) {
+                togglePasswordBtn.addEventListener('click', function() {
+                    togglePasswordVisibility('password', 'togglePassword');
+                });
+            }
+            
+            if (toggleConfirmPasswordBtn) {
+                toggleConfirmPasswordBtn.addEventListener('click', function() {
+                    togglePasswordVisibility('confirmPassword', 'toggleConfirmPassword');
+                });
+            }
+        });
+        
+        loadJobRoles();
+    </script>
+</body>
+</html>
+

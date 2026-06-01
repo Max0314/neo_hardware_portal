@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NEO 跳转中...</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; background: #f6f8fb; color: #1f2937; }
+    .wrap { max-width: 720px; margin: 12vh auto; padding: 24px; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px 18px; box-shadow: 0 8px 24px rgba(17, 24, 39, 0.08); }
+    .title { font-size: 16px; font-weight: 600; margin: 0 0 10px; }
+    .muted { color: #64748b; font-size: 13px; line-height: 1.6; margin: 0 0 14px; }
+    .btn { display: inline-block; padding: 10px 14px; background: #0f4b66; color: #fff; border-radius: 10px; text-decoration: none; font-weight: 600; }
+    code { background: #f1f5f9; padding: 2px 6px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <p class="title">登录成功，正在跳转到 NEO Hardware AI...</p>
+      <p class="muted">如果浏览器未自动跳转，请点击按钮继续。目标地址为 <code id="targetText"></code></p>
+      <a class="btn" id="goBtn" href="#">继续前往</a>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      try {
+        var params = new URLSearchParams(window.location.search || '');
+        var next = params.get('next') || '/';
+        try { next = decodeURIComponent(next); } catch (e) {}
+
+        // 与统一网关同域：NEO 部署在子路径 /neo/
+        var origin = window.location.origin;
+        var path = next.charAt(0) === '/' ? next : '/' + next;
+        if (path === '/') {
+          path = '/';
+        }
+        var target = origin + '/neo' + (path === '/' ? '/' : path);
+
+        var t = document.getElementById('targetText');
+        if (t) t.textContent = target;
+        var btn = document.getElementById('goBtn');
+        if (btn) btn.setAttribute('href', target);
+
+        window.location.replace(target);
+      } catch (e) {
+        // ignore
+      }
+    })();
+  </script>
+</body>
+</html>

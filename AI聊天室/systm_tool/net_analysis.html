@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PADS Layout 9.0网表比较工具</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+        
+        .input-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .netlist-box {
+            flex: 1;
+            min-width: 300px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            padding: 25px;
+        }
+        
+        .netlist-box h2 {
+            color: #3498db;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .file-input-container {
+            margin-bottom: 20px;
+        }
+        
+        .file-input-container label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .file-input-container input {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #bdc3c7;
+            border-radius: 6px;
+            background-color: #f9f9f9;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        .file-input-container input:hover {
+            border-color: #3498db;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 300px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+            background-color: #fcfcfc;
+        }
+        
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            box-shadow: 0 4px 8px rgba(52, 152, 219, 0.2);
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .btn-small {
+            padding: 6px 15px;
+            font-size: 14px;
+            font-weight: normal;
+        }
+        
+        .btn-success {
+            background-color: #27ae60;
+        }
+        
+        .btn-success:hover {
+            background-color: #219653;
+        }
+        
+        .btn-warning {
+            background-color: #f39c12;
+        }
+        
+        .btn-warning:hover {
+            background-color: #e67e22;
+        }
+        
+        .results-section {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .results-section.active {
+            display: block;
+        }
+        
+        .comparison-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            padding: 12px 25px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #7f8c8d;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            color: #3498db;
+            border-bottom: 3px solid #3498db;
+        }
+        
+        .tab-content {
+            display: none;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            padding: 25px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        .comparison-box {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            padding: 25px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .comparison-box h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .toggle-same-btn {
+            font-size: 14px;
+            padding: 5px 12px;
+            background-color: #f8f9fa;
+            color: #6c757d;
+            border: 1px solid #dee2e6;
+        }
+        
+        .toggle-same-btn:hover {
+            background-color: #e9ecef;
+        }
+        
+        .component-table, .net-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        .component-table th, .net-table th {
+            background-color: #f8f9fa;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .component-table td, .net-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .component-table tr:hover, .net-table tr:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .difference-added {
+            background-color: #d5f4e6 !important;
+        }
+        
+        .difference-added td {
+            color: #27ae60;
+            font-weight: 600;
+        }
+        
+        .difference-removed {
+            background-color: #fadbd8 !important;
+        }
+        
+        .difference-removed td {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+        
+        .difference-changed {
+            background-color: #fef9e7 !important;
+        }
+        
+        .difference-changed td {
+            color: #f39c12;
+        }
+        
+        .same-row {
+            display: none;
+        }
+        
+        .same-row.visible {
+            display: table-row;
+        }
+        
+        .info-message {
+            background-color: #e8f4fd;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        
+        .summary-box {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .summary-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        .summary-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #3498db;
+            margin-bottom: 5px;
+        }
+        
+        .summary-label {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        /* 修改：将详细解析改为左右布局 */
+        .details-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        .details-container {
+            position: relative;
+            margin-bottom: 30px;
+        }
+        
+        .details-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .copy-btn {
+            background-color: #27ae60;
+            padding: 8px 20px;
+            font-size: 14px;
+        }
+        
+        .copy-btn:hover {
+            background-color: #219653;
+        }
+        
+        /* 修改：优化详细解析内容的格式 */
+        .details-content {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 20px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre;
+            max-height: 600px;
+            overflow-y: auto;
+            line-height: 1.5;
+            tab-size: 4;
+        }
+        
+        .details-section {
+            margin-bottom: 25px;
+        }
+        
+        .details-section h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .details-section ul {
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .details-section li {
+            margin-bottom: 5px;
+        }
+        
+        .component-details {
+            background-color: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .component-details h5 {
+            color: #3498db;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        .component-details .property {
+            display: flex;
+            margin-bottom: 5px;
+        }
+        
+        .component-details .property-name {
+            font-weight: 600;
+            width: 120px;
+            color: #555;
+        }
+        
+        .component-details .property-value {
+            color: #333;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .comparison-grid,
+            .details-layout {
+                grid-template-columns: 1fr;
+            }
+            
+            .input-section {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>PADS Layout 9.0 网表比较工具</h1>
+            <p class="subtitle">上传两个PADS网表文件，提取元件电气特性与引脚连接信息，并比较差异</p>
+        </header>
+        
+        <div class="input-section">
+            <div class="netlist-box">
+                <h2>网表文件 1</h2>
+                <div class="file-input-container">
+                    <label for="file1">选择网表文件 (或直接粘贴内容)</label>
+                    <input type="file" id="file1" accept=".asc,.txt">
+                </div>
+                <textarea id="netlist1" placeholder="粘贴第一个网表内容...">!PADS-POWERPCB-V9.0-MILS-CP936!来自 PADS LOGIC VVX.2.5 的网表文件
+*REMARK* Untitled -- Thu Jan 15 15:58:46 2026
+*REMARK*  
+
+*PART*       ITEMS
+C1      W-C-10NF|50V|K|X7R|0603@W-C0603
+*NET*
+*SIGNAL* 3V3
+C1.2 
+*SIGNAL* GND
+C1.1 
+
+*MISC*      MISCELLANEOUS PARAMETERS
+
+ATTRIBUTE VALUES
+{
+PART C1
+{
+"EType" C
+"Life Time" 
+"TempTolerance" X7R
+"Material Number" 
+"Package" 0603
+"Part Name" 
+"Part Number" W-C-10NF|50V|K|X7R|0603
+"Remark" 
+"SMT" SMT
+"Tolerance" K
+"Value" 10NF
+"Vendor" 
+"Voltage Rating" 50V
+"Wattage/Amp" 
+}
+}
+
+*END*     OF ASCII OUTPUT FILE</textarea>
+            </div>
+            
+            <div class="netlist-box">
+                <h2>网表文件 2</h2>
+                <div class="file-input-container">
+                    <label for="file2">选择网表文件 (或直接粘贴内容)</label>
+                    <input type="file" id="file2" accept=".asc,.txt">
+                </div>
+                <textarea id="netlist2" placeholder="粘贴第二个网表内容...">!PADS-POWERPCB-V9.0-MILS-CP936!来自 PADS LOGIC VVX.2.5 的网表文件
+*REMARK* Untitled -- Thu Jan 15 16:06:28 2026
+*REMARK*  
+
+*PART*       ITEMS
+R1      W-R-100K|F|0201@W-R0201
+R2      W-C-100NF|16V|K|X7R|0402@W-C0402
+*NET*
+*SIGNAL* 3V3
+R1.2 R2.2 
+*SIGNAL* GND
+R1.1 R2.1 
+
+*MISC*      MISCELLANEOUS PARAMETERS
+
+ATTRIBUTE VALUES
+{
+PART R1
+{
+"EType" R
+"Life Time" 
+"TempTolerance" 
+"Material Number" 
+"Package" 0201
+"Part Name" 
+"Part Number" W-R-100K|F|0201
+"Remark" 
+"SMT" SMT
+"Tolerance" F
+"Value" 100K
+"Vendor" 
+"Voltage Rating" 
+"Wattage/Amp" 
+}
+PART R2
+{
+"EType" C
+"Life Time" 
+"TempTolerance" X7R
+"Material Number" 
+"Package" 0402
+"Part Name" 
+"Part Number" W-C-100NF|16V|K|X7R|0402
+"Remark" 
+"SMT" SMT
+"Tolerance" K
+"Value" 100NF
+"Vendor" 
+"Voltage Rating" 16V
+"Wattage/Amp" 
+}
+}
+
+*END*     OF ASCII OUTPUT FILE</textarea>
+            </div>
+        </div>
+        
+        <div class="button-container">
+            <button id="compareBtn">比较网表</button>
+        </div>
+        
+        <div class="results-section" id="resultsSection">
+            <div class="summary-box">
+                <div class="summary-item">
+                    <div class="summary-value" id="totalComponents1">0</div>
+                    <div class="summary-label">网表1元件总数</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" id="totalComponents2">0</div>
+                    <div class="summary-label">网表2元件总数</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" id="addedComponents">0</div>
+                    <div class="summary-label">新增元件</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" id="removedComponents">0</div>
+                    <div class="summary-label">移除元件</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" id="changedComponents">0</div>
+                    <div class="summary-label">修改元件</div>
+                </div>
+            </div>
+            
+            <div class="comparison-tabs">
+                <div class="tab active" data-tab="components">元件差异</div>
+                <div class="tab" data-tab="nets">网络连接差异</div>
+                <div class="tab" data-tab="details">详细解析</div>
+            </div>
+            
+            <div class="tab-content active" id="componentsTab">
+                <div class="comparison-grid">
+                    <div class="comparison-box">
+                        <h3>网表1的元件
+                            <button class="toggle-same-btn btn-small" data-table="componentsTable1">显示相同元件</button>
+                        </h3>
+                        <table class="component-table" id="componentsTable1">
+                            <thead>
+                                <tr>
+                                    <th>元件</th>
+                                    <th>类型</th>
+                                    <th>值</th>
+                                    <th>封装</th>
+                                    <th>网络</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="comparison-box">
+                        <h3>网表2的元件
+                            <button class="toggle-same-btn btn-small" data-table="componentsTable2">显示相同元件</button>
+                        </h3>
+                        <table class="component-table" id="componentsTable2">
+                            <thead>
+                                <tr>
+                                    <th>元件</th>
+                                    <th>类型</th>
+                                    <th>值</th>
+                                    <th>封装</th>
+                                    <th>网络</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="netsTab">
+                <div class="comparison-grid">
+                    <div class="comparison-box">
+                        <h3>网表1的网络连接
+                            <button class="toggle-same-btn btn-small" data-table="netsTable1">显示相同网络</button>
+                        </h3>
+                        <table class="net-table" id="netsTable1">
+                            <thead>
+                                <tr>
+                                    <th>网络</th>
+                                    <th>连接元件</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="comparison-box">
+                        <h3>网表2的网络连接
+                            <button class="toggle-same-btn btn-small" data-table="netsTable2">显示相同网络</button>
+                        </h3>
+                        <table class="net-table" id="netsTable2">
+                            <thead>
+                                <tr>
+                                    <th>网络</th>
+                                    <th>连接元件</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 修改：详细解析改为左右两栏布局 -->
+            <div class="tab-content" id="detailsTab">
+                <div class="details-layout">
+                    <div class="details-container">
+                        <div class="details-header">
+                            <h3>网表1解析详情</h3>
+                            <button class="copy-btn btn-small" data-target="details1">复制详情</button>
+                        </div>
+                        <div class="details-content" id="details1"></div>
+                    </div>
+                    
+                    <div class="details-container">
+                        <div class="details-header">
+                            <h3>网表2解析详情</h3>
+                            <button class="copy-btn btn-small" data-target="details2">复制详情</button>
+                        </div>
+                        <div class="details-content" id="details2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>PADS Layout 9.0 网表比较工具 | 支持提取元件电气特性与引脚连接信息</p>
+        </div>
+    </div>
+
+    <script>
+        // 网表解析器
+        class PadsNetlistParser {
+            constructor() {
+                this.components = {};
+                this.nets = {};
+                this.attributes = {};
+            }
+            
+            parse(content) {
+                this.components = {};
+                this.nets = {};
+                this.attributes = {};
+                
+                const lines = content.split('\n');
+                let inPartSection = false;
+                let inNetSection = false;
+                let inAttributeSection = false;
+                let currentAttributeComponent = null;
+                let currentAttribute = null;
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    
+                    // 检查是否进入*PART*部分
+                    if (line.startsWith('*PART*')) {
+                        inPartSection = true;
+                        inNetSection = false;
+                        inAttributeSection = false;
+                        continue;
+                    }
+                    
+                    // 检查是否进入*NET*部分
+                    if (line.startsWith('*NET*')) {
+                        inPartSection = false;
+                        inNetSection = true;
+                        inAttributeSection = false;
+                        continue;
+                    }
+                    
+                    // 检查是否进入ATTRIBUTE VALUES部分
+                    if (line.startsWith('ATTRIBUTE VALUES')) {
+                        inPartSection = false;
+                        inNetSection = false;
+                        inAttributeSection = true;
+                        continue;
+                    }
+                    
+                    // 检查是否结束部分
+                    if (line.startsWith('*END*') || line.startsWith('*MISC*')) {
+                        inPartSection = false;
+                        inNetSection = false;
+                        inAttributeSection = false;
+                        continue;
+                    }
+                    
+                    // 解析*PART*部分
+                    if (inPartSection && line && !line.startsWith('*')) {
+                        // 提取元件信息，例如: C1      W-C-10NF|50V|K|X7R|0603@W-C0603
+                        // 或: R1      W-R-100K|F|0201@W-R0201
+                        const parts = line.split(/\s+/);
+                        if (parts.length >= 2) {
+                            const componentId = parts[0];
+                            const componentInfo = parts[1];
+                            
+                            // 解析封装信息
+                            const packageMatch = componentInfo.match(/@(\w+-\w+)/);
+                            let packageName = packageMatch ? packageMatch[1] : '';
+                            
+                            // 解析值和参数
+                            const valueMatch = componentInfo.match(/W-[RC]-(.*?)@/);
+                            let value = '';
+                            let voltageRating = '';
+                            let tolerance = '';
+                            let tempTolerance = '';
+                            
+                            if (valueMatch) {
+                                const params = valueMatch[1].split('|');
+                                
+                                // 根据元件类型确定参数位置
+                                if (componentId.startsWith('C') || componentInfo.includes('W-C-')) {
+                                    // 电容: 值|耐压|精度|温度特性|封装
+                                    if (params.length >= 1) value = params[0] || '';
+                                    if (params.length >= 2) voltageRating = params[1] || '';
+                                    if (params.length >= 3) tolerance = params[2] || '';
+                                    if (params.length >= 4) tempTolerance = params[3] || '';
+                                    if (params.length >= 5) packageName = params[4] || packageName;
+                                } else if (componentId.startsWith('R') || componentInfo.includes('W-R-')) {
+                                    // 电阻: 阻值|精度|封装
+                                    if (params.length >= 1) value = params[0] || '';
+                                    if (params.length >= 2) tolerance = params[1] || '';
+                                    if (params.length >= 3) packageName = params[2] || packageName;
+                                } else {
+                                    // 其他元件类型
+                                    if (params.length >= 1) value = params[0] || '';
+                                    if (params.length >= 2) voltageRating = params[1] || '';
+                                    if (params.length >= 3) tolerance = params[2] || '';
+                                    if (params.length >= 4) tempTolerance = params[3] || '';
+                                    if (params.length >= 5) packageName = params[4] || packageName;
+                                }
+                            }
+                            
+                            // 确定元件类型
+                            let type = 'Unknown';
+                            if (componentId.startsWith('C') || componentInfo.includes('W-C-')) type = 'Capacitor';
+                            if (componentId.startsWith('R') || componentInfo.includes('W-R-')) type = 'Resistor';
+                            if (componentId.startsWith('L')) type = 'Inductor';
+                            if (componentId.startsWith('D')) type = 'Diode';
+                            if (componentId.startsWith('Q')) type = 'Transistor';
+                            if (componentId.startsWith('U')) type = 'IC';
+                            
+                            this.components[componentId] = {
+                                id: componentId,
+                                type: type,
+                                value: value,
+                                package: packageName,
+                                voltageRating: voltageRating,
+                                tolerance: tolerance,
+                                tempTolerance: tempTolerance,
+                                pins: {}
+                            };
+                        }
+                    }
+                    
+                    // 解析*NET*部分
+                    if (inNetSection && line.startsWith('*SIGNAL*')) {
+                        const netName = line.substring(8).trim();
+                        this.nets[netName] = [];
+                        
+                        // 读取下一行（连接点）
+                        i++;
+                        while (i < lines.length && lines[i].trim() && !lines[i].trim().startsWith('*SIGNAL*')) {
+                            const connections = lines[i].trim().split(/\s+/);
+                            for (const conn of connections) {
+                                if (conn) {
+                                    this.nets[netName].push(conn);
+                                    
+                                    // 将网络信息添加到元件引脚
+                                    const [componentId, pin] = conn.split('.');
+                                    if (componentId && pin && this.components[componentId]) {
+                                        this.components[componentId].pins[pin] = netName;
+                                    }
+                                }
+                            }
+                            i++;
+                        }
+                        i--; // 回退一行
+                    }
+                    
+                    // 解析ATTRIBUTE VALUES部分
+                    if (inAttributeSection) {
+                        // 查找PART行
+                        if (line.startsWith('PART')) {
+                            const match = line.match(/PART\s+(\w+)/);
+                            if (match) {
+                                currentAttributeComponent = match[1];
+                                this.attributes[currentAttributeComponent] = {};
+                            }
+                        }
+                        
+                        // 查找属性行
+                        if (currentAttributeComponent && line.includes('"')) {
+                            const match = line.match(/"([^"]+)"\s*([^"]*)/);
+                            if (match) {
+                                const key = match[1];
+                                const value = match[2].trim();
+                                this.attributes[currentAttributeComponent][key] = value;
+                                
+                                // 如果属性包含元件信息，更新元件对象
+                                if (this.components[currentAttributeComponent]) {
+                                    if (key === 'Value' && value) {
+                                        this.components[currentAttributeComponent].value = value;
+                                    }
+                                    if (key === 'Voltage Rating' && value) {
+                                        this.components[currentAttributeComponent].voltageRating = value;
+                                    }
+                                    if (key === 'Tolerance' && value) {
+                                        this.components[currentAttributeComponent].tolerance = value;
+                                    }
+                                    if (key === 'TempTolerance' && value) {
+                                        this.components[currentAttributeComponent].tempTolerance = value;
+                                    }
+                                    if (key === 'Package' && value) {
+                                        this.components[currentAttributeComponent].package = value;
+                                    }
+                                    if (key === 'EType' && value) {
+                                        const etypeMap = {
+                                            'C': 'Capacitor',
+                                            'R': 'Resistor',
+                                            'L': 'Inductor',
+                                            'D': 'Diode',
+                                            'Q': 'Transistor',
+                                            'U': 'IC'
+                                        };
+                                        this.components[currentAttributeComponent].type = etypeMap[value] || value;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                return {
+                    components: this.components,
+                    nets: this.nets,
+                    attributes: this.attributes
+                };
+            }
+        }
+        
+        // 网表比较器
+        class NetlistComparator {
+            compare(netlist1, netlist2) {
+                const result = {
+                    addedComponents: [],
+                    removedComponents: [],
+                    changedComponents: [],
+                    addedNets: [],
+                    removedNets: [],
+                    changedNets: [],
+                    components1: netlist1.components,
+                    components2: netlist2.components,
+                    nets1: netlist1.nets,
+                    nets2: netlist2.nets
+                };
+                
+                // 比较元件
+                const compIds1 = Object.keys(netlist1.components);
+                const compIds2 = Object.keys(netlist2.components);
+                
+                // 查找新增和移除的元件
+                for (const id of compIds2) {
+                    if (!compIds1.includes(id)) {
+                        result.addedComponents.push(id);
+                    }
+                }
+                
+                for (const id of compIds1) {
+                    if (!compIds2.includes(id)) {
+                        result.removedComponents.push(id);
+                    }
+                }
+                
+                // 查找修改的元件
+                for (const id of compIds1) {
+                    if (compIds2.includes(id)) {
+                        const comp1 = netlist1.components[id];
+                        const comp2 = netlist2.components[id];
+                        
+                        // 深度比较两个元件对象
+                        if (this.isComponentDifferent(comp1, comp2)) {
+                            result.changedComponents.push(id);
+                        }
+                    }
+                }
+                
+                // 比较网络
+                const netNames1 = Object.keys(netlist1.nets);
+                const netNames2 = Object.keys(netlist2.nets);
+                
+                // 查找新增和移除的网络
+                for (const net of netNames2) {
+                    if (!netNames1.includes(net)) {
+                        result.addedNets.push(net);
+                    }
+                }
+                
+                for (const net of netNames1) {
+                    if (!netNames2.includes(net)) {
+                        result.removedNets.push(net);
+                    }
+                }
+                
+                // 查找修改的网络
+                for (const net of netNames1) {
+                    if (netNames2.includes(net)) {
+                        const net1 = JSON.stringify(netlist1.nets[net].sort());
+                        const net2 = JSON.stringify(netlist2.nets[net].sort());
+                        
+                        if (net1 !== net2) {
+                            result.changedNets.push(net);
+                        }
+                    }
+                }
+                
+                return result;
+            }
+            
+            // 深度比较两个元件对象
+            isComponentDifferent(comp1, comp2) {
+                // 比较主要属性
+                if (comp1.type !== comp2.type) return true;
+                if (comp1.value !== comp2.value) return true;
+                if (comp1.package !== comp2.package) return true;
+                
+                // 对于电容，比较耐压和温度特性
+                if (comp1.type === 'Capacitor') {
+                    if (comp1.voltageRating !== comp2.voltageRating) return true;
+                    if (comp1.tempTolerance !== comp2.tempTolerance) return true;
+                }
+                
+                // 比较精度（容差）
+                if (comp1.tolerance !== comp2.tolerance) return true;
+                
+                // 比较引脚连接
+                const pins1 = JSON.stringify(comp1.pins);
+                const pins2 = JSON.stringify(comp2.pins);
+                if (pins1 !== pins2) return true;
+                
+                return false;
+            }
+        }
+        
+        // DOM元素
+        const fileInput1 = document.getElementById('file1');
+        const fileInput2 = document.getElementById('file2');
+        const netlistTextarea1 = document.getElementById('netlist1');
+        const netlistTextarea2 = document.getElementById('netlist2');
+        const compareBtn = document.getElementById('compareBtn');
+        const resultsSection = document.getElementById('resultsSection');
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        // 文件读取
+        fileInput1.addEventListener('change', function(e) {
+            readFile(e.target.files[0], netlistTextarea1);
+        });
+        
+        fileInput2.addEventListener('change', function(e) {
+            readFile(e.target.files[0], netlistTextarea2);
+        });
+        
+        function readFile(file, textarea) {
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                textarea.value = e.target.result;
+            };
+            reader.readAsText(file);
+        }
+        
+        // 标签页切换
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                
+                // 移除所有激活状态
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(tc => tc.classList.remove('active'));
+                
+                // 激活当前标签
+                this.classList.add('active');
+                document.getElementById(tabId + 'Tab').classList.add('active');
+            });
+        });
+        
+        // 比较按钮点击事件
+        compareBtn.addEventListener('click', function() {
+            const netlist1Content = netlistTextarea1.value.trim();
+            const netlist2Content = netlistTextarea2.value.trim();
+            
+            if (!netlist1Content || !netlist2Content) {
+                alert('请确保两个网表都有内容');
+                return;
+            }
+            
+            // 解析网表
+            const parser = new PadsNetlistParser();
+            const netlist1 = parser.parse(netlist1Content);
+            const netlist2 = parser.parse(netlist2Content);
+            
+            // 比较网表
+            const comparator = new NetlistComparator();
+            const comparisonResult = comparator.compare(netlist1, netlist2);
+            
+            // 显示结果
+            displayResults(comparisonResult, netlist1, netlist2);
+            
+            // 显示结果区域
+            resultsSection.classList.add('active');
+            
+            // 滚动到结果区域
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        });
+        
+        // 显示比较结果
+        function displayResults(comparisonResult, netlist1, netlist2) {
+            // 更新摘要信息
+            document.getElementById('totalComponents1').textContent = Object.keys(netlist1.components).length;
+            document.getElementById('totalComponents2').textContent = Object.keys(netlist2.components).length;
+            document.getElementById('addedComponents').textContent = comparisonResult.addedComponents.length;
+            document.getElementById('removedComponents').textContent = comparisonResult.removedComponents.length;
+            document.getElementById('changedComponents').textContent = comparisonResult.changedComponents.length;
+            
+            // 显示元件表格
+            displayComponentTable('componentsTable1', netlist1.components, 
+                comparisonResult.removedComponents, [], comparisonResult.changedComponents);
+            displayComponentTable('componentsTable2', netlist2.components, 
+                [], comparisonResult.addedComponents, comparisonResult.changedComponents);
+            
+            // 显示网络表格
+            displayNetTable('netsTable1', netlist1.nets, comparisonResult.removedNets, [], comparisonResult.changedNets);
+            displayNetTable('netsTable2', netlist2.nets, [], comparisonResult.addedNets, comparisonResult.changedNets);
+            
+            // 显示详细解析
+            displayDetails('details1', netlist1);
+            displayDetails('details2', netlist2);
+            
+            // 绑定切换按钮事件
+            bindToggleButtons();
+            
+            // 绑定复制按钮事件
+            bindCopyButtons();
+        }
+        
+        // 显示元件表格
+        function displayComponentTable(tableId, components, removedIds, addedIds, changedIds) {
+            const tableBody = document.querySelector(`#${tableId} tbody`);
+            tableBody.innerHTML = '';
+            
+            const componentIds = Object.keys(components).sort();
+            let sameRowCount = 0;
+            
+            for (const id of componentIds) {
+                const comp = components[id];
+                const row = document.createElement('tr');
+                
+                // 判断元件是否相同
+                const isRemoved = removedIds.includes(id);
+                const isAdded = addedIds.includes(id);
+                const isChanged = changedIds.includes(id);
+                const isSame = !isRemoved && !isAdded && !isChanged;
+                
+                // 根据差异添加CSS类
+                if (isRemoved) {
+                    row.classList.add('difference-removed');
+                } else if (isAdded) {
+                    row.classList.add('difference-added');
+                } else if (isChanged) {
+                    row.classList.add('difference-changed');
+                } else if (isSame) {
+                    row.classList.add('same-row');
+                    sameRowCount++;
+                }
+                
+                // 获取引脚网络信息
+                const pinNets = [];
+                for (const pin in comp.pins) {
+                    pinNets.push(`${pin}:${comp.pins[pin]}`);
+                }
+                
+                row.innerHTML = `
+                    <td>${comp.id}</td>
+                    <td>${comp.type}</td>
+                    <td>${comp.value}</td>
+                    <td>${comp.package}</td>
+                    <td>${pinNets.join(', ')}</td>
+                `;
+                
+                tableBody.appendChild(row);
+            }
+            
+            // 更新切换按钮文本
+            const toggleBtn = document.querySelector(`button[data-table="${tableId}"]`);
+            if (toggleBtn) {
+                toggleBtn.textContent = `显示相同元件 (${sameRowCount})`;
+                toggleBtn.dataset.state = 'hidden';
+            }
+        }
+        
+        // 显示网络表格
+        function displayNetTable(tableId, nets, removedNets, addedNets, changedNets) {
+            const tableBody = document.querySelector(`#${tableId} tbody`);
+            tableBody.innerHTML = '';
+            
+            const netNames = Object.keys(nets).sort();
+            let sameRowCount = 0;
+            
+            for (const netName of netNames) {
+                const connections = nets[netName];
+                const row = document.createElement('tr');
+                
+                // 判断网络是否相同
+                const isRemoved = removedNets.includes(netName);
+                const isAdded = addedNets.includes(netName);
+                const isChanged = changedNets.includes(netName);
+                const isSame = !isRemoved && !isAdded && !isChanged;
+                
+                // 根据差异添加CSS类
+                if (isRemoved) {
+                    row.classList.add('difference-removed');
+                } else if (isAdded) {
+                    row.classList.add('difference-added');
+                } else if (isChanged) {
+                    row.classList.add('difference-changed');
+                } else if (isSame) {
+                    row.classList.add('same-row');
+                    sameRowCount++;
+                }
+                
+                row.innerHTML = `
+                    <td>${netName}</td>
+                    <td>${connections.join(', ')}</td>
+                `;
+                
+                tableBody.appendChild(row);
+            }
+            
+            // 更新切换按钮文本
+            const toggleBtn = document.querySelector(`button[data-table="${tableId}"]`);
+            if (toggleBtn) {
+                toggleBtn.textContent = `显示相同网络 (${sameRowCount})`;
+                toggleBtn.dataset.state = 'hidden';
+            }
+        }
+        
+        // 绑定切换按钮事件
+        function bindToggleButtons() {
+            const toggleButtons = document.querySelectorAll('.toggle-same-btn');
+            
+            toggleButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const tableId = this.dataset.table;
+                    const table = document.getElementById(tableId);
+                    const sameRows = table.querySelectorAll('.same-row');
+                    const state = this.dataset.state;
+                    
+                    if (state === 'hidden') {
+                        // 显示相同行
+                        sameRows.forEach(row => {
+                            row.classList.add('visible');
+                        });
+                        this.textContent = this.textContent.replace('显示', '隐藏');
+                        this.dataset.state = 'visible';
+                    } else {
+                        // 隐藏相同行
+                        sameRows.forEach(row => {
+                            row.classList.remove('visible');
+                        });
+                        this.textContent = this.textContent.replace('隐藏', '显示');
+                        this.dataset.state = 'hidden';
+                    }
+                });
+            });
+        }
+        
+        // 绑定复制按钮事件
+        function bindCopyButtons() {
+            const copyButtons = document.querySelectorAll('.copy-btn');
+            
+            copyButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetId = this.dataset.target;
+                    const targetElement = document.getElementById(targetId);
+                    const textToCopy = targetElement.textContent;
+                    
+                    // 使用Clipboard API复制文本
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        // 显示复制成功反馈
+                        const originalText = this.textContent;
+                        this.textContent = '已复制!';
+                        this.classList.add('btn-success');
+                        
+                        // 2秒后恢复原始状态
+                        setTimeout(() => {
+                            this.textContent = originalText;
+                            this.classList.remove('btn-success');
+                        }, 2000);
+                    }).catch(err => {
+                        console.error('复制失败:', err);
+                        alert('复制失败，请手动复制内容');
+                    });
+                });
+            });
+        }
+        
+        // 显示详细解析 - 优化元件解析，电阻和电容不同参数
+        function displayDetails(elementId, netlist) {
+            const detailsDiv = document.getElementById(elementId);
+            let detailsText = '';
+            
+            // 1. 基本信息摘要
+            detailsText += "=== PADS网表解析报告 ===\n";
+            detailsText += `解析时间: ${new Date().toLocaleString()}\n`;
+            detailsText += `总元件数: ${Object.keys(netlist.components).length}\n`;
+            detailsText += `总网络数: ${Object.keys(netlist.nets).length}\n\n`;
+            
+            // 2. 元件列表（根据元件类型显示不同参数）
+            detailsText += "=== 元件列表 ===\n";
+            
+            const componentIds = Object.keys(netlist.components).sort();
+            if (componentIds.length === 0) {
+                detailsText += "无元件\n";
+            } else {
+                for (const id of componentIds) {
+                    const comp = netlist.components[id];
+                    
+                    // 根据元件类型显示不同的信息
+                    if (comp.type === 'Resistor') {
+                        // 电阻：阻值、精度、封装
+                        let componentLine = `[${id}] ${comp.type}:${comp.value}`;
+                        const params = [];
+                        if (comp.package) params.push(`封装:${comp.package}`);
+                        if (comp.tolerance) params.push(`精度:${comp.tolerance}`);
+                        
+                        if (params.length > 0) {
+                            componentLine += ` (${params.join(' ')})`;
+                        }
+                        detailsText += componentLine + '\n';
+                        
+                    } else if (comp.type === 'Capacitor') {
+                        // 电容：容值、耐压、精度、温度特性、封装
+                        let componentLine = `[${id}] ${comp.type}:${comp.value}`;
+                        const params = [];
+                        if (comp.package) params.push(`封装:${comp.package}`);
+                        if (comp.voltageRating) params.push(`耐压:${comp.voltageRating}V`);
+                        if (comp.tolerance) params.push(`精度:${comp.tolerance}`);
+                        if (comp.tempTolerance) params.push(`温度:${comp.tempTolerance}`);
+                        
+                        if (params.length > 0) {
+                            componentLine += ` (${params.join(' ')})`;
+                        }
+                        detailsText += componentLine + '\n';
+                        
+                    } else {
+                        // 其他元件类型
+                        let componentLine = `[${id}] ${comp.type}:${comp.value}`;
+                        const params = [];
+                        if (comp.package) params.push(`封装:${comp.package}`);
+                        if (comp.voltageRating) params.push(`耐压:${comp.voltageRating}V`);
+                        if (comp.tolerance) params.push(`精度:${comp.tolerance}`);
+                        if (comp.tempTolerance) params.push(`温度:${comp.tempTolerance}`);
+                        
+                        if (params.length > 0) {
+                            componentLine += ` (${params.join(' ')})`;
+                        }
+                        detailsText += componentLine + '\n';
+                    }
+                    
+                    // 引脚连接信息
+                    const pinEntries = Object.entries(comp.pins);
+                    if (pinEntries.length > 0) {
+                        // 按引脚分组显示
+                        const pinsByNet = {};
+                        for (const [pin, net] of pinEntries) {
+                            if (!pinsByNet[net]) pinsByNet[net] = [];
+                            pinsByNet[net].push(pin);
+                        }
+                        
+                        for (const [net, pins] of Object.entries(pinsByNet)) {
+                            pins.sort((a, b) => parseInt(a) - parseInt(b));
+                            
+                            if (pins.length <= 5) {
+                                detailsText += `  引脚${pins.join(',')} -> ${net}\n`;
+                            } else {
+                                detailsText += `  引脚${pins[0]}~${pins[pins.length-1]}(${pins.length}pins) -> ${net}\n`;
+                            }
+                        }
+                    }
+                    
+                    detailsText += '\n';
+                }
+            }
+            
+            // 3. 统计信息（简化）
+            detailsText += "=== 统计 ===\n";
+            
+            // 按类型统计元件
+            const typeCount = {};
+            for (const id of componentIds) {
+                const type = netlist.components[id].type;
+                typeCount[type] = (typeCount[type] || 0) + 1;
+            }
+            
+            for (const type in typeCount) {
+                detailsText += `${type}:${typeCount[type]} `;
+            }
+            
+            detailsText += '\n=== 报告结束 ===';
+            
+            // 将纯文本设置为元素内容
+            detailsDiv.textContent = detailsText;
+        }
+    </script>
+</body>
+</html>

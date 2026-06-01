@@ -1,0 +1,12 @@
+# 紧急模式：仅保证管理系统可经网关访问（/login、/api/auth/*）
+# 用法: docker compose -f docker-compose.yml -f docker-compose.emergency.yml up -d gateway
+services:
+  gateway:
+    depends_on:
+      htmlsystm:
+        condition: service_healthy
+
+  web:
+    depends_on:
+      backend:
+        condition: service_started

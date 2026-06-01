@@ -1,0 +1,1786 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel BOM对比工具 - 位号数量检测版</title>
+    <script src="../vendor/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2980b9;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --gray-color: #6c757d;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, var(--primary-color), var(--success-color), var(--warning-color), var(--danger-color));
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        
+        h1 {
+            color: var(--dark-color);
+            margin-bottom: 15px;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        .description {
+            color: var(--gray-color);
+            max-width: 800px;
+            margin: 0 auto;
+            font-size: 1.1rem;
+        }
+        
+        .upload-section {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+        
+        .bom-upload {
+            flex: 1;
+            min-width: 350px;
+            background: var(--light-color);
+            padding: 25px;
+            border-radius: 10px;
+            border: 2px dashed #dee2e6;
+            transition: all 0.3s ease;
+        }
+        
+        .bom-upload:hover {
+            border-color: var(--primary-color);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .bom-upload h3 {
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .bom-upload h3::before {
+            content: '📋';
+        }
+        
+        .file-input-container {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .file-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            background-color: white;
+        }
+        
+        .file-info {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: var(--gray-color);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .file-info::before {
+            content: '📄';
+        }
+        
+        .column-mapping {
+            margin-top: 20px;
+        }
+        
+        .mapping-row {
+            display: flex;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+        
+        .mapping-label {
+            width: 120px;
+            font-weight: 500;
+            color: var(--dark-color);
+        }
+        
+        select {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            background-color: white;
+            transition: border-color 0.3s;
+        }
+        
+        select:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+        
+        .options-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: var(--light-color);
+            border-radius: 10px;
+        }
+        
+        .options-section h3 {
+            margin-bottom: 15px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .options-section h3::before {
+            content: '⚙️';
+        }
+        
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .option-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .option-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .separator-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .separator-section h4 {
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+        
+        .separator-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .separator-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .custom-separator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .custom-separator input {
+            padding: 5px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            width: 80px;
+        }
+        
+        .actions {
+            text-align: center;
+            margin: 40px 0;
+        }
+        
+        button {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .export-btn {
+            background: linear-gradient(135deg, var(--success-color), #27ae60);
+            padding: 10px 20px;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        
+        .clear-btn {
+            background: linear-gradient(135deg, var(--danger-color), #c0392b);
+            padding: 5px 10px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        
+        .results {
+            margin-top: 40px;
+            display: none;
+        }
+        
+        .summary {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .summary h3 {
+            margin-bottom: 15px;
+            color: #1565c0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .summary h3::before {
+            content: '📊';
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .summary-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .summary-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .summary-label {
+            font-size: 0.9rem;
+            color: var(--gray-color);
+        }
+        
+        .result-tabs {
+            display: flex;
+            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .tab:hover {
+            background-color: rgba(52, 152, 219, 0.05);
+        }
+        
+        .tab.active {
+            border-bottom-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+        
+        .result-content {
+            display: none;
+        }
+        
+        .result-content.active {
+            display: block;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        th, td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid #eaeaea;
+        }
+        
+        th {
+            background-color: var(--light-color);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        tr:hover {
+            background-color: #e9ecef;
+        }
+        
+        .error-row {
+            background-color: #ffebee !important;
+        }
+        
+        .warning-row {
+            background-color: #fff3e0 !important;
+        }
+        
+        .success-row {
+            background-color: #e8f5e9 !important;
+        }
+        
+        .info-row {
+            background-color: #e3f2fd !important;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 30px;
+            color: var(--gray-color);
+        }
+        
+        .no-data::before {
+            content: '📝';
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        .empty-cell {
+            color: #999;
+            font-style: italic;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            color: var(--gray-color);
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .upload-section {
+                flex-direction: column;
+            }
+            
+            .bom-upload {
+                min-width: 100%;
+            }
+            
+            .summary-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .result-tabs {
+                flex-wrap: wrap;
+            }
+            
+            .tab {
+                flex: 1;
+                min-width: 120px;
+                text-align: center;
+            }
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Excel BOM对比工具 - 位号数量检测版</h1>
+            <p class="description">上传两个Excel格式的BOM文件，选择对应的列映射，系统将自动对比并识别出位号重复、物料不同、多出物料等异常情况，支持位号数量检测。</p>
+        </header>
+        
+        <div class="upload-section">
+            <div class="bom-upload">
+                <h3>第一个BOM <button class="clear-btn" data-bom="1">清除</button></h3>
+                <div class="file-input-container">
+                    <input type="file" id="bom1" accept=".xlsx,.xls,.csv" class="file-input">
+                    <div class="file-info" id="bom1-info">未选择文件</div>
+                </div>
+                <div class="column-mapping">
+                    <div class="mapping-row">
+                        <div class="mapping-label">物料代码列</div>
+                        <select id="bom1-part-code">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="mapping-row">
+                        <div class="mapping-label">物料名称列</div>
+                        <select id="bom1-part-name">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="mapping-row">
+                        <div class="mapping-label">位号列</div>
+                        <select id="bom1-reference">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="mapping-row">
+                        <div class="mapping-label">数量列</div>
+                        <select id="bom1-quantity">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bom-upload">
+                <h3>第二个BOM <button class="clear-btn" data-bom="2">清除</button></h3>
+                <div class="file-input-container">
+                    <input type="file" id="bom2" accept=".xlsx,.xls,.csv" class="file-input">
+                    <div class="file-info" id="bom2-info">未选择文件</div>
+                </div>
+                <div class="column-mapping">
+                    <div class="mapping-row">
+                        <div class="mapping-label">物料代码列</div>
+                        <select id="bom2-part-code">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="mapping-row">
+                        <div class="mapping-label">物料名称列</div>
+                        <select id="bom2-part-name">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="mapping-row">
+                        <div class="mapping-label">位号列</div>
+                        <select id="bom2-reference">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="mapping-row">
+                        <div class="mapping-label">数量列</div>
+                        <select id="bom2-quantity">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="separator-section">
+            <h4>位号分隔符设置</h4>
+            <div class="separator-options">
+                <div class="separator-option">
+                    <input type="checkbox" id="separator-comma" checked>
+                    <label for="separator-comma">逗号 (,)</label>
+                </div>
+                <div class="separator-option">
+                    <input type="checkbox" id="separator-semicolon">
+                    <label for="separator-semicolon">分号 (;)</label>
+                </div>
+                <div class="separator-option">
+                    <input type="checkbox" id="separator-space">
+                    <label for="separator-space">空格</label>
+                </div>
+                <div class="separator-option">
+                    <input type="checkbox" id="separator-slash">
+                    <label for="separator-slash">斜杠 (/)</label>
+                </div>
+            </div>
+            <div class="custom-separator">
+                <label for="custom-separator">自定义分隔符:</label>
+                <input type="text" id="custom-separator" placeholder="例如: |">
+            </div>
+        </div>
+        
+        <div class="options-section">
+            <h3>对比选项</h3>
+            <div class="options-grid">
+                <div class="option-item">
+                    <input type="checkbox" id="ignore-alternatives" checked>
+                    <label for="ignore-alternatives">忽略替代组差异</label>
+                </div>
+                <div class="option-item">
+                    <input type="checkbox" id="detect-alternatives" checked>
+                    <label for="detect-alternatives">检测替代组</label>
+                </div>
+                <div class="option-item">
+                    <input type="checkbox" id="ignore-empty-cells" checked>
+                    <label for="ignore-empty-cells">忽略空单元格</label>
+                </div>
+                <div class="option-item">
+                    <input type="checkbox" id="check-quantity" checked>
+                    <label for="check-quantity">检查位号数量</label>
+                </div>
+            </div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>正在处理文件，请稍候...</p>
+        </div>
+        
+        <div class="actions">
+            <button id="compare-btn" disabled>开始对比</button>
+        </div>
+        
+        <div class="results" id="results">
+            <div class="summary">
+                <h3>对比结果概览</h3>
+                <div class="summary-grid" id="summary-content">
+                    <!-- 动态生成概览内容 -->
+                </div>
+            </div>
+            
+            <div class="result-tabs">
+                <div class="tab active" data-tab="duplicates">位号重复</div>
+                <div class="tab" data-tab="different-parts">物料不同</div>
+                <div class="tab" data-tab="extra-parts">多出物料</div>
+                <div class="tab" data-tab="alternative-groups">替代组</div>
+                <div class="tab" data-tab="alternative-differences">替代组差异</div>
+                <div class="tab" data-tab="quantity-mismatch">位号数量不匹配</div>
+                <div class="tab" data-tab="empty-cells">空单元格</div>
+                <div class="tab" data-tab="all-data">全部数据</div>
+            </div>
+            
+            <div class="result-content active" id="duplicates-content">
+                <button class="export-btn" data-table="duplicates-table" data-filename="位号重复">导出Excel</button>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>位号</th>
+                                <th>BOM文件</th>
+                                <th>出现次数</th>
+                                <th>物料代码</th>
+                                <th>物料名称</th>
+                            </tr>
+                        </thead>
+                        <tbody id="duplicates-table">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="result-content" id="different-parts-content">
+                <button class="export-btn" data-table="different-parts-table" data-filename="物料不同">导出Excel</button>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>位号</th>
+                                <th>BOM1物料代码</th>
+                                <th>BOM1物料名称</th>
+                                <th>BOM2物料代码</th>
+                                <th>BOM2物料名称</th>
+                            </tr>
+                        </thead>
+                        <tbody id="different-parts-table">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="result-content" id="extra-parts-content">
+                <button class="export-btn" data-table="extra-parts-table" data-filename="多出物料">导出Excel</button>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>位号</th>
+                                <th>物料代码</th>
+                                <th>物料名称</th>
+                                <th>所在BOM</th>
+                            </tr>
+                        </thead>
+                        <tbody id="extra-parts-table">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="result-content" id="alternative-groups-content">
+                <button class="export-btn" data-table="alternative-groups-table" data-filename="替代组">导出Excel</button>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>位号</th>
+                                <th>替代组物料</th>
+                                <th>BOM文件</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alternative-groups-table">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="result-content" id="alternative-differences-content">
+                <button class="export-btn" data-table="alternative-differences-table" data-filename="替代组差异">导出Excel</button>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>位号</th>
+                                <th>BOM1替代物料</th>
+                                <th>BOM2替代物料</th>
+                                <th>差异类型</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alternative-differences-table">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="result-content" id="quantity-mismatch-content">
+                <button class="export-btn" data-table="quantity-mismatch-table" data-filename="位号数量不匹配">导出Excel</button>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>行号</th>
+                                <th>BOM文件</th>
+                                <th>物料代码</th>
+                                <th>物料名称</th>
+                                <th>位号</th>
+                                <th>数量</th>
+                                <th>位号数量</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody id="quantity-mismatch-table">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="result-content" id="empty-cells-content">
+                <button class="export-btn" data-table="empty-cells-table" data-filename="空单元格">导出Excel</button>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>行号</th>
+                                <th>BOM文件</th>
+                                <th>物料代码</th>
+                                <th>物料名称</th>
+                                <th>位号</th>
+                                <th>数量</th>
+                            </tr>
+                        </thead>
+                        <tbody id="empty-cells-table">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="result-content" id="all-data-content">
+                <button class="export-btn" data-table="all-data-table" data-filename="全部数据">导出Excel</button>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>位号</th>
+                                <th>物料代码</th>
+                                <th>物料名称</th>
+                                <th>数量</th>
+                                <th>所在BOM</th>
+                            </tr>
+                        </thead>
+                        <tbody id="all-data-table">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Excel BOM对比工具 - 位号数量检测版 &copy; 2023 | 支持 .xlsx, .xls, .csv 格式</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const bom1FileInput = document.getElementById('bom1');
+            const bom2FileInput = document.getElementById('bom2');
+            const bom1Info = document.getElementById('bom1-info');
+            const bom2Info = document.getElementById('bom2-info');
+            const compareBtn = document.getElementById('compare-btn');
+            const resultsSection = document.getElementById('results');
+            const loadingIndicator = document.getElementById('loading');
+            const ignoreAlternativesCheckbox = document.getElementById('ignore-alternatives');
+            const detectAlternativesCheckbox = document.getElementById('detect-alternatives');
+            const ignoreEmptyCellsCheckbox = document.getElementById('ignore-empty-cells');
+            const checkQuantityCheckbox = document.getElementById('check-quantity');
+            
+            // 分隔符选项
+            const separatorComma = document.getElementById('separator-comma');
+            const separatorSemicolon = document.getElementById('separator-semicolon');
+            const separatorSpace = document.getElementById('separator-space');
+            const separatorSlash = document.getElementById('separator-slash');
+            const customSeparatorInput = document.getElementById('custom-separator');
+            
+            // 存储解析后的BOM数据
+            let bom1Data = [];
+            let bom2Data = [];
+            let bom1Headers = [];
+            let bom2Headers = [];
+            
+            // 存储对比结果数据
+            let comparisonResult = null;
+            let alternativeGroups = {};
+            let alternativeDifferences = [];
+            
+            // 监听文件上传
+            bom1FileInput.addEventListener('change', function(e) {
+                handleFileUpload(e.target.files[0], 1);
+            });
+            
+            bom2FileInput.addEventListener('change', function(e) {
+                handleFileUpload(e.target.files[0], 2);
+            });
+            
+            // 处理文件上传
+            function handleFileUpload(file, bomNumber) {
+                if (!file) return;
+                
+                const fileInfo = document.getElementById(`bom${bomNumber}-info`);
+                fileInfo.textContent = `${file.name} (${formatFileSize(file.size)})`;
+                
+                loadingIndicator.style.display = 'block';
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        
+                        // 获取第一个工作表
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                        
+                        if (jsonData.length === 0) {
+                            throw new Error('Excel文件为空');
+                        }
+                        
+                        parseExcelData(jsonData, bomNumber);
+                        loadingIndicator.style.display = 'none';
+                    } catch (error) {
+                        console.error('解析Excel文件时出错:', error);
+                        fileInfo.textContent = `解析错误: ${error.message}`;
+                        loadingIndicator.style.display = 'none';
+                    }
+                };
+                
+                reader.onerror = function() {
+                    fileInfo.textContent = '文件读取失败';
+                    loadingIndicator.style.display = 'none';
+                };
+                
+                reader.readAsArrayBuffer(file);
+            }
+            
+            // 格式化文件大小
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+            
+            // 解析Excel数据
+            function parseExcelData(excelData, bomNumber) {
+                const headers = excelData[0];
+                const data = [];
+                
+                // 从第二行开始解析数据
+                for (let i = 1; i < excelData.length; i++) {
+                    const row = excelData[i];
+                    if (row.length === 0) continue;
+                    
+                    const rowData = {};
+                    headers.forEach((header, index) => {
+                        // 处理空单元格，如果单元格为空则设为空字符串
+                        rowData[header] = row[index] === undefined || row[index] === null ? '' : String(row[index]);
+                    });
+                    
+                    data.push(rowData);
+                }
+                
+                if (bomNumber === 1) {
+                    bom1Data = data;
+                    bom1Headers = headers;
+                } else {
+                    bom2Data = data;
+                    bom2Headers = headers;
+                }
+                
+                // 更新列选择下拉菜单
+                updateColumnSelectors(headers, bomNumber);
+                
+                // 检查是否两个文件都已上传并解析
+                checkReadyToCompare();
+            }
+            
+            // 更新列选择下拉菜单
+            function updateColumnSelectors(headers, bomNumber) {
+                const partCodeSelect = document.getElementById(`bom${bomNumber}-part-code`);
+                const partNameSelect = document.getElementById(`bom${bomNumber}-part-name`);
+                const referenceSelect = document.getElementById(`bom${bomNumber}-reference`);
+                const quantitySelect = document.getElementById(`bom${bomNumber}-quantity`);
+                
+                // 清空现有选项
+                [partCodeSelect, partNameSelect, referenceSelect, quantitySelect].forEach(select => {
+                    select.innerHTML = '<option value="">请选择</option>';
+                });
+                
+                // 添加新选项
+                headers.forEach(header => {
+                    const option = document.createElement('option');
+                    option.value = header;
+                    option.textContent = header;
+                    
+                    partCodeSelect.appendChild(option.cloneNode(true));
+                    partNameSelect.appendChild(option.cloneNode(true));
+                    referenceSelect.appendChild(option.cloneNode(true));
+                    quantitySelect.appendChild(option.cloneNode(true));
+                });
+            }
+            
+            // 检查是否可以进行对比
+            function checkReadyToCompare() {
+                const bom1Mapping = getColumnMapping(1);
+                const bom2Mapping = getColumnMapping(2);
+                
+                const isBom1Ready = bom1Data.length > 0 && validateMapping(bom1Mapping);
+                const isBom2Ready = bom2Data.length > 0 && validateMapping(bom2Mapping);
+                
+                compareBtn.disabled = !(isBom1Ready && isBom2Ready);
+            }
+            
+            // 获取列映射
+            function getColumnMapping(bomNumber) {
+                return {
+                    partCode: document.getElementById(`bom${bomNumber}-part-code`).value,
+                    partName: document.getElementById(`bom${bomNumber}-part-name`).value,
+                    reference: document.getElementById(`bom${bomNumber}-reference`).value,
+                    quantity: document.getElementById(`bom${bomNumber}-quantity`).value
+                };
+            }
+            
+            // 验证映射是否完整
+            function validateMapping(mapping) {
+                return mapping.partCode && mapping.partName && mapping.reference && mapping.quantity;
+            }
+            
+            // 获取位号分隔符正则表达式
+            function getReferenceSeparator() {
+                const separators = [];
+                
+                if (separatorComma.checked) separators.push(',');
+                if (separatorSemicolon.checked) separators.push(';');
+                if (separatorSpace.checked) separators.push('\\s');
+                if (separatorSlash.checked) separators.push('/');
+                
+                // 添加自定义分隔符
+                const customSeparator = customSeparatorInput.value.trim();
+                if (customSeparator) {
+                    // 转义正则表达式特殊字符
+                    const escapedSeparator = customSeparator.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    separators.push(escapedSeparator);
+                }
+                
+                if (separators.length === 0) {
+                    // 默认使用逗号
+                    separators.push(',');
+                }
+                
+                return new RegExp(`[${separators.join('')}]+`);
+            }
+            
+            // 对比按钮点击事件
+            compareBtn.addEventListener('click', function() {
+                loadingIndicator.style.display = 'block';
+                
+                // 使用setTimeout确保UI更新
+                setTimeout(function() {
+                    // 获取列映射
+                    const bom1Mapping = getColumnMapping(1);
+                    const bom2Mapping = getColumnMapping(2);
+                    
+                    // 获取位号分隔符
+                    const referenceSeparator = getReferenceSeparator();
+                    
+                    // 处理BOM数据（拆分位号）
+                    const processedBom1 = processBomData(bom1Data, bom1Mapping, 1, referenceSeparator);
+                    const processedBom2 = processBomData(bom2Data, bom2Mapping, 2, referenceSeparator);
+                    
+                    // 检测替代组
+                    alternativeGroups = {};
+                    alternativeDifferences = [];
+                    if (detectAlternativesCheckbox.checked) {
+                        alternativeGroups = detectAlternativeGroups(processedBom1, processedBom2);
+                        alternativeDifferences = detectAlternativeDifferences(processedBom1, processedBom2, alternativeGroups);
+                    }
+                    
+                    // 执行对比
+                    comparisonResult = compareBoms(processedBom1, processedBom2, alternativeGroups);
+                    
+                    // 显示结果
+                    displayResults(comparisonResult, alternativeGroups, alternativeDifferences);
+                    resultsSection.style.display = 'block';
+                    try {
+                        if (window.parent && window.parent !== window) {
+                            window.parent.postMessage({ type: 'neo_compare_tool_done' }, '*');
+                        }
+                    } catch (e) { /* ignore */ }
+                    
+                    loadingIndicator.style.display = 'none';
+                }, 100);
+            });
+            
+            // 处理BOM数据，拆分位号
+            function processBomData(bomData, mapping, bomNumber, separator) {
+                const processedData = [];
+                const quantityMismatch = [];
+                
+                bomData.forEach((row, index) => {
+                    // 获取原始数据
+                    const partCode = row[mapping.partCode] || '';
+                    const partName = row[mapping.partName] || '';
+                    const reference = row[mapping.reference] || '';
+                    const quantity = row[mapping.quantity] || '';
+                    
+                    // 如果启用了忽略空单元格，并且关键字段为空，则跳过
+                    if (ignoreEmptyCellsCheckbox.checked) {
+                        if (!partCode || !reference) {
+                            return;
+                        }
+                    }
+                    
+                    // 检查位号数量是否匹配
+                    if (checkQuantityCheckbox.checked && reference && quantity) {
+                        const references = reference.split(separator).filter(ref => ref.trim() !== '');
+                        const quantityNum = parseFloat(quantity);
+                        
+                        if (!isNaN(quantityNum) && references.length !== quantityNum) {
+                            quantityMismatch.push({
+                                rowNumber: index + 2,
+                                bomName: `BOM${bomNumber}`,
+                                partCode: partCode,
+                                partName: partName,
+                                reference: reference,
+                                quantity: quantity,
+                                referenceCount: references.length,
+                                status: references.length > quantityNum ? '位号数量多于物料数量' : '位号数量少于物料数量'
+                            });
+                        }
+                    }
+                    
+                    // 拆分位号
+                    const references = reference.split(separator).filter(ref => ref.trim() !== '');
+                    
+                    // 如果没有位号，添加一个空位号用于处理空单元格
+                    if (references.length === 0) {
+                        references.push('');
+                    }
+                    
+                    references.forEach(reference => {
+                        processedData.push({
+                            reference: reference.trim(),
+                            partCode: partCode,
+                            partName: partName,
+                            quantity: quantity,
+                            originalRow: row,
+                            rowNumber: index + 2, // Excel行号（从1开始，第一行是表头）
+                            bomNumber: bomNumber
+                        });
+                    });
+                });
+                
+                return {
+                    processedData: processedData,
+                    quantityMismatch: quantityMismatch
+                };
+            }
+            
+            // 检测替代组
+            function detectAlternativeGroups(bom1, bom2) {
+                const groups = {};
+                
+                // 合并两个BOM的数据
+                const allData = [...bom1.processedData, ...bom2.processedData];
+                
+                // 按位号分组
+                const referenceGroups = {};
+                allData.forEach(item => {
+                    if (!item.reference) return; // 跳过空位号
+                    
+                    if (!referenceGroups[item.reference]) {
+                        referenceGroups[item.reference] = [];
+                    }
+                    referenceGroups[item.reference].push(item);
+                });
+                
+                // 检测每个位号的替代组
+                Object.keys(referenceGroups).forEach(reference => {
+                    const items = referenceGroups[reference];
+                    const partMap = {};
+                    
+                    // 按物料代码分组
+                    items.forEach(item => {
+                        if (!item.partCode) return; // 跳过空物料代码
+                        
+                        if (!partMap[item.partCode]) {
+                            partMap[item.partCode] = [];
+                        }
+                        partMap[item.partCode].push(item);
+                    });
+                    
+                    // 如果同一个位号对应多个物料代码，则认为是替代组
+                    if (Object.keys(partMap).length > 1) {
+                        groups[reference] = Object.keys(partMap);
+                    }
+                });
+                
+                return groups;
+            }
+            
+            // 检测替代组差异
+            function detectAlternativeDifferences(bom1, bom2, alternativeGroups) {
+                const differences = [];
+                
+                // 检查每个替代组
+                Object.keys(alternativeGroups).forEach(reference => {
+                    const alternatives = alternativeGroups[reference];
+                    
+                    // 获取BOM1中该位号的所有物料代码
+                    const bom1Parts = new Set();
+                    bom1.processedData.forEach(item => {
+                        if (item.reference === reference && item.partCode) {
+                            bom1Parts.add(item.partCode);
+                        }
+                    });
+                    
+                    // 获取BOM2中该位号的所有物料代码
+                    const bom2Parts = new Set();
+                    bom2.processedData.forEach(item => {
+                        if (item.reference === reference && item.partCode) {
+                            bom2Parts.add(item.partCode);
+                        }
+                    });
+                    
+                    // 检查差异
+                    const bom1Only = [...bom1Parts].filter(part => !bom2Parts.has(part));
+                    const bom2Only = [...bom2Parts].filter(part => !bom1Parts.has(part));
+                    
+                    // 如果有差异，记录
+                    if (bom1Only.length > 0 || bom2Only.length > 0) {
+                        differences.push({
+                            reference: reference,
+                            bom1Parts: [...bom1Parts],
+                            bom2Parts: [...bom2Parts],
+                            bom1Only: bom1Only,
+                            bom2Only: bom2Only
+                        });
+                    }
+                });
+                
+                return differences;
+            }
+            
+            // 对比两个BOM
+            function compareBoms(bom1, bom2, alternativeGroups) {
+                const result = {
+                    duplicates: {
+                        bom1: findDuplicates(bom1.processedData, 'BOM1'),
+                        bom2: findDuplicates(bom2.processedData, 'BOM2')
+                    },
+                    differentParts: [],
+                    extraParts: {
+                        bom1: [],
+                        bom2: []
+                    },
+                    emptyCells: {
+                        bom1: findEmptyCells(bom1.processedData, 'BOM1'),
+                        bom2: findEmptyCells(bom2.processedData, 'BOM2')
+                    },
+                    quantityMismatch: {
+                        bom1: bom1.quantityMismatch,
+                        bom2: bom2.quantityMismatch
+                    },
+                    allData: {
+                        bom1: bom1.processedData,
+                        bom2: bom2.processedData
+                    }
+                };
+                
+                // 找出物料不同的位号
+                const bom1Map = new Map();
+                const bom2Map = new Map();
+                
+                bom1.processedData.forEach(item => {
+                    if (item.reference) { // 只处理有位号的项
+                        bom1Map.set(item.reference, item);
+                    }
+                });
+                
+                bom2.processedData.forEach(item => {
+                    if (item.reference) { // 只处理有位号的项
+                        bom2Map.set(item.reference, item);
+                        
+                        // 检查BOM2中是否有BOM1没有的位号
+                        if (!bom1Map.has(item.reference)) {
+                            result.extraParts.bom2.push(item);
+                        }
+                    }
+                });
+                
+                // 检查BOM1中是否有BOM2没有的位号
+                bom1.processedData.forEach(item => {
+                    if (item.reference) { // 只处理有位号的项
+                        if (!bom2Map.has(item.reference)) {
+                            result.extraParts.bom1.push(item);
+                        } else {
+                            // 检查相同位号的物料是否不同
+                            const bom2Item = bom2Map.get(item.reference);
+                            if (item.partCode !== bom2Item.partCode) {
+                                // 如果启用了忽略替代组，检查是否属于同一替代组
+                                let isSameAlternativeGroup = false;
+                                if (ignoreAlternativesCheckbox.checked && alternativeGroups[item.reference]) {
+                                    // 检查两个物料代码是否都在替代组中
+                                    const hasItemInGroup = alternativeGroups[item.reference].includes(item.partCode);
+                                    const hasBom2ItemInGroup = alternativeGroups[item.reference].includes(bom2Item.partCode);
+                                    
+                                    // 只有当两个物料代码都在替代组中时，才忽略差异
+                                    isSameAlternativeGroup = hasItemInGroup && hasBom2ItemInGroup;
+                                }
+                                
+                                if (!isSameAlternativeGroup) {
+                                    result.differentParts.push({
+                                        reference: item.reference,
+                                        bom1PartCode: item.partCode,
+                                        bom1PartName: item.partName,
+                                        bom2PartCode: bom2Item.partCode,
+                                        bom2PartName: bom2Item.partName
+                                    });
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                return result;
+            }
+            
+            // 查找重复位号
+            function findDuplicates(bomData, bomName) {
+                const referenceCount = new Map();
+                const duplicates = [];
+                
+                bomData.forEach(item => {
+                    if (!item.reference) return; // 跳过空位号
+                    
+                    const count = referenceCount.get(item.reference) || 0;
+                    referenceCount.set(item.reference, count + 1);
+                });
+                
+                referenceCount.forEach((count, reference) => {
+                    if (count > 1) {
+                        const items = bomData.filter(item => item.reference === reference);
+                        duplicates.push({
+                            reference: reference,
+                            count: count,
+                            items: items,
+                            bomName: bomName
+                        });
+                    }
+                });
+                
+                return duplicates;
+            }
+            
+            // 查找空单元格
+            function findEmptyCells(bomData, bomName) {
+                const emptyCells = [];
+                
+                bomData.forEach(item => {
+                    const emptyFields = [];
+                    
+                    if (!item.partCode) emptyFields.push('物料代码');
+                    if (!item.partName) emptyFields.push('物料名称');
+                    if (!item.reference) emptyFields.push('位号');
+                    if (!item.quantity) emptyFields.push('数量');
+                    
+                    if (emptyFields.length > 0) {
+                        emptyCells.push({
+                            rowNumber: item.rowNumber,
+                            bomName: bomName,
+                            partCode: item.partCode,
+                            partName: item.partName,
+                            reference: item.reference,
+                            quantity: item.quantity,
+                            emptyFields: emptyFields
+                        });
+                    }
+                });
+                
+                return emptyCells;
+            }
+            
+            // 显示对比结果
+            function displayResults(result, alternativeGroups, alternativeDifferences) {
+                // 更新概览
+                updateSummary(result, alternativeGroups, alternativeDifferences);
+                
+                // 显示位号重复
+                displayDuplicates(result.duplicates);
+                
+                // 显示物料不同
+                displayDifferentParts(result.differentParts);
+                
+                // 显示多出物料
+                displayExtraParts(result.extraParts);
+                
+                // 显示替代组
+                displayAlternativeGroups(alternativeGroups);
+                
+                // 显示替代组差异
+                displayAlternativeDifferences(alternativeDifferences);
+                
+                // 显示位号数量不匹配
+                displayQuantityMismatch(result.quantityMismatch);
+                
+                // 显示空单元格
+                displayEmptyCells(result.emptyCells);
+                
+                // 显示全部数据
+                displayAllData(result.allData);
+                
+                // 添加标签页切换功能
+                setupTabs();
+                
+                // 添加导出按钮事件
+                setupExportButtons();
+            }
+            
+            // 更新概览
+            function updateSummary(result, alternativeGroups, alternativeDifferences) {
+                const summaryContent = document.getElementById('summary-content');
+                
+                const bom1Duplicates = result.duplicates.bom1.length;
+                const bom2Duplicates = result.duplicates.bom2.length;
+                const differentParts = result.differentParts.length;
+                const bom1Extra = result.extraParts.bom1.length;
+                const bom2Extra = result.extraParts.bom2.length;
+                const totalItems = result.allData.bom1.length + result.allData.bom2.length;
+                const alternativeGroupsCount = Object.keys(alternativeGroups).length;
+                const emptyCellsCount = result.emptyCells.bom1.length + result.emptyCells.bom2.length;
+                const alternativeDifferencesCount = alternativeDifferences.length;
+                const quantityMismatchCount = result.quantityMismatch.bom1.length + result.quantityMismatch.bom2.length;
+                
+                summaryContent.innerHTML = `
+                    <div class="summary-item">
+                        <div class="summary-value">${totalItems}</div>
+                        <div class="summary-label">总物料项</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" style="color: ${bom1Duplicates > 0 ? 'var(--warning-color)' : 'var(--success-color)'}">${bom1Duplicates}</div>
+                        <div class="summary-label">BOM1位号重复</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" style="color: ${bom2Duplicates > 0 ? 'var(--warning-color)' : 'var(--success-color)'}">${bom2Duplicates}</div>
+                        <div class="summary-label">BOM2位号重复</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" style="color: ${differentParts > 0 ? 'var(--danger-color)' : 'var(--success-color)'}">${differentParts}</div>
+                        <div class="summary-label">物料不同</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" style="color: ${bom1Extra > 0 ? 'var(--warning-color)' : 'var(--success-color)'}">${bom1Extra}</div>
+                        <div class="summary-label">BOM1多出物料</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" style="color: ${bom2Extra > 0 ? 'var(--warning-color)' : 'var(--success-color)'}">${bom2Extra}</div>
+                        <div class="summary-label">BOM2多出物料</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" style="color: ${alternativeGroupsCount > 0 ? 'var(--primary-color)' : 'var(--success-color)'}">${alternativeGroupsCount}</div>
+                        <div class="summary-label">替代组数量</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" style="color: ${alternativeDifferencesCount > 0 ? 'var(--warning-color)' : 'var(--success-color)'}">${alternativeDifferencesCount}</div>
+                        <div class="summary-label">替代组差异</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" style="color: ${quantityMismatchCount > 0 ? 'var(--danger-color)' : 'var(--success-color)'}">${quantityMismatchCount}</div>
+                        <div class="summary-label">位号数量不匹配</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" style="color: ${emptyCellsCount > 0 ? 'var(--warning-color)' : 'var(--success-color)'}">${emptyCellsCount}</div>
+                        <div class="summary-label">空单元格</div>
+                    </div>
+                `;
+            }
+            
+            // 显示位号重复
+            function displayDuplicates(duplicates) {
+                const tableBody = document.getElementById('duplicates-table');
+                tableBody.innerHTML = '';
+                
+                if (duplicates.bom1.length === 0 && duplicates.bom2.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="5" class="no-data">未发现位号重复</td></tr>';
+                    return;
+                }
+                
+                [...duplicates.bom1, ...duplicates.bom2].forEach(duplicate => {
+                    duplicate.items.forEach((item, index) => {
+                        const row = document.createElement('tr');
+                        if (index === 0) {
+                            row.classList.add('warning-row');
+                        }
+                        
+                        row.innerHTML = `
+                            <td>${item.reference || '<span class="empty-cell">空</span>'}</td>
+                            <td>${duplicate.bomName}</td>
+                            <td>${duplicate.count}</td>
+                            <td>${item.partCode || '<span class="empty-cell">空</span>'}</td>
+                            <td>${item.partName || '<span class="empty-cell">空</span>'}</td>
+                        `;
+                        
+                        tableBody.appendChild(row);
+                    });
+                });
+            }
+            
+            // 显示物料不同
+            function displayDifferentParts(differentParts) {
+                const tableBody = document.getElementById('different-parts-table');
+                tableBody.innerHTML = '';
+                
+                if (differentParts.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="5" class="no-data">未发现物料不同的位号</td></tr>';
+                    return;
+                }
+                
+                differentParts.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.classList.add('error-row');
+                    
+                    row.innerHTML = `
+                        <td>${item.reference}</td>
+                        <td>${item.bom1PartCode || '<span class="empty-cell">空</span>'}</td>
+                        <td>${item.bom1PartName || '<span class="empty-cell">空</span>'}</td>
+                        <td>${item.bom2PartCode || '<span class="empty-cell">空</span>'}</td>
+                        <td>${item.bom2PartName || '<span class="empty-cell">空</span>'}</td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                });
+            }
+            
+            // 显示多出物料
+            function displayExtraParts(extraParts) {
+                const tableBody = document.getElementById('extra-parts-table');
+                tableBody.innerHTML = '';
+                
+                const allExtras = [
+                    ...extraParts.bom1.map(item => ({...item, bom: 'BOM1'})),
+                    ...extraParts.bom2.map(item => ({...item, bom: 'BOM2'}))
+                ];
+                
+                if (allExtras.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="4" class="no-data">未发现多出物料</td></tr>';
+                    return;
+                }
+                
+                allExtras.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.classList.add('warning-row');
+                    
+                    row.innerHTML = `
+                        <td>${item.reference || '<span class="empty-cell">空</span>'}</td>
+                        <td>${item.partCode || '<span class="empty-cell">空</span>'}</td>
+                        <td>${item.partName || '<span class="empty-cell">空</span>'}</td>
+                        <td>${item.bom}</td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                });
+            }
+            
+            // 显示替代组
+            function displayAlternativeGroups(alternativeGroups) {
+                const tableBody = document.getElementById('alternative-groups-table');
+                tableBody.innerHTML = '';
+                
+                if (Object.keys(alternativeGroups).length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="3" class="no-data">未发现替代组</td></tr>';
+                    return;
+                }
+                
+                Object.keys(alternativeGroups).forEach(reference => {
+                    const row = document.createElement('tr');
+                    row.classList.add('info-row');
+                    
+                    const parts = alternativeGroups[reference].map(partCode => 
+                        `<div>${partCode}</div>`
+                    ).join('');
+                    
+                    row.innerHTML = `
+                        <td>${reference}</td>
+                        <td>${parts}</td>
+                        <td>替代组</td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                });
+            }
+            
+            // 显示替代组差异
+            function displayAlternativeDifferences(alternativeDifferences) {
+                const tableBody = document.getElementById('alternative-differences-table');
+                tableBody.innerHTML = '';
+                
+                if (alternativeDifferences.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="4" class="no-data">未发现替代组差异</td></tr>';
+                    return;
+                }
+                
+                alternativeDifferences.forEach(difference => {
+                    const row = document.createElement('tr');
+                    row.classList.add('warning-row');
+                    
+                    const bom1Parts = difference.bom1Parts.join(', ');
+                    const bom2Parts = difference.bom2Parts.join(', ');
+                    
+                    let diffType = '';
+                    if (difference.bom1Only.length > 0 && difference.bom2Only.length > 0) {
+                        diffType = `BOM1缺少: ${difference.bom2Only.join(', ')}, BOM2缺少: ${difference.bom1Only.join(', ')}`;
+                    } else if (difference.bom1Only.length > 0) {
+                        diffType = `BOM2缺少: ${difference.bom1Only.join(', ')}`;
+                    } else if (difference.bom2Only.length > 0) {
+                        diffType = `BOM1缺少: ${difference.bom2Only.join(', ')}`;
+                    }
+                    
+                    row.innerHTML = `
+                        <td>${difference.reference}</td>
+                        <td>${bom1Parts}</td>
+                        <td>${bom2Parts}</td>
+                        <td>${diffType}</td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                });
+            }
+            
+            // 显示位号数量不匹配
+            function displayQuantityMismatch(quantityMismatch) {
+                const tableBody = document.getElementById('quantity-mismatch-table');
+                tableBody.innerHTML = '';
+                
+                const allMismatches = [
+                    ...quantityMismatch.bom1,
+                    ...quantityMismatch.bom2
+                ];
+                
+                if (allMismatches.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="8" class="no-data">未发现位号数量不匹配</td></tr>';
+                    return;
+                }
+                
+                allMismatches.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.classList.add('error-row');
+                    
+                    row.innerHTML = `
+                        <td>${item.rowNumber}</td>
+                        <td>${item.bomName}</td>
+                        <td>${item.partCode || '<span class="empty-cell">空</span>'}</td>
+                        <td>${item.partName || '<span class="empty-cell">空</span>'}</td>
+                        <td>${item.reference || '<span class="empty-cell">空</span>'}</td>
+                        <td>${item.quantity || '<span class="empty-cell">空</span>'}</td>
+                        <td>${item.referenceCount}</td>
+                        <td>${item.status}</td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                });
+            }
+            
+            // 显示空单元格
+            function displayEmptyCells(emptyCells) {
+                const tableBody = document.getElementById('empty-cells-table');
+                tableBody.innerHTML = '';
+                
+                const allEmptyCells = [
+                    ...emptyCells.bom1,
+                    ...emptyCells.bom2
+                ];
+                
+                if (allEmptyCells.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="6" class="no-data">未发现空单元格</td></tr>';
+                    return;
+                }
+                
+                allEmptyCells.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.classList.add('warning-row');
+                    
+                    row.innerHTML = `
+                        <td>${item.rowNumber}</td>
+                        <td>${item.bomName}</td>
+                        <td>${item.partCode || '<span class="empty-cell">空</span>'}</td>
+                        <td>${item.partName || '<span class="empty-cell">空</span>'}</td>
+                        <td>${item.reference || '<span class="empty-cell">空</span>'}</td>
+                        <td>${item.quantity || '<span class="empty-cell">空</span>'}</td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                });
+            }
+            
+            // 显示全部数据
+            function displayAllData(allData) {
+                const tableBody = document.getElementById('all-data-table');
+                tableBody.innerHTML = '';
+                
+                const allItems = [
+                    ...allData.bom1.map(item => ({...item, bom: 'BOM1'})),
+                    ...allData.bom2.map(item => ({...item, bom: 'BOM2'}))
+                ];
+                
+                if (allItems.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="5" class="no-data">无数据</td></tr>';
+                    return;
+                }
+                
+                allItems.forEach(item => {
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${item.reference || '<span class="empty-cell">空</span>'}</td>
+                        <td>${item.partCode || '<span class="empty-cell">空</span>'}</td>
+                        <td>${item.partName || '<span class="empty-cell">空</span>'}</td>
+                        <td>${item.quantity || '<span class="empty-cell">空</span>'}</td>
+                        <td>${item.bom}</td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                });
+            }
+            
+            // 设置标签页切换
+            function setupTabs() {
+                const tabs = document.querySelectorAll('.tab');
+                const contents = document.querySelectorAll('.result-content');
+                
+                tabs.forEach(tab => {
+                    tab.addEventListener('click', function() {
+                        // 移除所有active类
+                        tabs.forEach(t => t.classList.remove('active'));
+                        contents.forEach(c => c.classList.remove('active'));
+                        
+                        // 添加active类到当前标签和内容
+                        this.classList.add('active');
+                        const tabId = this.getAttribute('data-tab');
+                        document.getElementById(`${tabId}-content`).classList.add('active');
+                    });
+                });
+            }
+            
+            // 设置导出按钮
+            function setupExportButtons() {
+                const exportButtons = document.querySelectorAll('.export-btn');
+                
+                exportButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        const tableId = this.getAttribute('data-table');
+                        const filename = this.getAttribute('data-filename') || '导出数据';
+                        exportTableToExcel(tableId, filename);
+                    });
+                });
+            }
+            
+            // 导出表格到Excel
+            function exportTableToExcel(tableId, filename) {
+                const table = document.getElementById(tableId);
+                if (!table) {
+                    alert('未找到表格数据');
+                    return;
+                }
+                
+                // 创建工作簿
+                const wb = XLSX.utils.book_new();
+                
+                // 将表格转换为工作表
+                const ws = XLSX.utils.table_to_sheet(table);
+                
+                // 将工作表添加到工作簿
+                XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+                
+                // 导出Excel文件
+                XLSX.writeFile(wb, `${filename}.xlsx`);
+            }
+            
+            // 设置清除按钮
+            function setupClearButtons() {
+                const clearButtons = document.querySelectorAll('.clear-btn');
+                
+                clearButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        const bomNumber = this.getAttribute('data-bom');
+                        clearBomData(bomNumber);
+                    });
+                });
+            }
+            
+            // 清除BOM数据
+            function clearBomData(bomNumber) {
+                const fileInput = document.getElementById(`bom${bomNumber}`);
+                const fileInfo = document.getElementById(`bom${bomNumber}-info`);
+                
+                // 清除文件输入
+                fileInput.value = '';
+                fileInfo.textContent = '未选择文件';
+                
+                // 清除对应的数据
+                if (bomNumber === '1') {
+                    bom1Data = [];
+                    bom1Headers = [];
+                    document.getElementById('bom1-part-code').innerHTML = '<option value="">请选择</option>';
+                    document.getElementById('bom1-part-name').innerHTML = '<option value="">请选择</option>';
+                    document.getElementById('bom1-reference').innerHTML = '<option value="">请选择</option>';
+                    document.getElementById('bom1-quantity').innerHTML = '<option value="">请选择</option>';
+                } else {
+                    bom2Data = [];
+                    bom2Headers = [];
+                    document.getElementById('bom2-part-code').innerHTML = '<option value="">请选择</option>';
+                    document.getElementById('bom2-part-name').innerHTML = '<option value="">请选择</option>';
+                    document.getElementById('bom2-reference').innerHTML = '<option value="">请选择</option>';
+                    document.getElementById('bom2-quantity').innerHTML = '<option value="">请选择</option>';
+                }
+                
+                checkReadyToCompare();
+            }
+            
+            // 初始化清除按钮
+            setupClearButtons();
+            
+            // 监听列选择变化，更新对比按钮状态
+            document.querySelectorAll('select').forEach(select => {
+                select.addEventListener('change', checkReadyToCompare);
+            });
+        });
+    </script>
+</body>
+</html>
