@@ -11,6 +11,7 @@ CSRF_EXEMPT_EXACT: Set[str] = {
     '/api/auth/login',
     '/api/auth/register',
     '/api/auth/login-by-userid',
+    '/api/auth/dingtalk/inapp-login',
     '/api/captcha',
 }
 

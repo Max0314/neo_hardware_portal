@@ -47,5 +47,5 @@ def build_review_center_dingtalk_url(base_url: Optional[str] = None) -> str:
 
 def build_material_db_dingtalk_url(base_url: Optional[str] = None) -> str:
     """物料数据库页（NEO systm_tool）。"""
-    path = '/neo/systm_tool/' + urllib.parse.quote('物料数据库.html')
+    path = '/neo/systm_tool/material-database.html'
     return build_dingtalk_openapp_url(path, base_url)

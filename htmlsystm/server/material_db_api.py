@@ -36,7 +36,7 @@ class MaterialDbApi:
             if hasattr(self.h, '_build_public_base_url'):
                 base = self.h._build_public_base_url()
             open_url = build_material_db_dingtalk_url(base)
-            page_path = '/neo/systm_tool/' + urllib.parse.quote('物料数据库.html')
+            page_path = '/neo/systm_tool/material-database.html'
             web_url = (base.rstrip('/') + page_path) if base else page_path
             self.h.send_json_response({
                 'success': True,

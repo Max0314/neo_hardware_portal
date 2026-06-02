@@ -1,0 +1,1669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物料数据聚合 · 三源合并（自动显示映射）</title>
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="../vendor/fontawesome/css/all.min.css">
+    <!-- SheetJS -->
+    <script src="../vendor/xlsx.full.min.js"></script>
+    <style>
+        /* 样式与之前保持一致，略 (保持原样) */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Microsoft YaHei', system-ui, 'Segoe UI', Roboto, sans-serif;
+        }
+        body {
+            background-color: #f0f4f9;
+            padding: 24px 20px;
+            color: #1e293b;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .main-card {
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 20px 35px -10px rgba(0, 20, 40, 0.15);
+            padding: 28px 30px 35px;
+        }
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+            color: #0b1f33;
+        }
+        h1 i {
+            color: #2563eb;
+            background: #e6edfc;
+            padding: 12px;
+            border-radius: 24px;
+            font-size: 1.8rem;
+        }
+        .subtitle {
+            color: #5e6f8d;
+            margin-bottom: 30px;
+            font-size: 1rem;
+            border-left: 4px solid #3b82f6;
+            padding-left: 18px;
+            background: #f8fbff;
+            border-radius: 0 12px 12px 0;
+            line-height: 1.6;
+        }
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 22px;
+            margin: 30px 0 30px;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 24px;
+            border: 1px solid #e6edf6;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.02);
+            padding: 1.6rem 1.4rem;
+            transition: all 0.15s;
+            display: flex;
+            flex-direction: column;
+        }
+        .card:hover {
+            border-color: #bdd3f0;
+            box-shadow: 0 16px 24px -8px rgba(40, 80, 140, 0.12);
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 22px;
+        }
+        .card-header i {
+            font-size: 1.8rem;
+            width: 48px;
+            height: 48px;
+            background: #eef4ff;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #2563eb;
+        }
+        .card-header h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #1d2b4b;
+        }
+        .badge-source {
+            background: #dbeafe;
+            color: #1d4ed8;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 30px;
+            margin-left: auto;
+        }
+        .file-upload-area {
+            background: #f9fcff;
+            border: 2px dashed #b9d3f0;
+            border-radius: 20px;
+            padding: 18px 12px 16px;
+            text-align: center;
+            margin-bottom: 16px;
+            position: relative;
+        }
+        .file-input {
+            width: 0.1px;
+            height: 0.1px;
+            opacity: 0;
+            overflow: hidden;
+            position: absolute;
+            z-index: -1;
+        }
+        .file-label {
+            display: inline-block;
+            background: #3b82f6;
+            color: white;
+            font-weight: 500;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.15s;
+            box-shadow: 0 6px 12px #3b82f633;
+            border: 1px solid #3b82f6;
+        }
+        .file-label:hover {
+            background: #2563eb;
+        }
+        .file-info {
+            font-size: 0.8rem;
+            color: #4b6584;
+            margin-top: 12px;
+            word-break: break-word;
+            background: #ecf3fa;
+            padding: 6px 12px;
+            border-radius: 30px;
+            display: inline-block;
+        }
+        .clear-btn {
+            background: none;
+            border: 1px solid #cbd5e1;
+            color: #4a5a72;
+            padding: 5px 12px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            margin-left: 8px;
+            transition: 0.1s;
+        }
+        .clear-btn:hover {
+            background: #fee2e2;
+            border-color: #f87171;
+            color: #b91c1c;
+        }
+        .sheet-section, .mapping-section {
+            margin-top: 20px;
+            border-top: 1px solid #e2eaf2;
+            padding-top: 16px;
+        }
+        .sheet-select, .map-select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 16px;
+            border: 1px solid #cbd5e1;
+            background: white;
+            font-size: 0.9rem;
+            margin: 8px 0 6px;
+        }
+        .map-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .map-label {
+            width: 100px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #334155;
+        }
+        .map-select {
+            flex: 1;
+            margin: 0;
+        }
+        .badge-required {
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 30px;
+        }
+        .action-bar {
+            display: flex;
+            justify-content: center;
+            margin: 35px 0 25px;
+        }
+        .btn-primary {
+            background: #2ecc71;
+            border: none;
+            padding: 16px 48px;
+            border-radius: 60px;
+            color: white;
+            font-weight: 700;
+            font-size: 1.2rem;
+            box-shadow: 0 10px 18px #2ecc7166;
+            cursor: pointer;
+            transition: 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 15px;
+            border: 1px solid #27ae60;
+        }
+        .btn-primary:disabled {
+            background: #a0b8cc;
+            box-shadow: none;
+            border-color: #8a9fb0;
+            cursor: not-allowed;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: #27ae60;
+            transform: scale(1.02);
+        }
+        .progress-container {
+            background: #e2e8f0;
+            border-radius: 40px;
+            height: 26px;
+            margin: 20px 0;
+            display: none;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: #3b82f6;
+            color: white;
+            font-size: 0.75rem;
+            line-height: 26px;
+            padding-left: 15px;
+            transition: width 0.2s;
+            width: 0%;
+        }
+        .status-area {
+            background: #eef4ff;
+            border-radius: 40px;
+            padding: 12px 25px;
+            margin: 20px 0 25px;
+            font-size: 0.95rem;
+            color: #1e3a8a;
+            border-left: 5px solid #3b82f6;
+        }
+        .preview-section {
+            background: #fafdff;
+            border-radius: 28px;
+            border: 1px solid #d9e6f5;
+            padding: 24px 22px;
+            margin-top: 25px;
+        }
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .preview-header h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 18px;
+            border: 1px solid #e2e8f0;
+            background: white;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 900px;
+            font-size: 0.85rem;
+        }
+        #previewTable {
+            table-layout: fixed;
+        }
+        #previewTable th,
+        #previewTable td {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 0;
+        }
+        #previewTable td.preview-cell-wrap {
+            white-space: normal;
+            word-break: break-all;
+        }
+        th {
+            background: #f0f6fd;
+            padding: 14px 10px;
+            font-weight: 600;
+            color: #1d3a5c;
+            border-bottom: 2px solid #cfdeef;
+        }
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #e9eef4;
+        }
+        tr:hover td {
+            background: #f6fbff;
+        }
+        .download-btn {
+            background: #8b5cf6;
+            border: none;
+            color: white;
+            padding: 12px 35px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.15s;
+            border: 1px solid #7c3aed;
+        }
+        .download-btn:disabled {
+            background: #b3b8cf;
+            border-color: #959eb5;
+            cursor: default;
+        }
+        .footer-note {
+            margin-top: 30px;
+            color: #64748b;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+        .flex-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .strategy-badge {
+            background: #fef9c3;
+            color: #854d0e;
+            font-size: 0.75rem;
+            padding: 2px 12px;
+            border-radius: 30px;
+            margin-left: 15px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="main-card">
+        <h1><i class="fas fa-merge"></i> 物料聚合 · 替换策略 <span class="strategy-badge"><i class="fas-regular fa-pen"></i> 优选库决定增删</span></h1>
+        <div class="subtitle">
+            <i class="fas fa-circle-info" style="margin-right: 8px;"></i> 
+            <strong>替换规则：</strong>若优选库已配置，物料列表以优选库为准（增删同步）；成本采购仅更新价格；现有库提供物料描述和 pads库物料描述。预览显示所有字段，下载Excel包含六列。
+            <br><strong>密码说明：</strong>点击「确认导入」写入服务器物料库前，须验证<strong>目标物料库的访问密码</strong>（与「物料数据库」页面一致，服务端仅存哈希）。
+            <span style="display:inline-flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
+                <a href="../" style="color:#2563eb; text-decoration:none;"><i class="fas fa-home"></i> 返回 NEO</a>
+                <a href="material-database.html" style="color:#2563eb; text-decoration:none;"><i class="fas fa-database"></i> 物料数据库（多库管理）</a>
+                <a href="../replacement-pairs" style="color:#2563eb; text-decoration:none;"><i class="fas fa-right-left"></i> 替换对管理</a>
+            </span>
+        </div>
+
+        <!-- 三列卡片 -->
+        <div class="grid-3">
+            <!-- 卡片1: 现有库（物料库） -->
+            <div class="card" id="card-material">
+                <div class="card-header">
+                    <i class="fas fa-database"></i>
+                    <h3>现有库</h3>
+                    <span class="badge-source">基准</span>
+                </div>
+                <div class="file-upload-area">
+                    <input type="file" id="fileMaterial" class="file-input" accept=".xlsx,.xls">
+                    <label for="fileMaterial" class="file-label"><i class="fas fa-upload"></i> 上传现有库（Excel）</label>
+                    <div id="materialFileInfo" class="file-info">未选择文件</div>
+                    <button id="clearMaterial" class="clear-btn" style="display: none;"><i class="fas fa-times"></i> 清除</button>
+                </div>
+                <div class="sheet-section" style="margin-top:12px; padding-top:12px; border-top:1px dashed #e2e8f0;">
+                    <label style="font-size:0.85rem; color:#475569; display:flex; align-items:center; gap:6px;">
+                        <i class="fas fa-database"></i>
+                        或从物料数据库选择现有库：
+                    </label>
+                    <select id="existingMaterialLibSelect" class="sheet-select" style="margin-top:6px;">
+                        <option value="">（从物料数据库选择现有库）</option>
+                    </select>
+                    <div style="font-size:0.75rem; color:#6b7280; margin-top:4px;">
+                        仅「物料优选导入」需要选择现有库；「物料单价导入」可单独使用，无需配置本项。
+                    </div>
+                </div>
+                <!-- sheet 选择 -->
+                <div id="materialSheetSection" class="sheet-section" style="display: none;">
+                    <label><i class="fas fa-sheet-plain"></i> 选择工作表:</label>
+                    <select id="materialSheetSelect" class="sheet-select"></select>
+                </div>
+                <!-- 列映射区域 -->
+                <div id="materialMapping" class="mapping-section" style="display: none;">
+                    <div class="map-row"><span class="map-label">物料代码列 <span class="badge-required">必需</span></span> <select id="matCodeCol" class="map-select"></select></div>
+                    <div class="map-row"><span class="map-label">物料描述列 <span class="badge-required">必需</span></span> <select id="matDescCol" class="map-select"></select></div>
+                    <div class="map-row"><span class="map-label">替代组标签列 <span class="badge-required">必需</span></span> <select id="matGroupCol" class="map-select"></select></div>
+                </div>
+            </div>
+
+            <!-- 卡片2: 物料单价导入（只更新数据库中的单价） -->
+            <div class="card" id="card-cost">
+                <div class="card-header">
+                    <i class="fas fa-coins"></i>
+                    <h3>物料单价导入</h3>
+                    <span class="badge-source">仅根据 BOM 更新物料库单价</span>
+                </div>
+                <div class="file-upload-area">
+                    <input type="file" id="fileCost" class="file-input" accept=".xlsx,.xls">
+                    <label for="fileCost" class="file-label"><i class="fas fa-upload"></i> 上传成本采购</label>
+                    <div id="costFileInfo" class="file-info">未选择文件</div>
+                    <button id="clearCost" class="clear-btn" style="display: none;"><i class="fas fa-times"></i> 清除</button>
+                </div>
+                <div id="costSheetSection" class="sheet-section" style="display: none;">
+                    <label><i class="fas fa-sheet-plain"></i> 选择工作表:</label>
+                    <select id="costSheetSelect" class="sheet-select"></select>
+                </div>
+                <div id="costMapping" class="mapping-section" style="display: none;">
+                    <div class="map-row"><span class="map-label">物料代码列 <span class="badge-required">必需</span></span> <select id="costCodeCol" class="map-select"></select></div>
+                    <div class="map-row"><span class="map-label">物料单价列 <span class="badge-required">必需</span></span> <select id="costPriceCol" class="map-select"></select></div>
+                </div>
+            </div>
+
+            <!-- 卡片3: 物料优选导入（根据 BOM/优选配置表更新现有库） -->
+            <div class="card" id="card-prefer">
+                <div class="card-header">
+                    <i class="fas fa-crown"></i>
+                    <h3>物料优选导入</h3>
+                    <span class="badge-source">根据 BOM / 优选配置表，更新现有库并决策新物料</span>
+                </div>
+                <div class="file-upload-area">
+                    <input type="file" id="filePrefer" class="file-input" accept=".xlsx,.xls">
+                    <label for="filePrefer" class="file-label"><i class="fas fa-upload"></i> 上传 BOM / 优选配置表</label>
+                    <div id="preferFileInfo" class="file-info">未选择文件</div>
+                    <button id="clearPrefer" class="clear-btn" style="display: none;"><i class="fas fa-times"></i> 清除</button>
+                </div>
+                <div id="preferSheetSection" class="sheet-section" style="display: none;">
+                    <label><i class="fas fa-sheet-plain"></i> 选择工作表:</label>
+                    <select id="preferSheetSelect" class="sheet-select"></select>
+                </div>
+                <div id="preferMapping" class="mapping-section" style="display: none;">
+                    <div class="map-row">
+                        <span class="map-label">物料代码列 <span class="badge-required">必选</span></span>
+                        <select id="prefCodeCol" class="map-select"></select>
+                    </div>
+                    <div class="map-row" style="margin-top:6px; border-top:1px dashed #e5e7eb; padding-top:6px;">
+                        <span class="map-label">更新到现有库的哪些字段：</span>
+                        <div style="display:flex; flex-wrap:wrap; gap:8px; font-size:0.8rem; color:#374151;">
+                            <label><input type="checkbox" id="chkUpdateDesc" style="margin-right:4px;">更新 物料描述</label>
+                            <label><input type="checkbox" id="chkUpdatePadsDesc" style="margin-right:4px;">更新 pads库物料描述</label>
+                            <label><input type="checkbox" id="chkUpdatePrice" style="margin-right:4px;">更新 成本单价</label>
+                            <label><input type="checkbox" id="chkUpdateGroup" style="margin-right:4px;">更新 替代组标签</label>
+                            <label><input type="checkbox" id="chkUpdatePreferStatus" style="margin-right:4px;">更新 优选情况</label>
+                            <label><input type="checkbox" id="chkUpdateRemark" style="margin-right:4px;">更新 备注说明</label>
+                        </div>
+                    </div>
+                    <div class="map-row" id="rowPrefDescCol" style="display:none;">
+                        <span class="map-label">BOM 中物料描述列</span>
+                        <select id="prefDescCol" class="map-select"></select>
+                    </div>
+                    <div class="map-row" id="rowPrefPadsDescCol" style="display:none;">
+                        <span class="map-label">BOM 中 pads库物料描述列</span>
+                        <select id="prefPadsDescCol" class="map-select"></select>
+                    </div>
+                    <div class="map-row" id="rowPrefPriceCol" style="display:none;">
+                        <span class="map-label">BOM 中成本单价列</span>
+                        <select id="prefPriceCol" class="map-select"></select>
+                    </div>
+                    <div class="map-row" id="rowPrefGroupCol" style="display:none;">
+                        <span class="map-label">BOM 中替代组标签列</span>
+                        <select id="prefGroupCol" class="map-select"></select>
+                    </div>
+                    <div class="map-row" id="rowPrefStatusCol" style="display:none;">
+                        <span class="map-label">BOM 中优选情况列</span>
+                        <select id="prefStatusCol" class="map-select"></select>
+                    </div>
+                    <div class="map-row" id="rowPrefRemarkCol" style="display:none;">
+                        <span class="map-label">BOM 中备注说明列</span>
+                        <select id="prefRemarkCol" class="map-select"></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 聚合按钮 & 状态 -->
+        <div class="action-bar">
+            <button id="aggregateBtn" class="btn-primary" disabled><i class="fas fa-bolt"></i> 执行聚合（按策略）</button>
+        </div>
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar" id="progressBar">0%</div>
+        </div>
+        <div class="status-area" id="statusMessage">⚡ 请上传至少一个源文件并完成必要映射</div>
+
+        <!-- 预览区域 + 下载 -->
+        <div class="preview-section">
+            <div class="preview-header">
+                <h2><i class="fas fa-table" style="color:#2563eb; margin-right: 10px;"></i>变更预览 (最多100行)</h2>
+                <button id="downloadBtn" class="download-btn" disabled><i class="fas fa-download"></i> 下载变更预览 Excel</button>
+                <button id="confirmImportBtn" class="download-btn" style="background:#059669; border-color:#047857; margin-left:8px;" disabled><i class="fas fa-check-double"></i> 确认导入</button>
+            </div>
+            <div class="table-wrapper" id="previewTableWrapper">
+                <table id="previewTable">
+                    <colgroup>
+                        <col style="width:72px">
+                        <col style="width:110px">
+                        <col style="width:200px">
+                        <col style="width:100px">
+                        <col style="width:100px">
+                        <col style="width:88px">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>类型</th>
+                            <th>物料代码</th>
+                            <th>字段</th>
+                            <th>原值</th>
+                            <th>新值</th>
+                            <th>决策</th>
+                        </tr>
+                    </thead>
+                    <tbody><tr><td colspan="6" style="text-align:center; padding:30px;">暂无变更预览，请配置后执行聚合</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+        <!-- 物料库版本回滚 -->
+        <div class="preview-section" style="margin-top:16px;">
+            <div class="preview-header">
+                <h2><i class="fas fa-history" style="color:#4b5563; margin-right: 10px;"></i>物料库版本回滚</h2>
+            </div>
+            <div style="padding:12px 16px; background:#f9fafb; border-radius:0.75rem; border:1px solid #e5e7eb; display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+                <div style="font-size:0.85rem; color:#4b5563;">
+                    从最近的自动备份中选择一个版本，将 <strong>覆盖当前物料库</strong>。建议先导出当前变更预览 Excel 作为留档。
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                    <select id="materialDbBackupSelect" class="sheet-select" style="min-width:260px;"></select>
+                    <button id="restoreMaterialDbBtn" class="download-btn" style="background:#f97316; border-color:#ea580c;">
+                        <i class="fas fa-undo-alt"></i> 回滚到选中版本
+                    </button>
+                </div>
+                <div id="materialDbBackupInfo" style="font-size:0.75rem; color:#6b7280; width:100%; margin-top:4px;"></div>
+            </div>
+        </div>
+        <div class="footer-note">
+            <i class="fas-regular fa-clipboard"></i> 替换策略：若优选库已配置，物料列表完全取自优选库（实现增删）；成本价格取自成本采购；物料描述取自现有库；<strong>pads库物料描述</strong>取自现有库的替代组标签，<strong>替代组标签</strong>优先取自优选库（若映射），否则回退到现有库的替代组标签。
+        </div>
+    </div>
+</div>
+
+<style>
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(15,23,42,0.45); z-index:9999; align-items:center; justify-content:center; }
+.modal-overlay.show { display:flex; }
+.modal-overlay .modal { background:#fff; border-radius:16px; max-width:420px; width:92%; box-shadow:0 20px 40px rgba(0,0,0,0.2); }
+.modal-overlay .modal-header { display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid #e2e8f0; }
+.modal-overlay .modal-body { padding:16px 20px; }
+.modal-overlay .modal-footer { display:flex; justify-content:flex-end; gap:8px; padding:12px 20px 16px; }
+.modal-overlay .btn-cancel, .modal-overlay .btn-save { padding:8px 16px; border-radius:8px; cursor:pointer; border:1px solid #cbd5e1; }
+.modal-overlay .btn-save { background:#2563eb; color:#fff; border-color:#2563eb; }
+</style>
+
+<div id="modalPassword" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="modalPasswordTitle">验证物料库密码</h2>
+            <button type="button" class="modal-close" id="modalPasswordClose">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="modalPasswordHint" style="margin-bottom:12px;color:#64748b;font-size:0.9rem;"></p>
+            <input type="password" id="modalPasswordInput" autocomplete="current-password" placeholder="请输入该物料库的访问密码" style="width:100%;padding:12px 14px;border:1px solid #cbd5e1;border-radius:12px;">
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" id="modalPasswordCancel">取消</button>
+            <button type="button" class="btn-save" id="modalPasswordConfirm">确认</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // 全局状态
+        const state = {
+            material: {
+                workbook: null,
+                sheetName: null,
+                headers: [],
+                dataRows: [],
+                codeIdx: -1,
+                descIdx: -1,
+                groupIdx: -1,
+                fromLib: false,
+                fromLibId: null,
+                fromLibAllMerged: false
+            },
+            cost: { workbook: null, sheetName: null, headers: [], dataRows: [], codeIdx: -1, priceIdx: -1 },
+            prefer: {
+                workbook: null,
+                sheetName: null,
+                headers: [],
+                dataRows: [],
+                codeIdx: -1,
+                descIdx: -1,
+                padsDescIdx: -1,
+                priceIdx: -1,
+                groupIdx: -1,
+                statusIdx: -1,
+                remarkIdx: -1
+            }
+        };
+
+        // DOM
+        const materialFile = document.getElementById('fileMaterial');
+        const costFile = document.getElementById('fileCost');
+        const preferFile = document.getElementById('filePrefer');
+
+        const materialInfo = document.getElementById('materialFileInfo');
+        const costInfo = document.getElementById('costFileInfo');
+        const preferInfo = document.getElementById('preferFileInfo');
+
+        const clearMaterial = document.getElementById('clearMaterial');
+        const clearCost = document.getElementById('clearCost');
+        const clearPrefer = document.getElementById('clearPrefer');
+
+        const materialSheetSection = document.getElementById('materialSheetSection');
+        const costSheetSection = document.getElementById('costSheetSection');
+        const preferSheetSection = document.getElementById('preferSheetSection');
+
+        const materialSheet = document.getElementById('materialSheetSelect');
+        const costSheet = document.getElementById('costSheetSelect');
+        const preferSheet = document.getElementById('preferSheetSelect');
+
+        const materialMapping = document.getElementById('materialMapping');
+        const existingMaterialLibSelect = document.getElementById('existingMaterialLibSelect');
+        const costMapping = document.getElementById('costMapping');
+        const preferMapping = document.getElementById('preferMapping');
+
+        const matCodeCol = document.getElementById('matCodeCol');
+        const matDescCol = document.getElementById('matDescCol');
+        const matGroupCol = document.getElementById('matGroupCol');
+        const costCodeCol = document.getElementById('costCodeCol');
+        const costPriceCol = document.getElementById('costPriceCol');
+        const prefCodeCol = document.getElementById('prefCodeCol');
+        const prefGroupCol = document.getElementById('prefGroupCol');
+        const prefStatusCol = document.getElementById('prefStatusCol');
+        const prefDescCol = document.getElementById('prefDescCol');
+        const prefPadsDescCol = document.getElementById('prefPadsDescCol');
+        const prefPriceCol = document.getElementById('prefPriceCol');
+        const prefRemarkCol = document.getElementById('prefRemarkCol');
+
+        const chkUpdateDesc = document.getElementById('chkUpdateDesc');
+        const chkUpdatePadsDesc = document.getElementById('chkUpdatePadsDesc');
+        const chkUpdatePrice = document.getElementById('chkUpdatePrice');
+        const chkUpdateGroup = document.getElementById('chkUpdateGroup');
+        const chkUpdatePreferStatus = document.getElementById('chkUpdatePreferStatus');
+        const chkUpdateRemark = document.getElementById('chkUpdateRemark');
+
+        const rowPrefDescCol = document.getElementById('rowPrefDescCol');
+        const rowPrefPadsDescCol = document.getElementById('rowPrefPadsDescCol');
+        const rowPrefPriceCol = document.getElementById('rowPrefPriceCol');
+        const rowPrefGroupCol = document.getElementById('rowPrefGroupCol');
+        const rowPrefStatusCol = document.getElementById('rowPrefStatusCol');
+        const rowPrefRemarkCol = document.getElementById('rowPrefRemarkCol');
+
+        const aggregateBtn = document.getElementById('aggregateBtn');
+        const statusDiv = document.getElementById('statusMessage');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const previewTableBody = document.querySelector('#previewTable tbody');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const confirmImportBtn = document.getElementById('confirmImportBtn');
+        const materialDbBackupSelect = document.getElementById('materialDbBackupSelect');
+        const restoreMaterialDbBtn = document.getElementById('restoreMaterialDbBtn');
+        const materialDbBackupInfo = document.getElementById('materialDbBackupInfo');
+
+        const MATERIAL_DB_STORAGE_KEY = 'material_db_libraries';
+        const PUBLIC_BASE_PATH = (function() {
+            const marker = '/neo/';
+            const pathname = window.location.pathname || '';
+            const idx = pathname.indexOf(marker);
+            return idx > 0 ? pathname.slice(0, idx) : '';
+        })();
+        function appPath(path) {
+            const p = path && path.charAt(0) === '/' ? path : '/' + (path || '');
+            return PUBLIC_BASE_PATH + p;
+        }
+        function loginUrl() {
+            const here = (window.location.pathname || '/') + (window.location.search || '');
+            return appPath('/login?redirect=' + encodeURIComponent(here));
+        }
+        const API_BASE = appPath('/api/material-db');
+        const unlockCache = {};
+        let libList = [];
+
+        async function apiFetch(path, options) {
+            const opts = options || {};
+            const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+            const res = await fetch(path, Object.assign({ credentials: 'include' }, opts, { headers: headers }));
+            let data = {};
+            try { data = await res.json(); } catch (e) { /* ignore */ }
+            if (res.status === 401) {
+                alert('请先登录管理系统');
+                window.location.href = loginUrl();
+                throw new Error('unauthorized');
+            }
+            return { ok: res.ok, status: res.status, data: data };
+        }
+
+        async function reloadLibraries() {
+            const { ok, data } = await apiFetch(API_BASE + '/libraries');
+            if (ok && data.success) {
+                libList = data.libraries || [];
+                return true;
+            }
+            return false;
+        }
+
+        async function tryMigrateFromLocalStorage() {
+            try {
+                const raw = localStorage.getItem(MATERIAL_DB_STORAGE_KEY);
+                if (!raw) return;
+                const local = JSON.parse(raw);
+                if (!Array.isArray(local) || !local.length) return;
+                if (libList.length) return;
+                if (!confirm('检测到浏览器中存有本地物料库数据（' + local.length + ' 个库）。是否迁移到服务器 MySQL？迁移后将为每个库设置统一访问密码。')) return;
+                const pwd = prompt('请设置迁移后的统一访问密码：');
+                if (!pwd) return;
+                const { ok, data } = await apiFetch(API_BASE + '/migrate', {
+                    method: 'POST',
+                    body: JSON.stringify({ libraries: local, defaultPassword: pwd })
+                });
+                if (ok && data.success) {
+                    localStorage.removeItem(MATERIAL_DB_STORAGE_KEY);
+                    alert('已迁移 ' + (data.migrated || 0) + ' 个物料库到服务器。');
+                    await reloadLibraries();
+                } else {
+                    alert((data && data.error) || '迁移失败');
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function getUnlockToken(libId) {
+            const c = unlockCache[libId];
+            if (!c) return null;
+            if (Date.now() / 1000 >= c.expiresAt) {
+                delete unlockCache[libId];
+                return null;
+            }
+            return c.token;
+        }
+
+        function promptLibraryPassword(lib, purpose) {
+            return new Promise(function(resolve, reject) {
+                const modal = document.getElementById('modalPassword');
+                const title = document.getElementById('modalPasswordTitle');
+                const hint = document.getElementById('modalPasswordHint');
+                const input = document.getElementById('modalPasswordInput');
+                const btnOk = document.getElementById('modalPasswordConfirm');
+                const btnCancel = document.getElementById('modalPasswordCancel');
+                const btnClose = document.getElementById('modalPasswordClose');
+                title.textContent = '验证物料库密码';
+                hint.textContent = (lib ? '「' + lib.name + '」' : '') + (purpose || '继续操作') + '需要输入该物料库的访问密码。';
+                input.value = '';
+                modal.classList.add('show');
+                input.focus();
+                function cleanup() {
+                    modal.classList.remove('show');
+                    btnOk.removeEventListener('click', onOk);
+                    btnCancel.removeEventListener('click', onCancel);
+                    btnClose.removeEventListener('click', onCancel);
+                }
+                function onCancel() { cleanup(); reject(new Error('cancelled')); }
+                function onOk() {
+                    const pwd = input.value;
+                    if (!pwd) { alert('请输入密码'); return; }
+                    cleanup();
+                    resolve(pwd);
+                }
+                btnOk.addEventListener('click', onOk);
+                btnCancel.addEventListener('click', onCancel);
+                btnClose.addEventListener('click', onCancel);
+            });
+        }
+
+        async function ensureUnlocked(libId, purpose) {
+            const cached = getUnlockToken(libId);
+            if (cached) return cached;
+            const lib = libList.find(function(l) { return l.id === libId; });
+            const pwd = await promptLibraryPassword(lib, purpose);
+            const { ok, data } = await apiFetch(API_BASE + '/libraries/' + encodeURIComponent(libId) + '/unlock', {
+                method: 'POST',
+                body: JSON.stringify({ password: pwd })
+            });
+            if (!ok || !data.success) {
+                alert((data && data.error) || '密码错误');
+                throw new Error('bad password');
+            }
+            unlockCache[libId] = { token: data.unlockToken, expiresAt: data.expiresAt };
+            return data.unlockToken;
+        }
+
+        async function saveLibraryToServer(lib) {
+            await ensureUnlocked(lib.id, '写入物料库');
+            const token = getUnlockToken(lib.id);
+            const { ok, data } = await apiFetch(API_BASE + '/libraries/' + encodeURIComponent(lib.id), {
+                method: 'PUT',
+                headers: token ? { 'X-Material-Unlock-Token': token } : {},
+                body: JSON.stringify({
+                    name: lib.name || '',
+                    prefix: lib.prefix || '',
+                    currentTable: lib.currentTable,
+                    unlockToken: token
+                })
+            });
+            if (!ok || !data.success) {
+                throw new Error((data && data.error) || '保存失败');
+            }
+        }
+
+        let aggregatedData = [];
+        let pendingImportType = null;
+        let pendingImportData = null;
+
+        function clearPendingImport() {
+            pendingImportType = null;
+            pendingImportData = null;
+            confirmImportBtn.disabled = true;
+        }
+
+        function backupMaterialDb(raw) {
+            if (!raw) return;
+            try {
+                const ts = new Date().toISOString().replace(/[:.]/g, '-');
+                const key = `${MATERIAL_DB_STORAGE_KEY}_backup_${ts}`;
+                localStorage.setItem(key, raw);
+            } catch (e) {
+                console.error('备份物料数据库失败', e);
+            }
+        }
+
+        function loadMaterialDbBackups() {
+            try {
+                const prefix = `${MATERIAL_DB_STORAGE_KEY}_backup_`;
+                const backups = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && k.startsWith(prefix)) {
+                        backups.push(k);
+                    }
+                }
+                backups.sort().reverse();
+
+                if (backups.length === 0) {
+                    materialDbBackupSelect.innerHTML = '<option value="">（当前无自动备份可用）</option>';
+                    restoreMaterialDbBtn.disabled = true;
+                    materialDbBackupInfo.textContent = '物料库已保存在服务器 MySQL。确认写入前会在本页会话中保留快照；完整历史版本请在「物料数据库」页面查看。';
+                    return;
+                }
+
+                const optionsHtml = backups
+                    .map((k) => {
+                        const ts = k.substring(prefix.length).replace('T', ' ').replace(/-/g, ':');
+                        return `<option value="${k}">${ts}</option>`;
+                    })
+                    .join('');
+                materialDbBackupSelect.innerHTML = optionsHtml;
+                restoreMaterialDbBtn.disabled = false;
+                materialDbBackupInfo.textContent = `共发现 ${backups.length} 个备份版本。回滚会用选中版本覆盖当前物料库。`;
+            } catch (e) {
+                console.error('读取物料库备份列表失败', e);
+                materialDbBackupSelect.innerHTML = '<option value="">（读取备份列表失败）</option>';
+                restoreMaterialDbBtn.disabled = true;
+                materialDbBackupInfo.textContent = '请稍后重试。';
+            }
+        }
+
+        function loadExistingMaterialLibOptions() {
+            existingMaterialLibSelect.innerHTML = '<option value=\"\">（从物料数据库选择现有库）</option>';
+            try {
+                const libs = libList;
+                if (!Array.isArray(libs) || libs.length === 0) return;
+
+                // 增加“所有库（合并）”选项
+                const allOpt = document.createElement('option');
+                allOpt.value = '__ALL_LIBS__';
+                allOpt.textContent = '所有库（合并）';
+                existingMaterialLibSelect.appendChild(allOpt);
+
+                // 逐个库选项
+                libs.forEach(lib => {
+                    const opt = document.createElement('option');
+                    opt.value = lib.id || '';
+                    const currentInfo = lib.currentTable
+                        ? `${lib.name || '未命名库'} · ${lib.currentTable.fileName || ''}`
+                        : `${lib.name || '未命名库'} · 无当前表`;
+                    opt.textContent = currentInfo;
+                    existingMaterialLibSelect.appendChild(opt);
+                });
+            } catch (e) {
+                console.error('加载物料数据库失败', e);
+            }
+        }
+
+        // ---------- 就绪判断 ----------
+        function isMaterialReady() {
+            // 若来自物料数据库的现有库，则只要有标准表头即可视为就绪，无需用户再映射
+            if (state.material.fromLib && state.material.headers.length > 0) {
+                return true;
+            }
+            const hasSource =
+                (state.material.workbook && state.material.sheetName) ||
+                (state.material.fromLib && state.material.headers.length > 0);
+            return (
+                hasSource &&
+                matCodeCol.value &&
+                matCodeCol.value !== '-1' &&
+                matDescCol.value &&
+                matDescCol.value !== '-1' &&
+                matGroupCol.value &&
+                matGroupCol.value !== '-1'
+            );
+        }
+        function isCostReady() {
+            return state.cost.workbook && 
+                   costCodeCol.value && costCodeCol.value !== '-1' && 
+                   costPriceCol.value && costPriceCol.value !== '-1';
+        }
+        function isPreferReady() {
+            if (!state.prefer.workbook || !state.prefer.sheetName) return false;
+            if (!prefCodeCol.value || prefCodeCol.value === '-1') return false;
+
+            const fields = [];
+            if (chkUpdateDesc.checked) fields.push(prefDescCol);
+            if (chkUpdatePadsDesc.checked) fields.push(prefPadsDescCol);
+            if (chkUpdatePrice.checked) fields.push(prefPriceCol);
+            if (chkUpdateGroup.checked) fields.push(prefGroupCol);
+            if (chkUpdatePreferStatus.checked) fields.push(prefStatusCol);
+            if (chkUpdateRemark.checked) fields.push(prefRemarkCol);
+
+            if (fields.length === 0) return false;
+
+            return fields.every(sel => sel.value && sel.value !== '-1');
+        }
+
+        function checkAggregateReady() {
+            const costCanRun = isCostReady();
+            const preferCanRun = isMaterialReady() && isPreferReady();
+            const anyReady = costCanRun || preferCanRun;
+            aggregateBtn.disabled = !anyReady;
+            if (anyReady) {
+                const parts = [];
+                if (costCanRun) parts.push('可执行【物料单价导入】');
+                if (preferCanRun) parts.push('可执行【物料优选导入】');
+                if (isPreferReady() && !isMaterialReady()) parts.push('（优选导入需先选现有库）');
+                updateStatus('✅ ' + parts.join('；'));
+            } else {
+                updateStatus('⏳ 请配置一项：物料单价导入（上传成本表并映射）或 物料优选导入（选现有库 + 上传 BOM 并映射）');
+            }
+        }
+
+        // 通用函数
+        function readWorkbookFromFile(file, type) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const wb = XLSX.read(data, { type: 'array' });
+                    if (type === 'material') {
+                        state.material.workbook = wb;
+                        populateSheetSelect(wb, materialSheet, 'material');
+                        materialSheetSection.style.display = 'block';
+                        materialInfo.innerText = `📁 ${file.name}`;
+                        clearMaterial.style.display = 'inline-block';
+                        // 映射区域将由populateSheetSelect内的change事件自动显示
+                        // 但初始隐藏，等待change
+                    } else if (type === 'cost') {
+                        state.cost.workbook = wb;
+                        populateSheetSelect(wb, costSheet, 'cost');
+                        costSheetSection.style.display = 'block';
+                        costInfo.innerText = `📁 ${file.name}`;
+                        clearCost.style.display = 'inline-block';
+                    } else if (type === 'prefer') {
+                        state.prefer.workbook = wb;
+                        populateSheetSelect(wb, preferSheet, 'prefer');
+                        preferSheetSection.style.display = 'block';
+                        preferInfo.innerText = `📁 ${file.name}`;
+                        clearPrefer.style.display = 'inline-block';
+                    }
+                    updateStatus('文件加载成功，自动加载第一个工作表');
+                    checkAggregateReady();
+                } catch (err) {
+                    updateStatus('❌ 文件解析失败: ' + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 增强版：填充下拉后，设置选中第一个选项并主动触发change
+        function populateSheetSelect(wb, selectEl, type) {
+            selectEl.innerHTML = '';
+            wb.SheetNames.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                selectEl.appendChild(opt);
+            });
+            // 如果有工作表，默认选中第一个
+            if (selectEl.options.length > 0) {
+                selectEl.selectedIndex = 0;
+            }
+            // 手动触发change，立即加载列映射
+            selectEl.dispatchEvent(new Event('change'));
+        }
+
+        // onSheetChange：加载工作表数据并显示映射区域
+        function onSheetChange(type) {
+            let selectEl, stateObj, mappingDiv;
+            if (type === 'material') { selectEl = materialSheet; stateObj = state.material; mappingDiv = materialMapping; }
+            else if (type === 'cost') { selectEl = costSheet; stateObj = state.cost; mappingDiv = costMapping; }
+            else if (type === 'prefer') { selectEl = preferSheet; stateObj = state.prefer; mappingDiv = preferMapping; }
+            else return;
+
+            const sheetName = selectEl.value;
+            if (!sheetName || !stateObj.workbook) return;
+            stateObj.sheetName = sheetName;
+            const sheet = stateObj.workbook.Sheets[sheetName];
+            // 转换为二维数组
+            const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+            
+            if (data.length === 0) {
+                stateObj.headers = [];
+                stateObj.dataRows = [];
+                updateStatus(`工作表“${sheetName}”无数据，请检查文件`);
+            } else {
+                const headerRow = data[0] || [];
+                stateObj.headers = headerRow.map((h, idx) => h ? h.toString() : `列${idx+1}`);
+                stateObj.dataRows = data.slice(1);
+            }
+
+            // 构建映射下拉选项（即使headers为空也会生成占位选项）
+            buildMappingOptions(type, stateObj.headers);
+            // 显示映射区域
+            mappingDiv.style.display = 'block';
+            if (stateObj.headers.length === 0) {
+                updateStatus(`工作表“${sheetName}”没有列标题，映射选项不可用，请选择其他工作表`);
+            } else {
+                updateStatus(`工作表“${sheetName}”已加载，请映射字段`);
+            }
+        }
+
+        function buildMappingOptions(type, headers) {
+            let optionsHtml = '';
+            if (headers.length === 0) {
+                optionsHtml = '<option value="-1" disabled>该工作表无列数据</option>';
+            } else {
+                optionsHtml = headers.map((h, idx) => `<option value="${idx}">${h} (列${idx+1})</option>`).join('');
+            }
+
+            if (type === 'material') {
+                matCodeCol.innerHTML = '<option value="-1">--请选择--</option>' + optionsHtml;
+                matDescCol.innerHTML = '<option value="-1">--请选择--</option>' + optionsHtml;
+                matGroupCol.innerHTML = '<option value="-1">--请选择--</option>' + optionsHtml;
+            } else if (type === 'cost') {
+                costCodeCol.innerHTML = '<option value="-1">--请选择--</option>' + optionsHtml;
+                costPriceCol.innerHTML = '<option value="-1">--请选择--</option>' + optionsHtml;
+            } else if (type === 'prefer') {
+                const base = '<option value="-1">--请选择--</option>' + optionsHtml;
+                prefCodeCol.innerHTML = base;
+                prefGroupCol.innerHTML = base;
+                prefStatusCol.innerHTML = base;
+                prefDescCol.innerHTML = base;
+                prefPadsDescCol.innerHTML = base;
+                prefPriceCol.innerHTML = base;
+                prefRemarkCol.innerHTML = base;
+            }
+        }
+
+        function resetMaterialMapping() { 
+            matCodeCol.innerHTML = '<option value="-1">--请先选择sheet--</option>'; 
+            matDescCol.innerHTML = '<option value="-1">--请先选择sheet--</option>';
+            matGroupCol.innerHTML = '<option value="-1">--请先选择sheet--</option>';
+        }
+        function resetCostMapping() { 
+            costCodeCol.innerHTML = '<option value="-1">--请先选择sheet--</option>'; 
+            costPriceCol.innerHTML = '<option value="-1">--请先选择sheet--</option>';
+        }
+        function resetPreferMapping() { 
+            const placeholder = '<option value="-1">--请先选择sheet--</option>';
+            prefCodeCol.innerHTML = placeholder; 
+            prefGroupCol.innerHTML = placeholder;
+            prefStatusCol.innerHTML = placeholder;
+            prefDescCol.innerHTML = placeholder;
+            prefPadsDescCol.innerHTML = placeholder;
+            prefPriceCol.innerHTML = placeholder;
+            prefRemarkCol.innerHTML = placeholder;
+        }
+
+        function updateStatus(msg) { statusDiv.innerHTML = `📌 ${msg}`; }
+
+        function clearFile(type) {
+            if (type === 'material') {
+                materialFile.value = ''; materialInfo.innerText = '未选择文件'; clearMaterial.style.display = 'none';
+                materialSheetSection.style.display = 'none'; materialMapping.style.display = 'none';
+                existingMaterialLibSelect.value = '';
+                state.material = { workbook: null, sheetName: null, headers: [], dataRows: [], codeIdx: -1, descIdx: -1, groupIdx: -1, fromLib: false };
+                resetMaterialMapping();
+            } else if (type === 'cost') {
+                costFile.value = ''; costInfo.innerText = '未选择文件'; clearCost.style.display = 'none';
+                costSheetSection.style.display = 'none'; costMapping.style.display = 'none';
+                state.cost = { workbook: null, sheetName: null, headers: [], dataRows: [], codeIdx: -1, priceIdx: -1 };
+                resetCostMapping();
+            } else if (type === 'prefer') {
+                preferFile.value = ''; preferInfo.innerText = '未选择文件'; clearPrefer.style.display = 'none';
+                preferSheetSection.style.display = 'none'; preferMapping.style.display = 'none';
+                state.prefer = { workbook: null, sheetName: null, headers: [], dataRows: [], codeIdx: -1, groupIdx: -1, statusIdx: -1 };
+                resetPreferMapping();
+            }
+            checkAggregateReady();
+        }
+
+        // 事件绑定
+        materialFile.addEventListener('change', (e) => { if (e.target.files[0]) readWorkbookFromFile(e.target.files[0], 'material'); });
+        costFile.addEventListener('change', (e) => { if (e.target.files[0]) readWorkbookFromFile(e.target.files[0], 'cost'); });
+        preferFile.addEventListener('change', (e) => { if (e.target.files[0]) readWorkbookFromFile(e.target.files[0], 'prefer'); });
+
+        clearMaterial.addEventListener('click', () => clearFile('material'));
+        clearCost.addEventListener('click', () => clearFile('cost'));
+        clearPrefer.addEventListener('click', () => clearFile('prefer'));
+
+        // 监听sheet切换，使用专门的处理函数
+        materialSheet.addEventListener('change', () => onSheetChange('material'));
+        costSheet.addEventListener('change', () => onSheetChange('cost'));
+        preferSheet.addEventListener('change', () => onSheetChange('prefer'));
+
+        [matCodeCol, matDescCol, matGroupCol, costCodeCol, costPriceCol, prefCodeCol, prefGroupCol, prefStatusCol, prefDescCol, prefPadsDescCol, prefPriceCol, prefRemarkCol].forEach(sel => {
+            sel.addEventListener('change', checkAggregateReady);
+        });
+
+        function bindPreferCheckbox(checkbox, rowDiv) {
+            checkbox.addEventListener('change', () => {
+                rowDiv.style.display = checkbox.checked ? 'flex' : 'none';
+                if (!checkbox.checked) {
+                    const select = rowDiv.querySelector('select');
+                    if (select) select.value = '-1';
+                }
+                checkAggregateReady();
+            });
+        }
+
+        bindPreferCheckbox(chkUpdateDesc, rowPrefDescCol);
+        bindPreferCheckbox(chkUpdatePadsDesc, rowPrefPadsDescCol);
+        bindPreferCheckbox(chkUpdatePrice, rowPrefPriceCol);
+        bindPreferCheckbox(chkUpdateGroup, rowPrefGroupCol);
+        bindPreferCheckbox(chkUpdatePreferStatus, rowPrefStatusCol);
+        bindPreferCheckbox(chkUpdateRemark, rowPrefRemarkCol);
+
+        // ---------- 核心聚合：替换策略 ----------
+        existingMaterialLibSelect.addEventListener('change', () => {
+            const libId = existingMaterialLibSelect.value;
+            if (!libId) {
+                // 取消选择，重置来自库的数据，但不影响已上传的 Excel
+                state.material.fromLib = false;
+                state.material.fromLibId = null;
+                state.material.fromLibAllMerged = false;
+                if (!state.material.workbook) {
+                    state.material.headers = [];
+                    state.material.dataRows = [];
+                    materialMapping.style.display = 'none';
+                }
+                checkAggregateReady();
+                return;
+            }
+            try {
+                const libs = libList;
+                if (!Array.isArray(libs) || libs.length === 0) {
+                    updateStatus('❌ 服务器物料数据库中没有任何库，请先在「物料数据库」页面创建库');
+                    return;
+                }
+
+                let mergedHeaders = [];
+                let mergedRows = [];
+                let infoText = '';
+
+                if (libId === '__ALL_LIBS__') {
+                    // 合并所有库当前表：采用第一个库的表头，后续库按列位置拼接
+                    const firstLibWithTable = libs.find(
+                        l => l.currentTable && Array.isArray(l.currentTable.data) && l.currentTable.data.length >= 2
+                    );
+                    if (!firstLibWithTable) {
+                        updateStatus('❌ 所有库均无可用的当前表');
+                        return;
+                    }
+                    mergedHeaders = (firstLibWithTable.currentTable.data[0] || []).map((h, idx) =>
+                        h ? h.toString() : `列${idx + 1}`
+                    );
+                    libs.forEach(lib => {
+                        const table = lib.currentTable;
+                        if (!table || !Array.isArray(table.data) || table.data.length < 2) return;
+                        const rows = table.data.slice(1);
+                        mergedRows.push(...rows);
+                    });
+                    infoText = '📦 来自物料数据库：所有库（合并当前表数据）';
+                    state.material.fromLibAllMerged = true;
+                    state.material.fromLibId = '__ALL_LIBS__';
+                } else {
+                    const lib = libs.find(l => l.id === libId);
+                    if (
+                        !lib ||
+                        !lib.currentTable ||
+                        !Array.isArray(lib.currentTable.data) ||
+                        lib.currentTable.data.length < 2
+                    ) {
+                        updateStatus('❌ 选中的物料库没有可用的当前表');
+                        return;
+                    }
+                    const data = lib.currentTable.data;
+                    mergedHeaders = (data[0] || []).map((h, idx) =>
+                        h ? h.toString() : `列${idx + 1}`
+                    );
+                    mergedRows = data.slice(1);
+                    infoText = `📦 来自物料数据库：${lib.name || '未命名库'} · ${
+                        lib.currentTable.fileName || ''
+                    }`;
+                    state.material.fromLibAllMerged = false;
+                    state.material.fromLibId = libId;
+                }
+
+                state.material.headers = mergedHeaders;
+                state.material.dataRows = mergedRows;
+                state.material.workbook = null;
+                state.material.sheetName = 'material_db_current';
+                state.material.fromLib = true;
+
+                // 现有库模式：直接使用标准表头，不再要求用户映射
+                materialMapping.style.display = 'none';
+                materialSheetSection.style.display = 'none';
+                materialInfo.innerText = infoText;
+                clearMaterial.style.display = 'none';
+                updateStatus('✅ 已从物料数据库载入现有库，将直接使用表头中的「物料代码 / 物料描述 / 替代组标签」。');
+                checkAggregateReady();
+            } catch (e) {
+                console.error(e);
+                updateStatus('❌ 读取物料数据库失败');
+            }
+        });
+
+        aggregateBtn.addEventListener('click', () => {
+            clearPendingImport();
+            // 物料单价导入映射（来自上传的 BOM）
+            const costMap = new Map();
+            if (isCostReady()) {
+                const costCodeIdx = parseInt(costCodeCol.value, 10);
+                const costPriceIdx = parseInt(costPriceCol.value, 10);
+                for (let row of state.cost.dataRows) {
+                    if (!row) continue;
+                    const code = row[costCodeIdx] ? row[costCodeIdx].toString().trim() : '';
+                    if (!code) continue;
+                    const price = (costPriceIdx !== -1 && row[costPriceIdx]) ? row[costPriceIdx].toString().trim() : '';
+                    costMap.set(code, price);
+                }
+            }
+
+            // 物料单价导入：独立功能，无需现有库，仅需上传成本表并映射
+            if (isCostReady()) {
+                try {
+                    const libs = JSON.parse(JSON.stringify(libList));
+                    if (!libs.length) {
+                        updateStatus('❌ 服务器物料数据库中没有任何库，无法更新单价');
+                        return;
+                    }
+
+                    // 将所有库中当前表的“成本单价”列更新为导入 BOM 中的单价（按物料代码匹配），并记录变动明细
+                    let updatedCount = 0;
+                    const touchedCodes = new Set();
+                    const changedRowsPreview = []; // [物料库, 物料代码, 原单价, 新单价]
+
+                    libs.forEach((lib) => {
+                        const table = lib.currentTable;
+                        if (!table || !Array.isArray(table.data) || table.data.length < 2) return;
+                        const data = table.data;
+                        const headerRow = data[0] || [];
+                        // 标准表头中的“成本单价”
+                        const priceColIdx = headerRow.findIndex(
+                            (h) => (h != null ? String(h).trim() : '') === '成本单价'
+                        );
+                        const codeColIdx = 0; // 规范：物料代码在第 1 列
+                        if (priceColIdx === -1 || codeColIdx === -1) return;
+                        for (let i = 1; i < data.length; i++) {
+                            const row = data[i] || [];
+                            const code = row[codeColIdx] != null ? String(row[codeColIdx]).trim() : '';
+                            if (!code) continue;
+                            if (!costMap.has(code)) continue;
+                            const newPrice = costMap.get(code) || '';
+                            const oldPrice = row[priceColIdx] != null ? String(row[priceColIdx]).trim() : '';
+                            if (oldPrice === newPrice) continue; // 不变的不记录也不改写
+                            row[priceColIdx] = newPrice;
+                            updatedCount++;
+                            touchedCodes.add(code);
+                            changedRowsPreview.push([
+                                lib.name || '未命名库',
+                                code,
+                                '成本单价',
+                                oldPrice,
+                                newPrice,
+                                '—',
+                            ]);
+                        }
+                    });
+
+                    // 仅预览 & 导出有变动的部分
+                    if (changedRowsPreview.length === 0) {
+                        aggregatedData = [['类型', '物料代码', '字段', '原值', '新值', '决策']];
+                        renderPreview([]);
+                        downloadBtn.disabled = true;
+                        clearPendingImport();
+                        updateStatus('✅ 已根据上传的 BOM 检查单价，未发现与物料库中不同的单价，无需更新。');
+                        return;
+                    }
+
+                    aggregatedData = [
+                        ['类型', '物料代码', '字段', '原值', '新值', '决策'],
+                        ...changedRowsPreview.map(r => [r[0], r[1], r[2], r[3], r[4], r[5]]),
+                    ];
+                    renderPreview(changedRowsPreview.slice(0, 100));
+                    downloadBtn.disabled = false;
+
+                    pendingImportType = 'cost';
+                    pendingImportData = { raw, libs };
+                    confirmImportBtn.disabled = false;
+                    updateStatus(
+                        `已生成物料单价变更预览，涉及 ${touchedCodes.size} 个物料代码、${updatedCount} 处变更。请核对后点击「确认导入」写入数据库。`
+                    );
+                } catch (e) {
+                    console.error(e);
+                    updateStatus('❌ 更新物料库单价时发生错误：' + e.message);
+                }
+                return;
+            }
+
+            // 物料优选导入：独立功能，需先选择现有库 + 配置优选导入
+            if (!isPreferReady()) {
+                updateStatus('⏳ 请至少配置一项：仅配置「物料单价导入」可单独执行；执行「物料优选导入」需再选择现有库并完成映射。');
+                return;
+            }
+            if (!isMaterialReady()) {
+                updateStatus('❌ 执行物料优选导入前，请先在「现有库」中选择一个库或上传现有库。');
+                return;
+            }
+            if (!state.material.fromLib || !state.material.fromLibId || state.material.fromLibAllMerged) {
+                updateStatus('❌ 物料优选导入仅支持对单个现有库执行，请在「现有库」中选择具体库，不要选“所有库（合并）”。');
+                return;
+            }
+
+            try {
+                const libs = JSON.parse(JSON.stringify(libList));
+                const lib = libs.find(l => l.id === state.material.fromLibId);
+                if (!lib || !lib.currentTable || !Array.isArray(lib.currentTable.data) || lib.currentTable.data.length < 2) {
+                    updateStatus('❌ 选中的物料库没有可用的当前表');
+                    return;
+                }
+
+                const data = lib.currentTable.data;
+                const headerRow = data[0] || [];
+                const headers = headerRow.map(h => (h != null ? String(h).trim() : ''));
+
+                const idxCode = headers.findIndex(h => h === '物料代码');
+                const idxDesc = headers.findIndex(h => h === '物料描述');
+                const idxPadsDesc = headers.findIndex(h => h === 'pads库物料描述');
+                const idxPrice = headers.findIndex(h => h === '成本单价');
+                const idxGroup = headers.findIndex(h => h === '替代组标签');
+                const idxStatus = headers.findIndex(h => h === '优选情况');
+                const idxRemark = headers.findIndex(h => h === '备注说明');
+
+                if (idxCode === -1) {
+                    updateStatus('❌ 现有库当前表中未找到“物料代码”列，无法执行物料优选导入。');
+                    return;
+                }
+
+                const bomCodeIdx = parseInt(prefCodeCol.value, 10);
+                const bomDescIdx = chkUpdateDesc.checked ? parseInt(prefDescCol.value, 10) : -1;
+                const bomPadsDescIdx = chkUpdatePadsDesc.checked ? parseInt(prefPadsDescCol.value, 10) : -1;
+                const bomPriceIdx = chkUpdatePrice.checked ? parseInt(prefPriceCol.value, 10) : -1;
+                const bomGroupIdx = chkUpdateGroup.checked ? parseInt(prefGroupCol.value, 10) : -1;
+                const bomStatusIdx = chkUpdatePreferStatus.checked ? parseInt(prefStatusCol.value, 10) : -1;
+                const bomRemarkIdx = chkUpdateRemark.checked ? parseInt(prefRemarkCol.value, 10) : -1;
+
+                const bomMap = new Map();
+                for (let row of state.prefer.dataRows) {
+                    if (!row) continue;
+                    const code = row[bomCodeIdx] != null ? String(row[bomCodeIdx]).trim() : '';
+                    if (!code) continue;
+                    bomMap.set(code, row);
+                }
+                if (bomMap.size === 0) {
+                    updateStatus('❌ 优选导入表中未解析到任何有效的物料代码，请检查映射。');
+                    return;
+                }
+
+                const existingMap = new Map();
+                for (let i = 1; i < data.length; i++) {
+                    const row = data[i] || [];
+                    const code = row[idxCode] != null ? String(row[idxCode]).trim() : '';
+                    if (!code) continue;
+                    if (!existingMap.has(code)) {
+                        existingMap.set(code, { index: i, row });
+                    }
+                }
+
+                const updatedChanges = [];
+                const newCandidates = [];
+
+                bomMap.forEach((bomRow, code) => {
+                    const exist = existingMap.get(code);
+                    if (exist) {
+                        const targetRow = exist.row;
+
+                        const pushChange = (fieldLabel, fieldKey, idxTarget, idxBom) => {
+                            if (idxTarget === -1 || idxBom === -1) return;
+                            const oldVal = targetRow[idxTarget] != null ? String(targetRow[idxTarget]) : '';
+                            const newVal = bomRow[idxBom] != null ? String(bomRow[idxBom]) : '';
+                            if (oldVal === newVal) return;
+                            updatedChanges.push({
+                                type: '更新',
+                                code,
+                                field: fieldLabel,
+                                fieldKey,
+                                oldVal,
+                                newVal
+                            });
+                        };
+
+                        if (chkUpdateDesc.checked) pushChange('物料描述', 'desc', idxDesc, bomDescIdx);
+                        if (chkUpdatePadsDesc.checked) pushChange('pads库物料描述', 'padsDesc', idxPadsDesc, bomPadsDescIdx);
+                        if (chkUpdatePrice.checked) pushChange('成本单价', 'price', idxPrice, bomPriceIdx);
+                        if (chkUpdateGroup.checked) pushChange('替代组标签', 'group', idxGroup, bomGroupIdx);
+                        if (chkUpdatePreferStatus.checked) pushChange('优选情况', 'status', idxStatus, bomStatusIdx);
+                        if (chkUpdateRemark.checked) pushChange('备注说明', 'remark', idxRemark, bomRemarkIdx);
+                    } else {
+                        const fields = {
+                            desc: bomDescIdx !== -1 && bomRow[bomDescIdx] != null ? String(bomRow[bomDescIdx]) : '',
+                            padsDesc: bomPadsDescIdx !== -1 && bomRow[bomPadsDescIdx] != null ? String(bomRow[bomPadsDescIdx]) : '',
+                            price: bomPriceIdx !== -1 && bomRow[bomPriceIdx] != null ? String(bomRow[bomPriceIdx]) : '',
+                            group: bomGroupIdx !== -1 && bomRow[bomGroupIdx] != null ? String(bomRow[bomGroupIdx]) : '',
+                            status: bomStatusIdx !== -1 && bomRow[bomStatusIdx] != null ? String(bomRow[bomStatusIdx]) : '',
+                            remark: bomRemarkIdx !== -1 && bomRow[bomRemarkIdx] != null ? String(bomRow[bomRemarkIdx]) : ''
+                        };
+                        newCandidates.push({
+                            code,
+                            fields,
+                            decision: '加入'
+                        });
+                    }
+                });
+
+                const previewRows = [];
+                updatedChanges.forEach(c => {
+                    previewRows.push([
+                        c.type,
+                        c.code,
+                        c.field,
+                        c.oldVal,
+                        c.newVal,
+                        '—'
+                    ]);
+                });
+
+                window.__materialPreferNewCandidates = newCandidates;
+
+                newCandidates.forEach(c => {
+                    const fieldParts = [];
+                    if (c.fields.desc) fieldParts.push(`物料描述=${c.fields.desc}`);
+                    if (c.fields.padsDesc) fieldParts.push(`pads库物料描述=${c.fields.padsDesc}`);
+                    if (c.fields.price) fieldParts.push(`成本单价=${c.fields.price}`);
+                    if (c.fields.group) fieldParts.push(`替代组标签=${c.fields.group}`);
+                    if (c.fields.status) fieldParts.push(`优选情况=${c.fields.status}`);
+                    if (c.fields.remark) fieldParts.push(`备注说明=${c.fields.remark}`);
+                    const summary = fieldParts.join('；');
+
+                    previewRows.push([
+                        '新增',
+                        c.code,
+                        summary || '—',
+                        '',
+                        '',
+                        `<select data-code="${c.code}" class="prefer-decision-select"><option value="加入" selected>加入</option><option value="忽略">忽略</option></select>`
+                    ]);
+                });
+
+                aggregatedData = [
+                    ['类型', '物料代码', '字段', '原值', '新值', '决策'],
+                    ...previewRows.map(r => r.map(x => (typeof x === 'string' ? x : '')))
+                ];
+
+                if (previewRows.length === 0) {
+                    renderPreview([]);
+                    downloadBtn.disabled = true;
+                    clearPendingImport();
+                    updateStatus('✅ 未检测到任何需要更新或新增的物料。');
+                    return;
+                }
+
+                renderPreview(previewRows.slice(0, 100), true);
+                downloadBtn.disabled = false;
+
+                pendingImportType = 'prefer';
+                pendingImportData = {
+                    raw,
+                    libs,
+                    lib,
+                    data,
+                    headerRow,
+                    idxCode,
+                    idxDesc,
+                    idxPadsDesc,
+                    idxPrice,
+                    idxGroup,
+                    idxStatus,
+                    idxRemark,
+                    updatedChanges,
+                    newCandidates,
+                    existingMap,
+                };
+                confirmImportBtn.disabled = false;
+                updateStatus('已生成物料优选导入变更预览。可调整新物料的「加入/忽略」后，点击「确认导入」写入当前选定的物料库。');
+            } catch (e) {
+                console.error(e);
+                updateStatus('❌ 执行物料优选导入时发生错误：' + (e && e.message ? e.message : e));
+            }
+        });
+
+        function renderPreview(rows, allowHtml) {
+            if (!rows || rows.length === 0) {
+                previewTableBody.innerHTML = `<tr><td colspan="6" style="text-align:center;">无聚合结果</td></tr>`;
+                return;
+            }
+            let html = '';
+            for (let r of rows) {
+                html += '<tr>' + r.map((c, colIdx) => {
+                    const v = c || '';
+                    const wrapClass = colIdx === 2 ? ' preview-cell-wrap' : '';
+                    if (allowHtml && typeof v === 'string' && v.startsWith('<select')) {
+                        return `<td class="${wrapClass}">${v}</td>`;
+                    }
+                    return `<td class="${wrapClass}">${escapeHtml(String(v))}</td>`;
+                }).join('') + '</tr>';
+            }
+            previewTableBody.innerHTML = html;
+        }
+        function escapeHtml(s) {
+            const div = document.createElement('div');
+            div.textContent = s;
+            return div.innerHTML;
+        }
+
+        downloadBtn.addEventListener('click', () => {
+            if (!aggregatedData || aggregatedData.length <= 1) return;
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(aggregatedData);
+            XLSX.utils.book_append_sheet(wb, ws, '变更预览');
+            XLSX.writeFile(wb, `物料优选导入变更预览_${new Date().toISOString().slice(0,10)}.xlsx`);
+        });
+
+        confirmImportBtn.addEventListener('click', async () => {
+            if (!pendingImportType || !pendingImportData) return;
+            if (!confirm('确认导入将写入服务器物料库，须验证目标物料库密码。是否继续？')) return;
+            try {
+                if (pendingImportType === 'cost') {
+                    backupMaterialDb(JSON.stringify(libList));
+                    const touched = (pendingImportData.libs || []).filter(function(lib) {
+                        return lib && lib.currentTable && Array.isArray(lib.currentTable.data) && lib.currentTable.data.length > 1;
+                    });
+                    for (const lib of touched) {
+                        await saveLibraryToServer(lib);
+                    }
+                    await reloadLibraries();
+                    loadExistingMaterialLibOptions();
+                    updateStatus('✅ 已写入服务器物料数据库，单价更新完成。');
+                } else if (pendingImportType === 'prefer') {
+                    const P = pendingImportData;
+                    const selects = document.querySelectorAll('.prefer-decision-select');
+                    selects.forEach(sel => {
+                        const code = sel.getAttribute('data-code');
+                        const val = sel.value;
+                        const c = P.newCandidates.find(it => it.code === code);
+                        if (c) c.decision = val;
+                    });
+                    const applyChange = (c) => {
+                        const rowInfo = P.existingMap.get(c.code);
+                        if (!rowInfo) return;
+                        const row = rowInfo.row;
+                        if (c.fieldKey === 'desc' && P.idxDesc !== -1) row[P.idxDesc] = c.newVal;
+                        if (c.fieldKey === 'padsDesc' && P.idxPadsDesc !== -1) row[P.idxPadsDesc] = c.newVal;
+                        if (c.fieldKey === 'price' && P.idxPrice !== -1) row[P.idxPrice] = c.newVal;
+                        if (c.fieldKey === 'group' && P.idxGroup !== -1) row[P.idxGroup] = c.newVal;
+                        if (c.fieldKey === 'status' && P.idxStatus !== -1) row[P.idxStatus] = c.newVal;
+                        if (c.fieldKey === 'remark' && P.idxRemark !== -1) row[P.idxRemark] = c.newVal;
+                    };
+                    P.updatedChanges.forEach(c => applyChange(c));
+                    P.newCandidates.forEach(c => {
+                        if (c.decision !== '加入') return;
+                        const newRow = new Array(P.headerRow.length).fill('');
+                        newRow[P.idxCode] = c.code;
+                        if (P.idxDesc !== -1) newRow[P.idxDesc] = c.fields.desc || '';
+                        if (P.idxPadsDesc !== -1) newRow[P.idxPadsDesc] = c.fields.padsDesc || '';
+                        if (P.idxPrice !== -1) newRow[P.idxPrice] = c.fields.price || '';
+                        if (P.idxGroup !== -1) newRow[P.idxGroup] = c.fields.group || '';
+                        if (P.idxStatus !== -1) newRow[P.idxStatus] = c.fields.status || '';
+                        if (P.idxRemark !== -1) newRow[P.idxRemark] = c.fields.remark || '';
+                        P.data.push(newRow);
+                    });
+                    backupMaterialDb(JSON.stringify(libList));
+                    const targetLib = P.libs.find(function(l) { return l.id === state.material.fromLibId; });
+                    if (targetLib) await saveLibraryToServer(targetLib);
+                    await reloadLibraries();
+                    loadExistingMaterialLibOptions();
+                    const addedCount = P.newCandidates.filter(c => c.decision === '加入').length;
+                    const ignoredCount = P.newCandidates.filter(c => c.decision === '忽略').length;
+                    updateStatus(`✅ 物料优选导入完成：更新 ${P.updatedChanges.length} 条字段变更，新增加入 ${addedCount} 条物料，忽略 ${ignoredCount} 条候选。`);
+                }
+                clearPendingImport();
+            } catch (e) {
+                console.error(e);
+                updateStatus('❌ 确认导入时发生错误：' + (e && e.message ? e.message : e));
+            }
+        });
+
+        restoreMaterialDbBtn.addEventListener('click', () => {
+            const key = materialDbBackupSelect.value;
+            if (!key) {
+                alert('当前没有可回滚的备份版本。');
+                return;
+            }
+            const rawBackup = localStorage.getItem(key);
+            if (!rawBackup) {
+                alert('选中的备份内容已丢失或损坏，无法回滚。');
+                return;
+            }
+            alert('回滚请使用「物料数据库」页面中的历史表版本；本页会话备份仅用于导入前临时对照，不会写回服务器。');
+        });
+
+        (async function initMaterialImportPage() {
+            try {
+                await reloadLibraries();
+                await tryMigrateFromLocalStorage();
+                loadExistingMaterialLibOptions();
+                loadMaterialDbBackups();
+                updateStatus('请上传至少一个源文件并完成必要映射，或从物料数据库选择现有库（数据来自服务器 MySQL）');
+            } catch (e) {
+                console.error(e);
+                updateStatus('❌ 无法加载物料库，请确认已登录管理系统');
+            }
+        })();
+    })();
+</script>
+</body>
+</html>

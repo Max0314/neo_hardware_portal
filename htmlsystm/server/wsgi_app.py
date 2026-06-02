@@ -37,6 +37,73 @@ _LOGIN_DB_TIMEOUT_SEC = float(os.getenv('LOGIN_DB_TIMEOUT_SEC', '8'))
 _LOGIN_AUTH_TIMEOUT_SEC = float(os.getenv('LOGIN_AUTH_TIMEOUT_SEC', '12'))
 
 
+def _public_path_prefix(environ: Optional[Dict[str, Any]] = None) -> str:
+    """外部子路径前缀；内部容器路由仍保持 /。"""
+    forwarded_prefix = ''
+    if environ:
+        forwarded_prefix = environ.get('HTTP_X_FORWARDED_PREFIX', '') or ''
+    raw = (os.getenv('PUBLIC_PATH_PREFIX') or forwarded_prefix or '').strip()
+    if not raw:
+        return ''
+    raw = raw.split(',')[0].strip().rstrip('/')
+    if not raw or raw == '/':
+        return ''
+    if raw.startswith('//'):
+        return ''
+    return raw if raw.startswith('/') else f'/{raw}'
+
+
+def _prefix_public_location(value: str, prefix: str) -> str:
+    if not prefix or not value or not value.startswith('/') or value.startswith('//'):
+        return value
+    if value == prefix or value.startswith(prefix + '/'):
+        return value
+    return prefix + value
+
+
+def _prefix_public_redirect_target(value: str, prefix: str) -> str:
+    value = (value or '/').strip()
+    if not value or not value.startswith('/') or value.startswith('//'):
+        return prefix + '/' if prefix else '/'
+    return _prefix_public_location(value, prefix) if prefix else value
+
+
+def _rewrite_cookie_path(cookie: str, prefix: str) -> str:
+    if not prefix:
+        return cookie
+    path = prefix + '/'
+    segments = cookie.split(';')
+    for idx, segment in enumerate(segments):
+        if segment.strip().lower().startswith('path='):
+            leading = segment[:len(segment) - len(segment.lstrip())]
+            segments[idx] = f'{leading}Path={path}'
+            return ';'.join(segments)
+    return cookie + f'; Path={path}'
+
+
+def _rewrite_public_headers(headers: List[Tuple[str, str]], prefix: str) -> List[Tuple[str, str]]:
+    if not prefix:
+        return headers
+    rewritten = []
+    for key, value in headers:
+        lower = key.lower()
+        if lower == 'location':
+            value = _prefix_public_location(value, prefix)
+        rewritten.append((key, value))
+    return rewritten
+
+
+def _with_public_prefix_headers(environ: Dict[str, Any], start_response):
+    prefix = _public_path_prefix(environ)
+    if not prefix:
+        return start_response
+
+    def prefixed_start_response(status, headers, exc_info=None):
+        return start_response(status, _rewrite_public_headers(headers, prefix), exc_info)
+
+    return prefixed_start_response
+
+
 def _run_with_timeout(seconds: float, fn, *args, **kwargs):
     """避免 MySQL 锁等待导致登录 POST 一直挂起（网关 504）。"""
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
@@ -372,7 +439,7 @@ class WSGIRequestAdapter:
         
         # 如果当前路径已经是登录页面，直接重定向到登录页面，不添加redirect参数（避免循环）
         if current_path == '/login' or (current_path == '/login' and query_string):
-            headers = [('Location', '/login')]
+            headers = [('Location', '/login'), ('Content-Length', '0')]
             self.start_response('302 Found', headers)
             self.response_sent = True
             self.response_body = [b'']
@@ -390,7 +457,7 @@ class WSGIRequestAdapter:
                         query_string = parsed.query
                     # 如果Referer也是登录页面，不添加redirect参数
                     if current_path == '/login' or (current_path == '/login' and query_string):
-                        headers = [('Location', '/login')]
+                        headers = [('Location', '/login'), ('Content-Length', '0')]
                         self.start_response('302 Found', headers)
                         self.response_sent = True
                         self.response_body = [b'']
@@ -403,7 +470,7 @@ class WSGIRequestAdapter:
         if current_path and current_path != '/login' and not current_path.startswith('/api/') and not current_path.startswith('/login'):
             try:
                 # 构建完整路径
-                full_path = current_path
+                full_path = _prefix_public_redirect_target(current_path, _public_path_prefix(self.environ))
                 if query_string:
                     full_path += '?' + query_string
                 # 对路径进行URL编码（确保quote函数已导入）
@@ -414,7 +481,7 @@ class WSGIRequestAdapter:
                 logger.warning(f"URL编码失败，使用默认登录URL: {e}")
                 login_url = '/login'
         
-        headers = [('Location', login_url)]
+        headers = [('Location', login_url), ('Content-Length', '0')]
         self.start_response('302 Found', headers)
         self.response_sent = True
         self.response_body = [b'']
@@ -451,6 +518,8 @@ class WSGIRequestAdapter:
                     {'success': False, 'error': result.error, 'authenticated': False},
                     status=result.status,
                 )
+            return False
+        if result.status == 401:
             return False
         if not self.response_sent:
             self.send_error(result.status, result.error or '无访问权限')
@@ -508,11 +577,11 @@ def _login_wants_html_redirect(environ: Dict[str, Any]) -> bool:
     return accept.startswith('text/html')
 
 
-def _normalize_login_redirect(target: str) -> str:
+def _normalize_login_redirect(target: str, environ: Optional[Dict[str, Any]] = None) -> str:
     target = (target or '/').strip()
     if not target or not target.startswith('/') or target.startswith('//'):
-        return '/'
-    return target
+        return _prefix_public_redirect_target('/', _public_path_prefix(environ))
+    return _prefix_public_redirect_target(target, _public_path_prefix(environ))
 
 
 def _login_session_persist_error(
@@ -612,6 +681,22 @@ def _handle_login_direct(
     adapter: Optional['WSGIRequestAdapter'] = None,
 ) -> List[bytes]:
     """直接处理登录请求（签名 Cookie）。"""
+    response_data = json.dumps(
+        {
+            'success': False,
+            'code': 403,
+            'error': '本地账号密码登录已关闭，请使用钉钉登录',
+        },
+        ensure_ascii=False,
+    ).encode('utf-8')
+    headers = [
+        ('Content-Type', 'application/json; charset=utf-8'),
+        ('Content-Length', str(len(response_data))),
+        ('Cache-Control', 'no-cache, no-store, must-revalidate'),
+    ]
+    start_response('403 Forbidden', headers)
+    return [response_data]
+
     from server.startup_gate import login_allowed
     from server.auth.login_service import client_ip_from_environ, is_https_environ, perform_login
 
@@ -658,7 +743,7 @@ def _handle_login_direct(
         start_response('400 Bad Request', headers)
         return [response_data]
 
-    redirect_target = _normalize_login_redirect(redirect)
+    redirect_target = _normalize_login_redirect(redirect, environ)
     client_ip = client_ip_from_environ(environ)
     secure = is_https_environ(environ)
 
@@ -723,6 +808,7 @@ def create_handler_methods(adapter: WSGIRequestAdapter):
             # 不调用父类的__init__，而是手动设置属性
             self.directory = STATIC_DIR
             self.path = adapter.path
+            self.query_string = adapter.query_string
             self.command = adapter.method  # 在WSGI环境中，command就是method
             # 创建一个支持字典访问和get方法的headers对象
             class Headers:
@@ -813,9 +899,21 @@ def wsgi_application(environ: Dict[str, Any], start_response) -> List[bytes]:
     这是Gunicorn会调用的函数
     """
     try:
+        start_response = _with_public_prefix_headers(environ, start_response)
         method = environ.get('REQUEST_METHOD', 'GET')
         path = environ.get('PATH_INFO', '/') or '/'
         path_norm = path.rstrip('/') or '/'
+
+        if method == 'HEAD' and path_norm == '/':
+            redirect_target = _prefix_public_redirect_target('/', _public_path_prefix(environ))
+            headers = [('Location', f'/login?redirect={quote(redirect_target, safe="")}'), ('Content-Length', '0')]
+            start_response('302 Found', headers)
+            return [b'']
+
+        if method == 'HEAD' and path_norm == '/login':
+            headers = [('Content-Type', 'text/html; charset=utf-8'), ('Content-Length', '0')]
+            start_response('200 OK', headers)
+            return [b'']
 
         if method == 'GET' and path_norm == '/api/health':
             from server.health import handle_health_wsgi

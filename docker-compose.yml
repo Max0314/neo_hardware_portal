@@ -1,11 +1,11 @@
-# 单机统一部署：MySQL + 硬件研发部管理系统（htmlsystm）+ NEO（AI聊天室）
+# 单机统一部署：MySQL + 硬件研发部管理系统（htmlsystm）+ NEO（neo_ai_chatroom）
 # 用法（在仓库根目录「docker版本」下）：
 #   1. cp .env.example .env 并填写 MYSQL_ROOT_PASSWORD、MYSQL_PASSWORD、API 密钥等
 #   2. bash migration/deploy.sh          # 推荐：build + 健康/DB 检查 + 开放登录
 #      bash migration/deploy.sh --no-build   # 仅重启，不重建镜像
-#   3. 浏览器访问 https://服务器IP:8000 — 管理系统在 / ，NEO 在 /neo/（端口见 GATEWAY_PUBLISH_PORT）
+#   3. 浏览器访问 PUBLIC_BASE_URL — 管理系统在 / ，NEO 在 /neo/（端口见 GATEWAY_PUBLISH_PORT）
 #
-# 说明：若仅部署 AI 聊天室，仍可使用子目录 AI聊天室/docker-compose.yml
+# 说明：若仅部署 NEO 聊天室，仍可使用子目录 neo_ai_chatroom/docker-compose.yml
 
 # 北京时间：TZ 环境变量 + 挂载宿主机 localtime（宿主机须先执行 migration/setup-timezone.sh）
 
@@ -57,6 +57,7 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-htmlsystm}
       SERVER_PORT: "8000"
       USE_MONITOR: "0"
+      ENABLE_GZIP: ${HTMLSYSTM_ENABLE_GZIP:-0}
       NEO_INTERNAL_SECRET: ${NEO_INTERNAL_SECRET:?请在 .env 中设置 NEO_INTERNAL_SECRET}
       NEO_INTERNAL_URL: http://backend:8000
       SUPER_ADMIN_USERNAME: ${SUPER_ADMIN_USERNAME:-zzw}
@@ -103,7 +104,7 @@ services:
 
   backend:
     build:
-      context: ./AI聊天室
+      context: ./neo_ai_chatroom
       dockerfile: Dockerfile.backend
     container_name: stack-neo-backend
     restart: unless-stopped
@@ -153,11 +154,12 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
     build:
-      context: ./AI聊天室
+      context: ./neo_ai_chatroom
       dockerfile: Dockerfile.web
       args:
         # 国内网络慢时可加速 npm ci；海外可设为空或 registry.npmjs.org
         NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
+        VITE_NEO_PATH_PREFIX: ${NEO_PATH_PREFIX:-/neo_hardware_portal/neo}
     container_name: stack-neo-web
     restart: unless-stopped
     labels:
@@ -183,7 +185,7 @@ services:
     environment:
       TZ: ${TZ:-Asia/Shanghai}
     ports:
-      - "${GATEWAY_PUBLISH_PORT:-8000}:443"
+      - "127.0.0.1:${GATEWAY_PUBLISH_PORT:-7892}:443"
     healthcheck:
       test:
         [

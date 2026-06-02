@@ -17,7 +17,7 @@ LIST="${ROOT}/migration/TRANSFER_MANIFEST.txt"
   echo
   echo "【必拷 — 项目目录】"
   echo "  整个目录: ${ROOT}"
-  echo "  必须含: docker-compose.yml, gateway/, htmlsystm/, AI聊天室/, .env"
+  echo "  必须含: docker-compose.yml, gateway/, htmlsystm/, neo_ai_chatroom/, .env"
   echo "  可省略: node_modules/（目标机离线 up 时用已 load 镜像，无需 build）"
   echo
   echo "【必拷 — migration 脚本】"

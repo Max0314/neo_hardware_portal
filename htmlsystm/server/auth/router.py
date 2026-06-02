@@ -7,6 +7,7 @@ Auth HTTP 路由注册表（文档 + 别名常量）。
 AUTH_SESSION_PATHS = frozenset({
     '/api/auth/session',
     '/api/auth/check',
+    '/api/auth/config',
 })
 
 AUTH_PASSWORD_PATHS = frozenset({
@@ -16,6 +17,9 @@ AUTH_PASSWORD_PATHS = frozenset({
 
 AUTH_LOGIN_ALIASES = frozenset({
     '/api/auth/login-by-userid',
+    '/api/auth/dingtalk/inapp-login',
+    '/api/auth/dingtalk/web/start',
+    '/api/auth/dingtalk/callback',
 })
 
 def is_auth_password_path(path: str) -> bool:

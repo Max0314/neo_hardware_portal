@@ -13,8 +13,16 @@ HOST = '0.0.0.0'  # 监听所有网络接口
 # 可以通过环境变量 SERVER_PORT 或 PORT 设置端口
 PORT = int(os.getenv('SERVER_PORT') or os.getenv('PORT') or 8000)  # 服务器端口
 
+
+def _env_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() not in ('0', 'false', 'no', 'off')
+
+
 # 性能优化配置（性能翻4倍）
-ENABLE_GZIP = True  # 启用GZIP压缩
+ENABLE_GZIP = _env_bool('ENABLE_GZIP', True)  # 启用GZIP压缩
 ENABLE_CACHE = True  # 启用HTTP缓存
 CACHE_MAX_AGE = 3600  # 缓存最大年龄（秒）
 MAX_WORKERS = 8000  # 最大工作线程数（支持8000人同时使用，性能翻4倍）

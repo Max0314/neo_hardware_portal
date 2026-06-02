@@ -4,127 +4,99 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>登录 - 硬件研发部管理系统</title>
-    <link rel="icon" href="/static/neo-logo.svg" type="image/svg+xml" />
+    <link rel="icon" href="static/neo-logo.svg" type="image/svg+xml">
     <style>
         * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            font-family: "Microsoft YaHei", Arial, sans-serif;
         }
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #1f2937;
         }
         .login-container {
-            background: white;
+            width: 100%;
+            max-width: 430px;
             border-radius: 15px;
+            background: #fff;
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
             padding: 40px;
-            width: 100%;
-            max-width: 400px;
         }
         .login-header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 28px;
         }
         .login-header h1 {
             color: #2c3e50;
+            font-size: 1.8rem;
+            line-height: 1.3;
             margin-bottom: 10px;
-            font-size: 1.8em;
         }
         .login-header p {
             color: #7f8c8d;
-            font-size: 0.9em;
+            font-size: 0.95rem;
         }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #2c3e50;
-            font-weight: bold;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e1e8ed;
+        .status-box {
+            min-height: 54px;
             border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s;
+            padding: 12px 14px;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            text-align: center;
+            border: 1px solid #dbeafe;
+            color: #1d4ed8;
+            background: #eff6ff;
         }
-        .form-group input:focus {
-            outline: none;
-            border-color: #3498db;
+        .status-box.error {
+            border-color: #fecaca;
+            color: #b91c1c;
+            background: #fef2f2;
         }
-        .password-input-wrapper {
-            position: relative;
-        }
-        .password-toggle-btn {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 1.2em;
-            color: #7f8c8d;
-            padding: 5px 8px;
-            transition: color 0.3s;
-            z-index: 10;
-        }
-        .password-toggle-btn:hover {
-            color: #3498db;
+        .status-box.success {
+            border-color: #bbf7d0;
+            color: #15803d;
+            background: #f0fdf4;
         }
         .btn-login {
             width: 100%;
-            padding: 14px;
-            background: #3498db;
-            color: white;
-            border: none;
+            min-height: 48px;
+            padding: 14px 16px;
+            border: 0;
             border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
+            background: #1677ff;
+            color: #fff;
             cursor: pointer;
-            transition: background 0.3s;
-            margin-top: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            transition: background 0.2s, opacity 0.2s;
         }
         .btn-login:hover {
-            background: #2980b9;
+            background: #0958d9;
         }
         .btn-login:disabled {
-            background: #95a5a6;
             cursor: not-allowed;
+            opacity: 0.65;
         }
-        .error-message {
-            background: #e74c3c;
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 20px;
+        .secondary {
+            margin-top: 14px;
             text-align: center;
-            display: none;
-        }
-        .success-message {
-            background: #2ecc71;
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            text-align: center;
-            display: none;
+            color: #94a3b8;
+            font-size: 0.86rem;
+            line-height: 1.7;
         }
         .footer {
             text-align: center;
             margin-top: 30px;
             color: #7f8c8d;
-            font-size: 0.9em;
+            font-size: 0.9rem;
         }
         #startupOverlay {
             display: none;
@@ -136,19 +108,24 @@
             justify-content: center;
             flex-direction: column;
             color: #ecf0f1;
-            font-family: 'Segoe UI', Tahoma, sans-serif;
         }
-        #startupOverlay.active { display: flex; }
+        #startupOverlay.active {
+            display: flex;
+        }
         .startup-box {
             width: min(420px, 90vw);
+            border-radius: 12px;
             background: #fff;
             color: #2c3e50;
-            border-radius: 12px;
             padding: 28px 32px;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
             text-align: center;
         }
-        .startup-box h2 { margin: 0 0 8px; font-size: 1.25rem; color: #2980b9; }
+        .startup-box h2 {
+            margin: 0 0 8px;
+            font-size: 1.25rem;
+            color: #2980b9;
+        }
         .startup-bar-wrap {
             height: 14px;
             background: #ecf0f1;
@@ -162,1494 +139,333 @@
             background: linear-gradient(90deg, #3498db, #2ecc71);
             transition: width 0.35s ease;
         }
-        #startupMessage { font-size: 0.95rem; color: #7f8c8d; min-height: 1.4em; }
+        #startupMessage {
+            min-height: 1.4em;
+            color: #7f8c8d;
+            font-size: 0.95rem;
+        }
     </style>
 </head>
 <body>
     <div id="startupOverlay" aria-live="polite">
         <div class="startup-box">
             <h2>系统正在启动</h2>
-            <p style="margin:0;font-size:0.9em;color:#95a5a6;">正在完成更新与健康检查，完成后方可登录</p>
+            <p style="margin:0;font-size:0.9rem;color:#95a5a6;">正在完成更新与健康检查，完成后方可登录</p>
             <div class="startup-bar-wrap"><div id="startupBar"></div></div>
-            <div id="startupMessage">正在连接服务…</div>
+            <div id="startupMessage">正在连接服务...</div>
         </div>
     </div>
-    <div class="login-container">
+
+    <main class="login-container">
         <div class="login-header">
             <h1>硬件研发部管理系统</h1>
-            <p>请登录您的账户</p>
+            <p>请使用钉钉完成身份认证</p>
         </div>
 
-        <div class="error-message" id="errorMessage"></div>
-        <div class="success-message" id="successMessage"></div>
+        <div class="status-box" id="statusBox">正在检查登录状态...</div>
 
-        <form id="loginForm">
-            <input type="hidden" id="redirectField" value="/">
-            <div class="form-group">
-                <label for="username">账户名</label>
-                <input type="text" id="username" name="username" placeholder="请输入账户名" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="password">密码</label>
-                <div class="password-input-wrapper">
-                    <input type="password" id="password" name="password" placeholder="请输入密码" required autocomplete="current-password" style="padding-right: 45px;">
-                    <button type="button" id="togglePassword" class="password-toggle-btn" title="显示/隐藏密码">
-                        👁️
-                    </button>
-                </div>
-            </div>
-
-            <div class="form-group" id="captchaGroup" style="display: none;">
-                <label for="captchaCode">验证码 *</label>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <input type="text" id="captchaCode" name="captcha_code" placeholder="请输入验证码" style="flex: 1;">
-                    <img id="captchaImage" src="" alt="验证码" style="cursor: pointer; border: 1px solid #ddd; border-radius: 4px; height: 40px; width: 120px;" title="点击刷新验证码">
-                    <input type="hidden" id="captchaToken" name="captcha_token">
-                </div>
-                <small style="color: #7f8c8d; font-size: 0.85em; display: block; margin-top: 5px;">
-                    点击图片可刷新验证码
-                </small>
-            </div>
-
-            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
-                <label style="margin: 0; display: flex; align-items: center; cursor: pointer; font-weight: normal;">
-                    <input type="checkbox" id="rememberPassword" style="width: auto; margin-right: 8px; cursor: pointer;">
-                    <span>记住密码</span>
-                </label>
-                <label style="margin: 0; display: flex; align-items: center; cursor: pointer; font-weight: normal;">
-                    <input type="checkbox" id="autoLogin" style="width: auto; margin-right: 8px; cursor: pointer;">
-                    <span>自动登录</span>
-                </label>
-            </div>
-
-            <button type="submit" class="btn-login" id="loginBtn">登录</button>
-        </form>
-
-        <div style="text-align:center; margin-top:15px;">
-            <a href="/register" style="color:#3498db; text-decoration:none; font-size:0.9em;">还没有账号？点击注册</a>
-            <span style="margin: 0 10px; color:#95a5a6;">|</span>
-            <a href="#" id="changePasswordLink" style="color:#3498db; text-decoration:none; font-size:0.9em;">修改密码</a>
-        </div>
-        
-        <!-- 修改密码模态框 -->
-        <div id="changePasswordModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-            <div style="background:white; border-radius:10px; padding:30px; width:90%; max-width:400px; position:relative;">
-                <button id="closeChangePasswordModal" style="position:absolute; top:10px; right:10px; background:none; border:none; font-size:24px; cursor:pointer; color:#7f8c8d;">&times;</button>
-                <h2 style="margin-bottom:20px; color:#2c3e50;">修改密码</h2>
-                <form id="changePasswordForm">
-                    <div class="form-group">
-                        <label for="changePasswordUsername">用户名</label>
-                        <input type="text" id="changePasswordUsername" name="username" placeholder="请输入用户名" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="oldPassword">当前密码</label>
-                        <div class="password-input-wrapper">
-                            <input type="password" id="oldPassword" name="oldPassword" placeholder="请输入当前密码" required autocomplete="current-password" style="padding-right: 45px;">
-                            <button type="button" id="toggleOldPassword" class="password-toggle-btn" title="显示/隐藏密码">👁️</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="newPassword">新密码</label>
-                        <div class="password-input-wrapper">
-                            <input type="password" id="newPassword" name="newPassword" placeholder="请输入新密码（至少6位）" required autocomplete="new-password" style="padding-right: 45px;">
-                            <button type="button" id="toggleNewPassword" class="password-toggle-btn" title="显示/隐藏密码">👁️</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="confirmPassword">确认新密码</label>
-                        <div class="password-input-wrapper">
-                            <input type="password" id="confirmPassword" name="confirmPassword" placeholder="请再次输入新密码" required autocomplete="new-password" style="padding-right: 45px;">
-                            <button type="button" id="toggleConfirmPassword" class="password-toggle-btn" title="显示/隐藏密码">👁️</button>
-                        </div>
-                    </div>
-                    <div class="error-message" id="changePasswordError" style="display:none;"></div>
-                    <div class="success-message" id="changePasswordSuccess" style="display:none;"></div>
-                    <button type="submit" class="btn-login" id="changePasswordBtn">修改密码</button>
-                    <button type="button" class="btn-login" style="background:#95a5a6; margin-top:10px;" onclick="closeChangePasswordModal()">取消</button>
-                </form>
-            </div>
-        </div>
+        <button type="button" class="btn-login" id="dingtalkLoginBtn">钉钉登录</button>
+        <div class="secondary" id="loginHint">钉钉内打开将自动免登；浏览器访问请点击按钮授权登录。</div>
 
         <div class="footer">
-            <p>&copy; 2024 硬件研发部管理系统</p>
+            © 2024 硬件研发部管理系统
         </div>
-    </div>
+    </main>
 
-    <!-- 钉钉JSAPI -->
-    <script src="/js/dingtalk.open.js"></script>
-    
     <script>
-        // ========== 浏览器兼容性Polyfill ==========
-        // 兼容钉钉浏览器和Chrome 133等版本
-        
-        // URLSearchParams polyfill (IE不支持，但钉钉浏览器应该支持)
-        if (typeof URLSearchParams === 'undefined') {
-            window.URLSearchParams = function(search) {
-                var self = this;
-                self.params = {};
-                if (search) {
-                    search = search.replace(/^\?/, '');
-                    var pairs = search.split('&');
-                    for (var i = 0; i < pairs.length; i++) {
-                        var pair = pairs[i].split('=');
-                        var key = decodeURIComponent(pair[0] || '');
-                        var value = decodeURIComponent(pair[1] || '');
-                        if (key) {
-                            self.params[key] = value;
-                        }
+        (function() {
+            var authConfig = null;
+            var authInProgress = false;
+            var statusBox = document.getElementById('statusBox');
+            var loginBtn = document.getElementById('dingtalkLoginBtn');
+            var loginHint = document.getElementById('loginHint');
+
+            function setStatus(message, tone) {
+                statusBox.textContent = message || '';
+                statusBox.className = 'status-box' + (tone ? ' ' + tone : '');
+            }
+
+            function setButtonBusy(busy, text) {
+                authInProgress = !!busy;
+                loginBtn.disabled = !!busy;
+                loginBtn.textContent = text || (busy ? '登录中...' : '钉钉登录');
+            }
+
+            function getPublicPathPrefix() {
+                var path = window.location.pathname || '/';
+                var markers = ['/login', '/register', '/neo/', '/api/'];
+                for (var i = 0; i < markers.length; i++) {
+                    var idx = path.indexOf(markers[i]);
+                    if (idx > 0) {
+                        return path.slice(0, idx).replace(/\/+$/, '');
                     }
                 }
-                self.get = function(name) {
-                    return self.params[name] || null;
-                };
-                self.set = function(name, value) {
-                    self.params[name] = value;
-                };
-                self.has = function(name) {
-                    return name in self.params;
-                };
-                self.delete = function(name) {
-                    delete self.params[name];
-                };
-            };
-        }
-        
-        // decodeURIComponent 错误处理增强
-        var safeDecodeURIComponent = function(str) {
-            if (!str) return '';
-            try {
-                return decodeURIComponent(str);
-            } catch (e) {
-                // 如果解码失败，尝试多次解码或返回原值
+                if (path === '/neo_hardware_portal' || path.indexOf('/neo_hardware_portal/') === 0) {
+                    return '/neo_hardware_portal';
+                }
+                return '';
+            }
+
+            function appPath(target) {
+                var prefix = getPublicPathPrefix();
+                var path = String(target || '/');
+                if (!path.startsWith('/')) path = '/' + path;
+                if (!prefix) return path;
+                if (path === prefix || path.indexOf(prefix + '/') === 0) return path;
+                return prefix + path;
+            }
+
+            function normalizeRedirectTarget(raw) {
+                var prefix = getPublicPathPrefix();
+                var fallback = appPath('/');
+                var target = raw || fallback;
                 try {
-                    return decodeURIComponent(decodeURIComponent(str));
-                } catch (e2) {
-                    // 如果还是失败，尝试手动解码
+                    target = decodeURIComponent(target);
+                } catch (e) {
+                    target = raw || fallback;
+                }
+                if (!target || target === '/') return fallback;
+                if (target.indexOf('http://') === 0 || target.indexOf('https://') === 0) {
                     try {
-                        return str.replace(/%([0-9A-F]{2})/gi, function(match, hex) {
-                            return String.fromCharCode(parseInt(hex, 16));
-                        });
-                    } catch (e3) {
-                        return str;
+                        var url = new URL(target);
+                        if (url.origin !== window.location.origin) return fallback;
+                        return url.href;
+                    } catch (e2) {
+                        return fallback;
                     }
                 }
+                if (prefix && target.indexOf(prefix + '/') === 0) return target;
+                if (target.charAt(0) === '/') return appPath(target);
+                return fallback;
             }
-        };
-        
-        // 全局标志：防止重复跳转
-        var isRedirecting = false;
-        var redirectLock = false;
 
-        function resetRedirectLock() {
-            isRedirecting = false;
-            redirectLock = false;
-        }
+            function redirectTarget() {
+                var params = new URLSearchParams(window.location.search);
+                return normalizeRedirectTarget(params.get('redirect') || '/');
+            }
 
-        var JUST_LOGGED_IN_KEY = 'just_logged_in';
-        var JUST_LOGGED_IN_TTL_MS = 30000;
-        var LOGOUT_SUPPRESS_AUTO_UNTIL_KEY = 'logout_suppress_auto_until';
-        var LOGOUT_SUPPRESS_AUTO_MS = 30 * 60 * 1000;
+            function redirectAfterLogin() {
+                setStatus('登录成功，正在进入系统...', 'success');
+                window.location.replace(redirectTarget());
+            }
 
-        /** 用户主动退出后，禁止账号密码自动登录与会话复用跳转（钉钉免登不受影响） */
-        function shouldSuppressPasswordAutoLogin() {
-            try {
-                var urlParams = new URLSearchParams(window.location.search);
-                if (urlParams.get('logout') === 'true') return true;
-                if (urlParams.get('error')) return true;
-                if (safeSessionStorage.getItem('just_logged_out') === 'true') return true;
-                var until = parseInt(safeSessionStorage.getItem(LOGOUT_SUPPRESS_AUTO_UNTIL_KEY) || '0', 10);
-                if (until && Date.now() < until) return true;
-            } catch (e) { /* ignore */ }
-            return false;
-        }
-
-        function markExplicitLogout() {
-            try {
-                safeSessionStorage.setItem('just_logged_out', 'true');
-                safeSessionStorage.setItem(LOGOUT_SUPPRESS_AUTO_UNTIL_KEY, String(Date.now() + LOGOUT_SUPPRESS_AUTO_MS));
-                safeSessionStorage.removeItem('user');
-                safeLocalStorage.removeItem('auto_login');
-            } catch (e) { /* ignore */ }
-        }
-
-        function clearLogoutSuppressFlags() {
-            try {
-                safeSessionStorage.removeItem('just_logged_out');
-                safeSessionStorage.removeItem(LOGOUT_SUPPRESS_AUTO_UNTIL_KEY);
-            } catch (e) { /* ignore */ }
-        }
-
-        function markJustLoggedIn() {
-            try {
-                clearLogoutSuppressFlags();
-                safeSessionStorage.setItem(JUST_LOGGED_IN_KEY, String(Date.now()));
-            } catch (e) { /* ignore */ }
-        }
-
-        /** 登录成功后可选快速确认会话（签名 Cookie 下通常可跳过） */
-        async function confirmLoginSessionReady(maxAttempts) {
-            var attempts = maxAttempts || 2;
-            var delayMs = 100;
-            for (var i = 0; i < attempts; i++) {
-                if (i > 0) {
-                    await new Promise(function(resolve) { setTimeout(resolve, delayMs); });
-                }
+            function isDingTalkEnvironment() {
+                if (/dingtalk/i.test(window.navigator.userAgent || '')) return true;
                 try {
-                    var response = await fetchWithTimeout('/api/auth/check?lite=1', {
-                        method: 'GET',
-                        credentials: 'include',
-                        cache: 'no-store'
-                    }, 5000);
-                    if (response.ok) {
-                        var result = await response.json();
-                        if (result && result.authenticated) {
-                            if (result.user) {
-                                safeSessionStorage.setItem('user', JSON.stringify(result.user));
-                            }
-                            return true;
-                        }
-                    }
+                    return !!(window.dd && window.dd.env && window.dd.env.platform !== 'notInDingTalk');
                 } catch (e) {
-                    /* 短暂网络抖动，继续重试 */
-                }
-            }
-            return false;
-        }
-
-        function forceNavigate(target) {
-            try {
-                window.location.replace(target);
-                return;
-            } catch (e) { /* fall through */ }
-            try {
-                window.location.href = target;
-                return;
-            } catch (e2) { /* fall through */ }
-            try {
-                window.location.assign(target);
-            } catch (e3) {
-                console.error('页面跳转失败:', e3);
-            }
-        }
-
-        function scheduleRedirectFallback(target) {
-            setTimeout(function() {
-                if (window.location.pathname.indexOf('/login') < 0) return;
-                console.warn('跳转未完成，重试 location.href:', target);
-                try { window.location.href = target; } catch (e) { /* ignore */ }
-            }, 600);
-            setTimeout(function() {
-                if (window.location.pathname.indexOf('/login') < 0) return;
-                console.warn('跳转仍未完成，使用 meta refresh:', target);
-                try {
-                    var link = document.createElement('a');
-                    link.href = target;
-                    link.style.display = 'none';
-                    document.body.appendChild(link);
-                    link.click();
-                } catch (e) { /* ignore */ }
-            }, 2500);
-        }
-
-        async function redirectAfterLogin(url) {
-            var target = normalizeRedirectTarget(url);
-            markJustLoggedIn();
-            safeRedirect(target);
-            confirmLoginSessionReady(2).catch(function() { /* 后台确认 */ });
-        }
-
-        function clearSavedLoginCredentials() {
-            safeLocalStorage.removeItem('auto_login');
-            safeLocalStorage.removeItem('saved_username');
-            safeLocalStorage.removeItem('saved_password');
-            safeLocalStorage.removeItem('remember_password');
-            safeSessionStorage.removeItem('user');
-        }
-
-        /** 将 redirect 参数规范为同源相对路径（支持钉钉 openapp 传入的完整 URL） */
-        function normalizeRedirectTarget(url) {
-            var target = (url || '/').trim();
-            if (!target) return '/';
-            if (/^https?:\/\//i.test(target)) {
-                try {
-                    var u = new URL(target);
-                    if (u.origin === window.location.origin) {
-                        target = u.pathname + (u.search || '');
-                    } else {
-                        console.warn('拒绝跨域跳转目标，回退到首页:', target);
-                        return '/';
-                    }
-                } catch (e) {
-                    return '/';
-                }
-            }
-            if (target.charAt(0) !== '/' || target.charAt(1) === '/') {
-                console.warn('拒绝不安全的跳转目标，回退到首页:', target);
-                return '/';
-            }
-            return target;
-        }
-
-        function resetLoginButton(loginBtn) {
-            if (!loginBtn) return;
-            if (window.location.pathname.indexOf('/login') >= 0) {
-                loginBtn.disabled = false;
-                loginBtn.textContent = '登录';
-            }
-        }
-
-        /** 解析登录 API 响应（兼容 200 / 403 等，均可能带 JSON body） */
-        async function parseLoginResponse(response) {
-            var result = { success: false, error: '登录失败' };
-            try {
-                result = await response.json();
-            } catch (e) {
-                if (!response.ok) {
-                    result.error = 'HTTP ' + response.status + '，请稍后重试';
-                }
-            }
-            if (!response.ok && !result.error) {
-                result.error = 'HTTP ' + response.status + '，请稍后重试';
-            }
-            return result;
-        }
-
-        function handleLoginFailureResult(result, loginBtn) {
-            showError(result.error || '登录失败');
-            clearSavedLoginCredentials();
-            if (result.requires_captcha === true || result.requires_captcha === 'true') {
-                showCaptcha();
-            }
-            safeSessionStorage.removeItem('user');
-            safeLocalStorage.removeItem('auto_login');
-            resetLoginButton(loginBtn);
-        }
-
-        var LOGIN_FETCH_TIMEOUT_MS = 15000;
-
-        async function fetchWithTimeout(url, options, timeoutMs) {
-            const ms = timeoutMs || LOGIN_FETCH_TIMEOUT_MS;
-            const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-            const timer = controller ? setTimeout(function() { controller.abort(); }, ms) : null;
-            try {
-                const opts = Object.assign({}, options || {});
-                if (controller) opts.signal = controller.signal;
-                return await fetch(url, opts);
-            } finally {
-                if (timer) clearTimeout(timer);
-            }
-        }
-        
-        // 安全的页面跳转函数（兼容钉钉浏览器，仅允许同源相对路径）
-        var safeRedirect = function(url) {
-            // 如果正在跳转或已锁定，直接返回
-            if (isRedirecting || redirectLock) {
-                console.log('跳转已锁定，忽略重复跳转请求:', url);
-                return;
-            }
-
-            var target = normalizeRedirectTarget(url);
-            
-            // 设置跳转标志
-            isRedirecting = true;
-            redirectLock = true;
-            
-            console.log('执行跳转:', target);
-
-            forceNavigate(target);
-            scheduleRedirectFallback(target);
-
-            // 若数秒后仍停留在登录页，解除锁以便用户再次尝试
-            setTimeout(function() {
-                if (window.location.pathname.indexOf('/login') >= 0) {
-                    resetRedirectLock();
-                    var successMessage = document.getElementById('successMessage');
-                    if (successMessage && successMessage.style.display !== 'none') {
-                        showError('自动跳转未完成，请刷新页面或再次点击登录');
-                    }
-                }
-            }, 8000);
-        };
-        
-        // 安全的 sessionStorage 操作（兼容钉钉浏览器可能的限制）
-        var safeSessionStorage = {
-            getItem: function(key) {
-                try {
-                    return sessionStorage.getItem(key);
-                } catch (e) {
-                    // 静默失败，避免递归
-                    return null;
-                }
-            },
-            setItem: function(key, value) {
-                try {
-                    sessionStorage.setItem(key, value);
-                } catch (e) {
-                    // 静默失败，避免递归
-                }
-            },
-            removeItem: function(key) {
-                try {
-                    sessionStorage.removeItem(key);
-                } catch (e) {
-                    // 静默失败，避免递归
-                }
-            }
-        };
-        
-        // 安全的 localStorage 操作
-        var safeLocalStorage = {
-            getItem: function(key) {
-                try {
-                    return localStorage.getItem(key);
-                } catch (e) {
-                    // 静默失败，避免递归
-                    return null;
-                }
-            },
-            setItem: function(key, value) {
-                try {
-                    localStorage.setItem(key, value);
-                } catch (e) {
-                    // 静默失败，避免递归
-                }
-            },
-            removeItem: function(key) {
-                try {
-                    localStorage.removeItem(key);
-                } catch (e) {
-                    // 静默失败，避免递归
-                }
-            }
-        };
-        
-        // 钉钉配置（公开信息；client_secret 仅保存在服务端）
-        const DINGTALK_CONFIG = {
-            client_id: 'dingtgmzjxwfn4ilrk0b',
-            corp_id: 'dingb7b711325c4be8aa35c2f4657eb6378f',
-            grant_type: 'client_credentials'
-        };
-        
-        // 免登录缓存键名
-        const CACHE_KEYS = {
-            ACCESS_TOKEN: 'dingtalk_access_token',
-            ACCESS_TOKEN_EXPIRES: 'dingtalk_access_token_expires',
-            AUTH_CODE: 'dingtalk_auth_code',
-            USERID: 'dingtalk_userid',
-            AUTO_LOGIN: 'dingtalk_auto_login'
-        };
-        
-        // 检查是否在钉钉环境中
-        function isDingTalkEnv() {
-            try {
-                return typeof dd !== 'undefined' && dd.env && dd.env.platform !== 'notInDingTalk';
-            } catch (e) {
-                return false;
-            }
-        }
-        
-        // 尝试使用缓存的免登录信息登录（仍须向钉钉获取新 authCode）
-        async function tryCachedDingTalkLogin() {
-            // 如果正在跳转，直接返回
-            if (isRedirecting || redirectLock) {
-                console.log('跳转已锁定，跳过缓存免登录检查');
-                return false;
-            }
-            try {
-                const autoLogin = safeLocalStorage.getItem(CACHE_KEYS.AUTO_LOGIN) === 'true';
-                if (!autoLogin || !isDingTalkEnv()) {
                     return false;
                 }
+            }
 
-                console.log('尝试使用缓存的免登录信息登录...');
-                const authCode = await getAuthCode();
-                const response = await fetch('/api/auth/login-by-userid', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+            function fetchJson(url, options) {
+                return fetch(url, Object.assign({
                     credentials: 'include',
-                    body: JSON.stringify({ authCode: authCode })
+                    cache: 'no-store',
+                    headers: { 'Accept': 'application/json' }
+                }, options || {})).then(function(response) {
+                    return response.json().catch(function() { return {}; }).then(function(payload) {
+                        return { response: response, payload: payload };
+                    });
                 });
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success) {
-                        console.log('缓存免登录成功');
-                        safeSessionStorage.setItem('user', JSON.stringify(result.user));
+            }
 
-                        const urlParams = new URLSearchParams(window.location.search);
-                        const redirectUrl = urlParams.get('redirect') || '/';
-                        const decodedRedirect = redirectUrl ? decodeURIComponent(redirectUrl) : '/';
-                        console.log('缓存免登录成功，跳转到:', decodedRedirect);
-                        await redirectAfterLogin(decodedRedirect);
-                        return true;
-                    } else {
-                        // 登录失败（如userid无效），清除缓存
-                        console.log('缓存免登录失败:', result.error || '未知错误');
-                        clearDingTalkCache();
-                        return false;
-                    }
-                } else {
-                    // HTTP错误，清除缓存
-                    console.log('缓存免登录失败: HTTP', response.status);
-                    clearDingTalkCache();
-                    return false;
-                }
-            } catch (error) {
-                console.error('缓存免登录失败:', error);
-                clearDingTalkCache();
-                return false;
+            function loadDingTalkSdk() {
+                if (window.dd) return Promise.resolve(window.dd);
+                return new Promise(function(resolve, reject) {
+                    var script = document.createElement('script');
+                    script.src = appPath('/js/dingtalk.open.js');
+                    script.async = true;
+                    script.onload = function() {
+                        if (window.dd) resolve(window.dd);
+                        else reject(new Error('钉钉 JSAPI 加载失败'));
+                    };
+                    script.onerror = function() {
+                        reject(new Error('无法加载钉钉 JSAPI'));
+                    };
+                    document.head.appendChild(script);
+                });
             }
-        }
-        
-        // 清除免登录缓存
-        function clearDingTalkCache() {
-            Object.values(CACHE_KEYS).forEach(key => {
-                safeLocalStorage.removeItem(key);
-            });
-        }
-        
-        // 保存免登录缓存
-        function saveDingTalkCache(accessToken, expiresIn, authCode, userid) {
-            const expiresAt = Date.now() + (expiresIn * 1000);
-            safeLocalStorage.setItem(CACHE_KEYS.ACCESS_TOKEN, accessToken);
-            safeLocalStorage.setItem(CACHE_KEYS.ACCESS_TOKEN_EXPIRES, expiresAt.toString());
-            safeLocalStorage.setItem(CACHE_KEYS.AUTH_CODE, authCode);
-            safeLocalStorage.setItem(CACHE_KEYS.USERID, userid);
-            safeLocalStorage.setItem(CACHE_KEYS.AUTO_LOGIN, 'true');
-        }
-        
-        // 检查AccessToken是否过期
-        function isAccessTokenValid() {
-            const expiresAt = safeLocalStorage.getItem(CACHE_KEYS.ACCESS_TOKEN_EXPIRES);
-            if (!expiresAt) {
-                return false;
-            }
-            return Date.now() < parseInt(expiresAt);
-        }
-        
-        // 获取AccessToken（优先使用缓存）
-        async function getAccessToken() {
-            // 检查缓存
-            if (isAccessTokenValid()) {
-                const cachedToken = safeLocalStorage.getItem(CACHE_KEYS.ACCESS_TOKEN);
-                if (cachedToken) {
-                    console.log('使用缓存的AccessToken');
-                    return cachedToken;
-                }
-            }
-            
-            // 获取新的AccessToken
-            console.log('获取新的AccessToken...');
-            const response = await fetch('/api/dingtalk/get-access-token', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({})
-            });
-            
-            if (!response.ok) {
-                throw new Error('获取AccessToken失败');
-            }
-            
-            const result = await response.json();
-            if (!result.success) {
-                throw new Error(result.error || '获取AccessToken失败');
-            }
-            
-            const accessToken = result.accessToken || result.access_token;
-            const expiresIn = result.expireIn || result.expires_in || 7200;
-            
-            // 缓存AccessToken
-            const expiresAt = Date.now() + (expiresIn * 1000);
-            safeLocalStorage.setItem(CACHE_KEYS.ACCESS_TOKEN, accessToken);
-            safeLocalStorage.setItem(CACHE_KEYS.ACCESS_TOKEN_EXPIRES, expiresAt.toString());
-            
-            return accessToken;
-        }
-        
-        // 获取免登录授权码（15s 超时，避免 dd.ready 永不触发导致卡死）
-        function getAuthCode() {
-            return new Promise((resolve, reject) => {
-                if (!isDingTalkEnv()) {
-                    reject(new Error('不在钉钉环境中，无法获取授权码'));
-                    return;
-                }
-                var settled = false;
-                var timer = setTimeout(function() {
-                    if (settled) return;
-                    settled = true;
-                    reject(new Error('获取授权码超时，请使用账号密码登录'));
-                }, 15000);
-                function finish(fn, val) {
-                    if (settled) return;
-                    settled = true;
-                    clearTimeout(timer);
-                    fn(val);
-                }
-                dd.ready(function() {
-                    dd.runtime.permission.requestAuthCode({
-                        corpId: DINGTALK_CONFIG.corp_id,
-                        onSuccess: function(result) {
-                            const authCode = result.code;
-                            console.log('获取授权码成功:', authCode.substring(0, 10) + '...');
-                            finish(resolve, authCode);
-                        },
-                        onFail: function(err) {
-                            console.error('获取授权码失败:', err);
-                            finish(reject, new Error('获取授权码失败: ' + (err.errorMessage || '未知错误')));
+
+            function requestAuthCode(corpId) {
+                return loadDingTalkSdk().then(function(dd) {
+                    return new Promise(function(resolve, reject) {
+                        function doRequest() {
+                            var requestAuthCode = dd && dd.runtime && dd.runtime.permission && dd.runtime.permission.requestAuthCode;
+                            if (typeof requestAuthCode !== 'function') {
+                                reject(new Error('当前钉钉环境不支持免登授权'));
+                                return;
+                            }
+                            requestAuthCode({
+                                corpId: corpId,
+                                onSuccess: function(result) {
+                                    var code = result && (result.code || result.authCode);
+                                    if (!code) {
+                                        reject(new Error('钉钉未返回授权码'));
+                                        return;
+                                    }
+                                    resolve(code);
+                                },
+                                onFail: function(error) {
+                                    reject(new Error((error && (error.errorMessage || error.message)) || '钉钉授权失败'));
+                                }
+                            });
+                        }
+                        if (typeof dd.ready === 'function') {
+                            var done = false;
+                            dd.ready(function() {
+                                if (done) return;
+                                done = true;
+                                doRequest();
+                            });
+                            if (typeof dd.error === 'function') {
+                                dd.error(function(error) {
+                                    if (done) return;
+                                    done = true;
+                                    reject(new Error((error && (error.errorMessage || error.message)) || '钉钉 JSAPI 初始化失败'));
+                                });
+                            }
+                            window.setTimeout(function() {
+                                if (done) return;
+                                done = true;
+                                doRequest();
+                            }, 800);
+                        } else {
+                            doRequest();
                         }
                     });
                 });
-            });
-        }
-        
-        // 通过AccessToken和授权码获取用户信息
-        async function getUserInfoByAuthCode(authCode) {
-            const response = await fetch('/api/dingtalk/get-user-info', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    code: authCode
-                })
-            });
-            
-            if (!response.ok) {
-                throw new Error('获取用户信息失败');
             }
-            
-            const result = await response.json();
-            if (!result.success) {
-                throw new Error(result.error || '获取用户信息失败');
-            }
-            
-            return result.userInfo || result.result;
-        }
-        
-        // 通过钉钉 authCode 登录
-        async function loginByAuthCode(authCode) {
-            const response = await fetch('/api/auth/login-by-userid', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'include',
-                body: JSON.stringify({ authCode: authCode })
-            });
-            
-            if (!response.ok) {
-                throw new Error('登录失败');
-            }
-            
-            const result = await response.json();
-            if (!result.success) {
-                throw new Error(result.error || '登录失败');
-            }
-            
-            return result;
-        }
-        
-        // 执行免登录流程
-        async function performDingTalkLogin() {
-            // 如果正在跳转，直接返回
-            if (isRedirecting || redirectLock) {
-                console.log('跳转已锁定，跳过钉钉免登录检查');
-                return false;
-            }
-            try {
-                console.log('开始免登录流程...');
 
-                // 步骤1: 获取免登录授权码
-                const authCode = await getAuthCode();
-                console.log('获取授权码成功');
-
-                // 步骤2: 服务端校验 authCode 并建立会话
-                const loginResult = await loginByAuthCode(authCode);
-                console.log('钉钉免登登录成功');
-
-                const userid = loginResult.user && loginResult.user.userid;
-                if (!userid) {
-                    throw new Error('登录结果中未找到 userid');
+            function startInAppLogin() {
+                if (authInProgress) return Promise.resolve(false);
+                if (!authConfig || !authConfig.inAppEnabled) {
+                    setStatus('钉钉免登未启用，请联系管理员检查应用配置。', 'error');
+                    return Promise.resolve(false);
                 }
-
-                // 步骤3: 保存缓存（自动勾选记住密码和自动登录）
-                saveDingTalkCache('', 7200, authCode, userid);
-                safeLocalStorage.setItem('remember_password', 'true');
-                safeLocalStorage.setItem('auto_login', 'true');
-                
-                // 步骤7: 获取redirect参数并跳转
-                safeSessionStorage.setItem('user', JSON.stringify(loginResult.user));
-
-                const urlParams = new URLSearchParams(window.location.search);
-                const redirectUrl = urlParams.get('redirect') || '/';
-                const decodedRedirect = redirectUrl ? decodeURIComponent(redirectUrl) : '/';
-                console.log('钉钉免登录成功，跳转到:', decodedRedirect);
-                await redirectAfterLogin(decodedRedirect);
-                
-                return true; // 返回true表示登录成功并已跳转
-                
-            } catch (error) {
-                console.error('免登录失败:', error);
-                // 免登录失败，清除可能的部分缓存，显示正常登录界面
-                try {
-                    clearDingTalkCache();
-                } catch (e) {
-                    // 忽略清除缓存的错误
-                }
-                showError('免登录失败: ' + error.message + '，请使用账号密码登录');
-                return false;
-            }
-        }
-        
-        function saveRememberPasswordPrefs(username, password) {
-            const rememberPassword = document.getElementById('rememberPassword').checked;
-            const autoLogin = document.getElementById('autoLogin').checked;
-            if (rememberPassword || autoLogin) {
-                safeLocalStorage.setItem('saved_username', username);
-                safeLocalStorage.setItem('saved_password', password);
-                safeLocalStorage.setItem('remember_password', rememberPassword ? 'true' : 'false');
-                safeLocalStorage.setItem('auto_login', autoLogin ? 'true' : 'false');
-            } else {
-                safeLocalStorage.removeItem('saved_username');
-                safeLocalStorage.removeItem('saved_password');
-                safeLocalStorage.removeItem('remember_password');
-                safeLocalStorage.removeItem('auto_login');
-            }
-        }
-
-        async function loginViaFetch(username, password, captchaToken, captchaCode) {
-            let loginBody = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
-            if (captchaToken) {
-                loginBody += `&captcha_token=${encodeURIComponent(captchaToken)}&captcha_code=${encodeURIComponent(captchaCode || '')}`;
-            }
-            const response = await fetchWithTimeout('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                credentials: 'include',
-                body: loginBody
-            }, LOGIN_FETCH_TIMEOUT_MS);
-            return parseLoginResponse(response);
-        }
-
-        /** 15s 兜底：若仍停留在登录页且按钮被锁，尝试再次跳转或恢复按钮 */
-        function scheduleLoginButtonFallback(loginBtn, redirectTarget) {
-            setTimeout(function() {
-                if (window.location.pathname.indexOf('/login') < 0) return;
-                var successMessage = document.getElementById('successMessage');
-                var loginSucceeded = successMessage && successMessage.style.display !== 'none';
-                if (loginSucceeded && redirectTarget) {
-                    console.warn('登录成功但仍在登录页，再次尝试跳转:', redirectTarget);
-                    resetRedirectLock();
-                    safeRedirect(normalizeRedirectTarget(redirectTarget));
-                    return;
-                }
-                if (loginBtn && loginBtn.disabled) {
-                    resetRedirectLock();
-                    resetLoginButton(loginBtn);
-                }
-            }, LOGIN_FETCH_TIMEOUT_MS + 2000);
-        }
-
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            const loginBtn = document.getElementById('loginBtn');
-            const errorMessage = document.getElementById('errorMessage');
-            const successMessage = document.getElementById('successMessage');
-
-            errorMessage.style.display = 'none';
-            successMessage.style.display = 'none';
-
-            if (!username || !password) {
-                showError('请输入用户名和密码');
-                return;
-            }
-
-            const captchaGroup = document.getElementById('captchaGroup');
-            const captchaCode = document.getElementById('captchaCode').value.trim();
-            const captchaToken = document.getElementById('captchaToken').value;
-            if (captchaGroup.style.display !== 'none') {
-                if (!captchaToken || !captchaCode) {
-                    showError('请输入验证码');
-                    return;
-                }
-            }
-
-            loginBtn.disabled = true;
-            loginBtn.textContent = '登录中...';
-            const urlParamsForRedirect = new URLSearchParams(window.location.search);
-            const pendingRedirect = urlParamsForRedirect.get('redirect') || '/';
-            scheduleLoginButtonFallback(loginBtn, pendingRedirect);
-
-            try {
-                safeSessionStorage.removeItem('user');
-                const result = await loginViaFetch(
-                    username,
-                    password,
-                    captchaGroup.style.display !== 'none' ? captchaToken : '',
-                    captchaCode
-                );
-
-                if (result.success) {
-                    if (result.user) {
-                        safeSessionStorage.setItem('user', JSON.stringify(result.user));
+                setButtonBusy(true, '正在钉钉免登...');
+                setStatus('正在向钉钉申请授权码...');
+                return requestAuthCode(authConfig.corpId).then(function(code) {
+                    return fetchJson(appPath('/api/auth/dingtalk/inapp-login'), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify({ code: code })
+                    });
+                }).then(function(result) {
+                    if (!result.response.ok || !(result.payload && result.payload.success)) {
+                        throw new Error((result.payload && (result.payload.error || result.payload.msg)) || '钉钉免登失败');
                     }
-                    saveRememberPasswordPrefs(username, password);
-                    const redirectUrl = pendingRedirect;
-                    const decodedRedirect = redirectUrl ? decodeURIComponent(redirectUrl) : '/';
-                    console.log('手动登录成功，跳转到:', decodedRedirect);
-                    showSuccess('登录成功，正在跳转...');
-                    await redirectAfterLogin(decodedRedirect);
-                } else {
-                    handleLoginFailureResult(result, loginBtn);
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                safeSessionStorage.removeItem('user');
-                if (error && (error.name === 'AbortError' || error.message && error.message.indexOf('aborted') >= 0)) {
-                    showError('登录超时（服务器未在 15 秒内响应），请稍后重试');
-                } else {
-                    showError('网络错误，请检查网络连接后重试');
-                }
-                resetLoginButton(loginBtn);
-            } finally {
-                if (!isRedirecting && !redirectLock) {
-                    resetLoginButton(loginBtn);
-                }
-            }
-        });
-
-        function showError(message) {
-            const errorMessage = document.getElementById('errorMessage');
-            errorMessage.textContent = message;
-            errorMessage.style.display = 'block';
-        }
-        
-        function showSuccess(message) {
-            const successMessage = document.getElementById('successMessage');
-            successMessage.textContent = message;
-            successMessage.style.display = 'block';
-        }
-
-        // 获取验证码（兼容钉钉浏览器）
-        async function loadCaptcha() {
-            try {
-                console.log('开始加载验证码...');
-                const response = await fetchWithTimeout('/api/captcha', {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json; charset=utf-8'
-                    },
-                    cache: 'no-cache'
-                }, LOGIN_FETCH_TIMEOUT_MS);
-                
-                // 检查响应状态
-                if (!response.ok) {
-                    throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
-                }
-                
-                // 检查Content-Type
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    const text = await response.text();
-                    console.error('响应不是JSON格式:', text.substring(0, 200));
-                    throw new Error('响应格式错误，期望JSON但收到: ' + (contentType || 'unknown'));
-                }
-                
-                // 解析JSON（兼容钉钉浏览器）
-                let data;
-                try {
-                    const text = await response.text();
-                    console.log('验证码响应文本长度:', text.length);
-                    data = JSON.parse(text);
-                } catch (parseError) {
-                    console.error('JSON解析失败:', parseError);
-                    const text = await response.text();
-                    console.error('响应内容:', text.substring(0, 500));
-                    throw new Error('JSON解析失败: ' + parseError.message);
-                }
-                
-                console.log('验证码响应:', data);
-                if (data && data.success) {
-                    const captchaImage = document.getElementById('captchaImage');
-                    const captchaToken = document.getElementById('captchaToken');
-                    if (captchaImage && captchaToken) {
-                        captchaImage.src = data.image;
-                        captchaToken.value = data.token;
-                        console.log('验证码加载成功，token:', data.token ? data.token.substring(0, 8) + '...' : 'null');
-                    } else {
-                        console.error('验证码元素不存在');
-                    }
-                } else {
-                    console.error('获取验证码失败:', data ? data.error : '未知错误');
-                }
-            } catch (error) {
-                console.error('加载验证码失败:', error);
-                // 显示用户友好的错误信息
-                const errorMessage = document.getElementById('errorMessage');
-                if (errorMessage) {
-                    errorMessage.textContent = '验证码加载失败，请刷新页面重试';
-                    errorMessage.style.display = 'block';
-                }
-            }
-        }
-
-        // 显示验证码
-        function showCaptcha() {
-            console.log('showCaptcha 被调用');
-            const captchaGroup = document.getElementById('captchaGroup');
-            if (!captchaGroup) {
-                console.error('验证码组元素不存在');
-                return;
-            }
-            console.log('显示验证码输入框');
-            captchaGroup.style.display = 'block';
-            const captchaToken = document.getElementById('captchaToken');
-            if (!captchaToken || !captchaToken.value) {
-                console.log('验证码token为空，加载验证码');
-                loadCaptcha();
-            } else {
-                console.log('验证码token已存在，无需重新加载');
-            }
-            var captchaInput = document.getElementById('captchaCode');
-            if (captchaInput) {
-                try { captchaInput.focus(); } catch (e) { /* ignore */ }
-            }
-        }
-
-        // 验证码图片点击刷新
-        document.addEventListener('DOMContentLoaded', function() {
-            const captchaImage = document.getElementById('captchaImage');
-            if (captchaImage) {
-                captchaImage.addEventListener('click', function() {
-                    console.log('点击验证码图片，刷新验证码');
-                    loadCaptcha();
+                    redirectAfterLogin();
+                    return true;
+                }).catch(function(error) {
+                    setStatus(error.message || '钉钉免登失败，请重试。', 'error');
+                    return false;
+                }).finally(function() {
+                    setButtonBusy(false);
                 });
-            } else {
-                console.warn('验证码图片元素不存在');
             }
-        });
-        
-        // 切换密码显示/隐藏
-        function togglePasswordVisibility() {
-            const passwordInput = document.getElementById('password');
-            const toggleBtn = document.getElementById('togglePassword');
-            
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                toggleBtn.textContent = '🙈';
-                toggleBtn.title = '隐藏密码';
-            } else {
-                passwordInput.type = 'password';
-                toggleBtn.textContent = '👁️';
-                toggleBtn.title = '显示密码';
+
+            function startWebLogin() {
+                if (authInProgress) return;
+                if (!authConfig || !authConfig.webLoginEnabled) {
+                    setStatus('钉钉网页登录未启用，请联系管理员检查应用配置。', 'error');
+                    return;
+                }
+                setButtonBusy(true, '正在跳转...');
+                setStatus('正在生成钉钉登录地址...');
+                var returnUrl = window.location.href;
+                fetchJson(appPath('/api/auth/dingtalk/web/start?return_url=' + encodeURIComponent(returnUrl)), {
+                    method: 'GET'
+                }).then(function(result) {
+                    var loginUrl = result.payload && result.payload.data && result.payload.data.loginUrl;
+                    if (!result.response.ok || !loginUrl) {
+                        throw new Error((result.payload && (result.payload.error || result.payload.msg)) || '未能生成钉钉登录地址');
+                    }
+                    window.location.href = loginUrl;
+                }).catch(function(error) {
+                    setStatus(error.message || '钉钉登录启动失败，请重试。', 'error');
+                    setButtonBusy(false);
+                });
             }
-        }
-        
-        // 修改密码相关功能
-        function openChangePasswordModal() {
-            document.getElementById('changePasswordModal').style.display = 'flex';
-            // 如果登录表单有用户名，自动填充
-            const savedUsername = document.getElementById('username').value;
-            if (savedUsername) {
-                document.getElementById('changePasswordUsername').value = savedUsername;
+
+            function checkStartupStatus() {
+                return fetchJson(appPath('/api/startup/status'), { method: 'GET' }).then(function(result) {
+                    var payload = result.payload || {};
+                    var startup = payload.startup || payload;
+                    if (startup && startup.allowed === false) {
+                        var overlay = document.getElementById('startupOverlay');
+                        var bar = document.getElementById('startupBar');
+                        var msg = document.getElementById('startupMessage');
+                        overlay.classList.add('active');
+                        bar.style.width = Math.max(0, Math.min(100, startup.progress || 0)) + '%';
+                        msg.textContent = startup.message || '系统正在启动...';
+                        return false;
+                    }
+                    document.getElementById('startupOverlay').classList.remove('active');
+                    return true;
+                }).catch(function() {
+                    return true;
+                });
             }
-        }
-        
-        function closeChangePasswordModal() {
-            document.getElementById('changePasswordModal').style.display = 'none';
-            // 清空表单
-            document.getElementById('changePasswordForm').reset();
-            document.getElementById('changePasswordError').style.display = 'none';
-            document.getElementById('changePasswordSuccess').style.display = 'none';
-        }
-        
-        // 切换密码显示/隐藏（修改密码模态框）
-        function toggleOldPasswordVisibility() {
-            const input = document.getElementById('oldPassword');
-            const btn = document.getElementById('toggleOldPassword');
-            if (input.type === 'password') {
-                input.type = 'text';
-                btn.textContent = '🙈';
-            } else {
-                input.type = 'password';
-                btn.textContent = '👁️';
+
+            function checkSession() {
+                return fetchJson(appPath('/api/auth/session?lite=1'), { method: 'GET' }).then(function(result) {
+                    var payload = result.payload || {};
+                    if (result.response.ok && payload.authenticated) {
+                        redirectAfterLogin();
+                        return true;
+                    }
+                    return false;
+                }).catch(function() {
+                    return false;
+                });
             }
-        }
-        
-        function toggleNewPasswordVisibility() {
-            const input = document.getElementById('newPassword');
-            const btn = document.getElementById('toggleNewPassword');
-            if (input.type === 'password') {
-                input.type = 'text';
-                btn.textContent = '🙈';
-            } else {
-                input.type = 'password';
-                btn.textContent = '👁️';
+
+            function loadAuthConfig() {
+                return fetchJson(appPath('/api/auth/config'), { method: 'GET' }).then(function(result) {
+                    if (!result.response.ok || !result.payload || !result.payload.data) {
+                        throw new Error((result.payload && (result.payload.error || result.payload.msg)) || '无法读取钉钉登录配置');
+                    }
+                    authConfig = result.payload.data;
+                    if (!authConfig.passwordLoginEnabled) {
+                        loginHint.textContent = isDingTalkEnvironment()
+                            ? '检测到钉钉环境，系统会自动尝试免登。'
+                            : '当前仅支持钉钉授权登录。';
+                    }
+                    return authConfig;
+                });
             }
-        }
-        
-        function toggleConfirmPasswordVisibility() {
-            const input = document.getElementById('confirmPassword');
-            const btn = document.getElementById('toggleConfirmPassword');
-            if (input.type === 'password') {
-                input.type = 'text';
-                btn.textContent = '🙈';
-            } else {
-                input.type = 'password';
-                btn.textContent = '👁️';
-            }
-        }
-        
-        // 修改密码表单提交
-        document.getElementById('changePasswordForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const username = document.getElementById('changePasswordUsername').value.trim();
-            const oldPassword = document.getElementById('oldPassword').value.trim();
-            const newPassword = document.getElementById('newPassword').value.trim();
-            const confirmPassword = document.getElementById('confirmPassword').value.trim();
-            const errorDiv = document.getElementById('changePasswordError');
-            const successDiv = document.getElementById('changePasswordSuccess');
-            const submitBtn = document.getElementById('changePasswordBtn');
-            
-            // 隐藏之前的消息
-            errorDiv.style.display = 'none';
-            successDiv.style.display = 'none';
-            
-            // 验证输入
-            if (!username || !oldPassword || !newPassword || !confirmPassword) {
-                errorDiv.textContent = '请填写所有字段';
-                errorDiv.style.display = 'block';
-                return;
-            }
-            
-            if (newPassword.length < 12) {
-                errorDiv.textContent = '新密码长度至少12个字符';
-                errorDiv.style.display = 'block';
-                return;
-            }
-            const hasLower = /[a-z]/.test(newPassword);
-            const hasUpper = /[A-Z]/.test(newPassword);
-            const hasDigit = /\d/.test(newPassword);
-            const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>/?]/.test(newPassword);
-            if (!hasLower || !hasUpper || !hasDigit || !hasSpecial) {
-                errorDiv.textContent = '新密码须包含大小写字母、数字和特殊符号';
-                errorDiv.style.display = 'block';
-                return;
-            }
-            
-            if (newPassword !== confirmPassword) {
-                errorDiv.textContent = '两次输入的新密码不一致';
-                errorDiv.style.display = 'block';
-                return;
-            }
-            
-            if (oldPassword === newPassword) {
-                errorDiv.textContent = '新密码不能与当前密码相同';
-                errorDiv.style.display = 'block';
-                return;
-            }
-            
-            // 禁用提交按钮
-            submitBtn.disabled = true;
-            submitBtn.textContent = '修改中...';
-            
-            try {
-                const response = await fetch('/api/auth/change-password', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                        username: username,
-                        oldPassword: oldPassword,
-                        newPassword: newPassword
+
+            function boot() {
+                loginBtn.addEventListener('click', function() {
+                    if (isDingTalkEnvironment()) startInAppLogin();
+                    else startWebLogin();
+                });
+
+                checkStartupStatus()
+                    .then(function(allowed) {
+                        if (!allowed) return false;
+                        return checkSession();
                     })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    if (result.clearAutoLogin) {
-                        clearSavedLoginCredentials();
-                    }
-                    successDiv.textContent = '密码修改成功，请使用新密码登录';
-                    successDiv.style.display = 'block';
-                    // 清空表单
-                    document.getElementById('changePasswordForm').reset();
-                    // 3秒后关闭模态框
-                    setTimeout(() => {
-                        closeChangePasswordModal();
-                    }, 3000);
-                } else {
-                    errorDiv.textContent = result.error || '密码修改失败';
-                    errorDiv.style.display = 'block';
-                }
-            } catch (error) {
-                console.error('修改密码错误:', error);
-                errorDiv.textContent = '网络错误，请检查网络连接后重试';
-                errorDiv.style.display = 'block';
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = '修改密码';
-            }
-        });
-        
-        // 退出后仅禁用账号密码自动登录（不清钉钉免登缓存）
-        function prepareAfterExplicitLogout() {
-            if (!shouldSuppressPasswordAutoLogin()) {
-                return false;
-            }
-            safeLocalStorage.removeItem('auto_login');
-            return true;
-        }
-
-        async function waitForSystemReady() {
-            const overlay = document.getElementById('startupOverlay');
-            const loginForm = document.getElementById('loginForm');
-            const loginBtn = document.getElementById('loginBtn');
-            const pollMs = 1500;
-            const maxWait = 5000;
-            const healthFallbackAfterMs = 2000;
-            const started = Date.now();
-            var notReadySince = 0;
-
-            function unlockLogin() {
-                if (overlay) overlay.classList.remove('active');
-                if (loginForm) loginForm.style.pointerEvents = '';
-                if (loginBtn) loginBtn.disabled = false;
-            }
-
-            unlockLogin();
-
-            while (Date.now() - started < maxWait) {
-                try {
-                    const res = await fetchWithTimeout('/api/startup/status', { cache: 'no-store' }, 4000);
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data.ready) {
-                            unlockLogin();
-                            return true;
+                    .then(function(alreadyLoggedIn) {
+                        if (alreadyLoggedIn) return;
+                        return loadAuthConfig();
+                    })
+                    .then(function(config) {
+                        if (!config) return;
+                        if (isDingTalkEnvironment() && config.inAppEnabled) {
+                            startInAppLogin();
+                        } else {
+                            setStatus('请点击按钮使用钉钉授权登录。');
                         }
-                        if (!notReadySince) notReadySince = Date.now();
-                        if (Date.now() - notReadySince >= healthFallbackAfterMs) {
-                            const health = await fetchWithTimeout('/api/health', { cache: 'no-store' }, 4000);
-                            if (health.ok) {
-                                unlockLogin();
-                                return true;
-                            }
-                        }
-                    } else {
-                        const health = await fetchWithTimeout('/api/health', { cache: 'no-store' }, 4000);
-                        if (health.ok) {
-                            unlockLogin();
-                            return true;
-                        }
-                    }
-                } catch (e) {
-                    try {
-                        const health = await fetchWithTimeout('/api/health', { cache: 'no-store' }, 4000);
-                        if (health.ok) {
-                            unlockLogin();
-                            return true;
-                        }
-                    } catch (ignore) { /* keep polling */ }
-                }
-                await new Promise(r => setTimeout(r, pollMs));
-            }
-            unlockLogin();
-            return true;
-        }
-
-        document.addEventListener('DOMContentLoaded', async function() {
-            resetRedirectLock();
-            await waitForSystemReady();
-            const bootParams = new URLSearchParams(window.location.search);
-            const bootErr = bootParams.get('error');
-            if (bootErr) {
-                try {
-                    showError(decodeURIComponent(bootErr.replace(/\+/g, ' ')));
-                } catch (err) {
-                    showError(bootErr);
-                }
-            }
-            if (bootParams.get('requires_captcha') === '1') {
-                showCaptcha();
-            }
-            // 绑定显示密码按钮
-            document.getElementById('togglePassword').addEventListener('click', togglePasswordVisibility);
-            
-            // 绑定修改密码相关按钮
-            document.getElementById('changePasswordLink').addEventListener('click', function(e) {
-                e.preventDefault();
-                openChangePasswordModal();
-            });
-            document.getElementById('closeChangePasswordModal').addEventListener('click', closeChangePasswordModal);
-            document.getElementById('toggleOldPassword').addEventListener('click', toggleOldPasswordVisibility);
-            document.getElementById('toggleNewPassword').addEventListener('click', toggleNewPasswordVisibility);
-            document.getElementById('toggleConfirmPassword').addEventListener('click', toggleConfirmPasswordVisibility);
-            
-            // 点击模态框背景关闭
-            document.getElementById('changePasswordModal').addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeChangePasswordModal();
-                }
-            });
-            
-            // 按Enter键快速登录
-            document.getElementById('password').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    document.getElementById('loginForm').dispatchEvent(new Event('submit'));
-                }
-            });
-
-            loadSavedCredentials();
-
-            var suppressPasswordAuto = prepareAfterExplicitLogout();
-            if (suppressPasswordAuto) {
-                console.log('检测到退出标记，跳过账号密码自动登录（钉钉免登仍可用）');
-            }
-            
-            // 先尝试缓存的免登录（钉钉）
-            const cachedLoginSuccess = await tryCachedDingTalkLogin();
-            if (cachedLoginSuccess) {
-                // 缓存登录成功，已经跳转，直接返回，不执行后续逻辑
-                console.log('缓存免登录成功，已跳转，停止执行后续逻辑');
-                return;
-            }
-            
-            // 如果正在跳转，不再执行后续逻辑
-            if (isRedirecting || redirectLock) {
-                console.log('检测到跳转标志，停止执行后续登录流程');
-                return;
-            }
-            
-            // 如果不在钉钉环境，检查账号密码自动登录
-            if (!isDingTalkEnv()) {
-                if (!suppressPasswordAuto) {
-                    checkAutoLogin();
-                }
-                return;
-            }
-            
-            // 在钉钉环境中，尝试免登录
-            try {
-                const dingTalkLoginSuccess = await performDingTalkLogin();
-                if (dingTalkLoginSuccess) {
-                    // 钉钉免登录成功，已经跳转，直接返回，不执行后续逻辑
-                    console.log('钉钉免登录成功，已跳转，停止执行后续逻辑');
-                    return;
-                }
-            } catch (error) {
-                console.error('免登录流程失败:', error);
-                // 如果正在跳转，不再执行后续逻辑
-                if (isRedirecting || redirectLock) {
-                    console.log('检测到跳转标志，停止执行后续登录流程');
-                    return;
-                }
-                // 免登录失败，显示正常登录界面
-                if (!suppressPasswordAuto) {
-                    checkAutoLogin();
-                }
-            }
-        });
-        
-        // 加载保存的凭据（退出后仅填充账号，不勾选自动登录）
-        function loadSavedCredentials() {
-            try {
-                const savedUsername = safeLocalStorage.getItem('saved_username');
-                const savedPassword = safeLocalStorage.getItem('saved_password');
-                const rememberPassword = safeLocalStorage.getItem('remember_password') === 'true';
-                const autoLoginEl = document.getElementById('autoLogin');
-                
-                if (savedUsername) {
-                    document.getElementById('username').value = savedUsername;
-                }
-                
-                if (shouldSuppressPasswordAutoLogin()) {
-                    if (autoLoginEl) autoLoginEl.checked = false;
-                    if (rememberPassword && savedPassword) {
-                        document.getElementById('password').value = savedPassword;
-                        document.getElementById('rememberPassword').checked = true;
-                    }
-                    return;
-                }
-
-                if (rememberPassword && savedPassword) {
-                    document.getElementById('password').value = savedPassword;
-                    document.getElementById('rememberPassword').checked = true;
-                }
-                if (autoLoginEl) {
-                    autoLoginEl.checked = safeLocalStorage.getItem('auto_login') === 'true';
-                }
-            } catch (error) {
-                console.error('加载保存的凭据失败:', error);
-            }
-        }
-        
-        /** 已有有效 Cookie 时直接跳转，避免重复 POST /api/auth/login 轮换 session 导致 NEO 401 闪烁 */
-        async function redirectIfAlreadyAuthenticated() {
-            if (shouldSuppressPasswordAutoLogin()) {
-                return false;
-            }
-            try {
-                const response = await fetchWithTimeout('/api/auth/check?lite=1', {
-                    method: 'GET',
-                    credentials: 'include'
-                }, LOGIN_FETCH_TIMEOUT_MS);
-                if (!response.ok) {
-                    return false;
-                }
-                const result = await response.json();
-                if (!result.authenticated) {
-                    return false;
-                }
-                const urlParams = new URLSearchParams(window.location.search);
-                const redirectUrl = urlParams.get('redirect') || '/';
-                const decodedRedirect = redirectUrl ? decodeURIComponent(redirectUrl) : '/';
-                console.log('已有有效会话，直接跳转:', decodedRedirect);
-                safeSessionStorage.setItem('user', JSON.stringify(result.user || {}));
-                safeRedirect(decodedRedirect);
-                return true;
-            } catch (e) {
-                return false;
-            }
-        }
-
-        // 检查自动登录
-        async function checkAutoLogin() {
-            if (shouldSuppressPasswordAutoLogin()) {
-                console.log('退出抑制期内，跳过账号密码自动登录');
-                return;
-            }
-            // 如果正在跳转，直接返回
-            if (isRedirecting || redirectLock) {
-                console.log('跳转已锁定，跳过自动登录检查');
-                return;
+                    })
+                    .catch(function(error) {
+                        setStatus(error.message || '登录初始化失败，请刷新后重试。', 'error');
+                    });
             }
 
-            if (await redirectIfAlreadyAuthenticated()) {
-                return;
-            }
-            
-            try {
-                const autoLogin = safeLocalStorage.getItem('auto_login') === 'true';
-                if (!autoLogin) {
-                    // 如果不自动登录，检查服务器端认证状态
-                    checkAuthStatus();
-                    return;
-                }
-                
-                const savedUsername = safeLocalStorage.getItem('saved_username');
-                const savedPassword = safeLocalStorage.getItem('saved_password');
-                
-                if (!savedUsername || !savedPassword) {
-                    checkAuthStatus();
-                    return;
-                }
-                
-                // 尝试自动登录
-                const response = await fetchWithTimeout('/api/auth/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    credentials: 'include',
-                    body: `username=${encodeURIComponent(savedUsername)}&password=${encodeURIComponent(savedPassword)}`
-                }, LOGIN_FETCH_TIMEOUT_MS);
-                
-                const result = await parseLoginResponse(response);
-                if (result.success) {
-                        safeSessionStorage.removeItem('user');
-                        if (result.user) {
-                            safeSessionStorage.setItem('user', JSON.stringify(result.user));
-                        }
-                        
-                        const urlParams = new URLSearchParams(window.location.search);
-                        const redirectUrl = urlParams.get('redirect') || '/';
-                        const decodedRedirect = redirectUrl ? decodeURIComponent(redirectUrl) : '/';
-                        console.log('自动登录成功，跳转到:', decodedRedirect);
-                        await redirectAfterLogin(decodedRedirect);
-                        return;
-                } else {
-                        console.log('自动登录失败:', result.error || '未知错误');
-                        clearSavedLoginCredentials();
-                        safeLocalStorage.removeItem('auto_login');
-                        if (result.requires_captcha === true || result.requires_captcha === 'true') {
-                            showCaptcha();
-                            showError(result.error || '请使用新密码登录并输入验证码');
-                        } else if (result.error) {
-                            showError(result.error);
-                        }
-                        checkAuthStatus();
-                        return;
-                }
-            } catch (error) {
-                console.error('自动登录检查失败:', error);
-                checkAuthStatus();
-            }
-        }
-        
-        // 检查服务器认证状态
-        async function checkAuthStatus() {
-            if (shouldSuppressPasswordAutoLogin()) {
-                return;
-            }
-            // 如果正在跳转，直接返回
-            if (isRedirecting || redirectLock) {
-                console.log('跳转已锁定，跳过认证状态检查');
-                return;
-            }
-            
-            try {
-                const response = await fetchWithTimeout('/api/auth/check?lite=1', {
-                    method: 'GET',
-                    credentials: 'include' // 包含cookie
-                }, LOGIN_FETCH_TIMEOUT_MS);
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.authenticated) {
-                        // 获取redirect参数，如果存在则跳转到指定页面，否则跳转到主页
-                        const urlParams = new URLSearchParams(window.location.search);
-                        const redirectUrl = urlParams.get('redirect') || '/';
-                        const decodedRedirect = redirectUrl ? decodeURIComponent(redirectUrl) : '/';
-                        console.log('checkAuthStatus - 已登录，跳转到:', decodedRedirect);
-                        safeRedirect(decodedRedirect);
-                        return;
-                    }
-                    safeSessionStorage.removeItem('user');
-                } else if (response.status === 401 || response.status === 403) {
-                    console.log('checkAuthStatus - 未认证:', response.status);
-                    safeSessionStorage.removeItem('user');
-                }
-            } catch (error) {
-                console.log('网络连接检查失败，保留本地缓存');
-            }
-        }
-
-        // 其它标签页退出时，同步取消本页账号密码自动登录（保留钉钉免登）
-        window.addEventListener('storage', function(e) {
-            if (!e.key) return;
-            if (e.key === 'just_logged_out' || e.key === 'logout_suppress_auto_until' || e.key === 'auto_login') {
-                if (shouldSuppressPasswordAutoLogin()) {
-                    resetRedirectLock();
-                    safeLocalStorage.removeItem('auto_login');
-                    var autoLoginEl = document.getElementById('autoLogin');
-                    if (autoLoginEl) autoLoginEl.checked = false;
-                }
-            }
-        });
+            boot();
+        })();
     </script>
 </body>
 </html>

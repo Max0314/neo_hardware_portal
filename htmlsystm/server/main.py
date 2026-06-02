@@ -601,6 +601,91 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
 
         self.send_json_response(get_startup_status())
 
+    def _handle_auth_config(self):
+        """GET /api/auth/config — 钉钉鉴权配置（不返回密钥）。"""
+        from server.auth.dingtalk_auth import build_auth_config_response
+
+        status, body = build_auth_config_response(self)
+        self.send_json_response(body, status=status)
+
+    def _get_query_params(self, parsed_path):
+        query = parsed_path.query or getattr(self, 'query_string', '') or ''
+        if query:
+            return urllib.parse.parse_qs(query, keep_blank_values=True)
+        if hasattr(self, 'query_params') and isinstance(self.query_params, dict):
+            return self.query_params
+        return {}
+
+    def _handle_dingtalk_web_start(self, parsed_path):
+        """GET /api/auth/dingtalk/web/start — 生成钉钉 OAuth URL。"""
+        from server.auth.dingtalk_auth import build_web_login_start_response
+
+        params = self._get_query_params(parsed_path)
+        return_url = (params.get('return_url') or [''])[0]
+        status, body = build_web_login_start_response(self, return_url)
+        self.send_json_response(body, status=status)
+
+    def _send_html_response(self, html_text: str, status: int = 200, set_cookies: Optional[List[str]] = None):
+        body = (html_text or '').encode('utf-8')
+        self.send_response(status)
+        self.send_header('Content-Type', 'text/html; charset=utf-8')
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Expires', '0')
+        if set_cookies:
+            for cookie in set_cookies:
+                self.send_header('Set-Cookie', cookie)
+        self.send_header('Content-Length', str(len(body)))
+        apply_security_headers(self)
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _handle_dingtalk_web_callback(self, parsed_path):
+        """GET /api/auth/dingtalk/callback — 钉钉网页登录回调。"""
+        from server.auth.dingtalk_auth import handle_web_login_callback
+
+        params = self._get_query_params(parsed_path)
+        status, html_text, cookies = handle_web_login_callback(self, params)
+        self._send_html_response(html_text, status=status, set_cookies=cookies)
+
+    def _handle_dingtalk_inapp_login(self):
+        """POST /api/auth/dingtalk/inapp-login — 钉钉内免登。"""
+        from server.startup_gate import login_allowed
+        from server.auth.dingtalk_auth import login_with_inapp_code
+
+        ok_login, maint = login_allowed()
+        if not ok_login and maint:
+            self.send_json_response(
+                {
+                    'success': False,
+                    'code': 503,
+                    'error': maint.get('message') or '系统正在启动，请稍候',
+                    'startup': maint,
+                },
+                status=503,
+            )
+            return
+
+        try:
+            content_length = int(self.headers.get('Content-Length', 0) or 0)
+            if content_length == 0:
+                self.send_json_response({'success': False, 'code': 400, 'error': '请求体不能为空'}, status=400)
+                return
+            raw = self.rfile.read(content_length).decode('utf-8')
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            self.send_json_response({'success': False, 'code': 400, 'error': '无效的JSON数据'}, status=400)
+            return
+
+        auth_code = (
+            data.get('code')
+            or data.get('authCode')
+            or data.get('auth_code')
+            or ''
+        ).strip()
+        status, body, cookies = login_with_inapp_code(self, auth_code)
+        self.send_json_response(body, status=status, set_cookies=cookies if cookies else None)
+
     def _handle_auth_check(self):
         """GET /api/auth/check — 兼容别名，同 session。"""
         self._handle_auth_session(legacy_check=True)
@@ -1248,6 +1333,18 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
 
         elif actual_path == '/api/startup/status':
             self._handle_startup_status()
+            return
+
+        elif actual_path == '/api/auth/config':
+            self._handle_auth_config()
+            return
+
+        elif actual_path == '/api/auth/dingtalk/web/start':
+            self._handle_dingtalk_web_start(parsed_path)
+            return
+
+        elif actual_path == '/api/auth/dingtalk/callback':
+            self._handle_dingtalk_web_callback(parsed_path)
             return
 
         # 认证检查API
@@ -2348,7 +2445,10 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
             MaterialDbApi(self).dispatch('POST', actual_path, parsed_path)
             return
 
-        if actual_path.rstrip('/') == '/api/auth/login':
+        if actual_path.rstrip('/') == '/api/auth/dingtalk/inapp-login':
+            self._handle_dingtalk_inapp_login()
+
+        elif actual_path.rstrip('/') == '/api/auth/login':
             self.handle_login()
         
         # 通过userid登录（用于免登录）
@@ -4097,7 +4197,9 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
             self.serve_template('neo_bridge.html')
             return
         if self.path == '/register':
-            self.serve_template('register.html')
+            self.send_response(302)
+            self.send_header('Location', '/login')
+            self.end_headers()
             return
         
         # 检查认证
@@ -4379,6 +4481,16 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
     
     def handle_login(self):
         """处理登录（签名 Cookie）。"""
+        self.send_json_response(
+            {
+                'success': False,
+                'code': 403,
+                'error': '本地账号密码登录已关闭，请使用钉钉登录',
+            },
+            status=403,
+        )
+        return
+
         from server.auth.login_service import perform_login
 
         content_length = int(self.headers.get('Content-Length', 0))
@@ -4411,6 +4523,9 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
     
     def handle_login_by_userid(self):
         """通过钉钉 authCode 验证身份后登录（企业内部应用网页免登）。"""
+        self._handle_dingtalk_inapp_login()
+        return
+
         from server.startup_gate import login_allowed
 
         ok_login, maint = login_allowed()
@@ -4540,6 +4655,17 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
     
     def handle_auth_password(self, legacy_path: bool = True):
         """POST /api/auth/password 或兼容 /api/auth/change-password"""
+        self.send_json_response(
+            {
+                'ok': False,
+                'success': False,
+                'code': 403,
+                'error': '本地密码入口已关闭，请使用钉钉登录',
+            },
+            status=403,
+        )
+        return
+
         from server.auth.password_service import get_password_service
 
         try:
@@ -6839,6 +6965,16 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
     
     def handle_register(self):
         """处理注册申请"""
+        self.send_json_response(
+            {
+                'success': False,
+                'code': 403,
+                'error': '本地注册入口已关闭，请使用钉钉登录',
+            },
+            status=403,
+        )
+        return
+
         content_length = int(self.headers.get('Content-Length', 0) or 0)
         if content_length == 0:
             self.send_json_response({'success': False, 'error': '请求体不能为空'})

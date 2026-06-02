@@ -1,5 +1,6 @@
 import json
 import os
+import secrets
 import shutil
 import time
 import zipfile
@@ -1240,6 +1241,176 @@ class UserManager:
             return None
         except Exception as e:
             logger.error(f"根据userid获取用户失败: {e}", exc_info=True)
+            return None
+
+    def get_user_by_dingtalk_identity(
+        self,
+        userid: str = '',
+        unionid: str = '',
+        job_number: str = '',
+    ) -> Optional[Dict[str, Any]]:
+        """按钉钉身份绑定现有用户：userid -> unionid -> 工号/用户名。"""
+        userid = str(userid or '').strip()
+        unionid = str(unionid or '').strip()
+        job_number = str(job_number or '').strip()
+        try:
+            from server.db_adapter import get_connection_pool
+
+            pool = get_connection_pool()
+            queries = []
+            if userid:
+                queries.extend([
+                    ("SELECT * FROM users WHERE dingtalk_userid = %s LIMIT 1", (userid,)),
+                    (
+                        "SELECT * FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(dingtalk_data, '$.userid')) = %s "
+                        "AND dingtalk_data IS NOT NULL LIMIT 1",
+                        (userid,),
+                    ),
+                    ("SELECT * FROM users WHERE username = %s LIMIT 1", (userid,)),
+                ])
+            if unionid:
+                queries.extend([
+                    ("SELECT * FROM users WHERE dingtalk_unionid = %s LIMIT 1", (unionid,)),
+                    (
+                        "SELECT * FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(dingtalk_data, '$.unionid')) = %s "
+                        "AND dingtalk_data IS NOT NULL LIMIT 1",
+                        (unionid,),
+                    ),
+                ])
+            if job_number:
+                queries.extend([
+                    ("SELECT * FROM users WHERE job_number = %s LIMIT 1", (job_number,)),
+                    ("SELECT * FROM users WHERE username = %s LIMIT 1", (job_number,)),
+                ])
+
+            with pool.get_cursor() as cursor:
+                for sql, params in queries:
+                    try:
+                        cursor.execute(sql, params)
+                        row = cursor.fetchone()
+                        if row:
+                            user = self._row_to_user_dict(row, cursor)
+                            if user:
+                                return user
+                    except Exception as qe:
+                        logger.debug(f"按钉钉身份查询失败 ({sql[:48]}...): {qe}")
+            return None
+        except Exception as e:
+            logger.error(f"按钉钉身份获取用户失败: {e}", exc_info=True)
+            return None
+
+    def upsert_dingtalk_login_user(self, profile: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """钉钉登录后绑定或自动创建 hardware 用户。
+
+        只更新身份资料与 last_login_time，不覆盖 roles/library_roles/status。
+        """
+        profile = profile or {}
+        userid = str(profile.get('userid') or profile.get('userId') or '').strip()
+        unionid = str(profile.get('unionid') or profile.get('unionId') or '').strip()
+        job_number = str(profile.get('job_number') or profile.get('jobNumber') or '').strip()
+        if not userid:
+            logger.warning("钉钉登录用户缺少 userid，拒绝创建/绑定")
+            return None
+
+        name = (
+            str(profile.get('name') or profile.get('nick') or profile.get('nickname') or userid)
+            .strip()
+            or userid
+        )
+        title = str(profile.get('title') or profile.get('job_position') or '').strip()
+        department = str(profile.get('department') or profile.get('dept_name') or '').strip()
+        if not department and title:
+            department = title
+
+        dingtalk_data = {}
+        for key in DINGTALK_MERGE_KEYS:
+            if key in profile:
+                dingtalk_data[key] = profile.get(key)
+        dingtalk_data['userid'] = userid
+        if unionid:
+            dingtalk_data['unionid'] = unionid
+        if job_number:
+            dingtalk_data['job_number'] = job_number
+        if name:
+            dingtalk_data['name'] = name
+        if title:
+            dingtalk_data['title'] = title
+
+        try:
+            from server.db_adapter import get_connection_pool
+
+            self._ensure_mysql_user_schema()
+            pool = get_connection_pool()
+            existing = self.get_user_by_dingtalk_identity(userid, unionid, job_number)
+
+            with pool.get_cursor() as cursor:
+                if existing:
+                    cursor.execute(
+                        '''
+                        UPDATE users
+                        SET name = %s,
+                            department = COALESCE(NULLIF(%s, ''), department),
+                            job_position = COALESCE(NULLIF(%s, ''), job_position),
+                            dingtalk_userid = %s,
+                            dingtalk_unionid = COALESCE(NULLIF(%s, ''), dingtalk_unionid),
+                            job_number = COALESCE(NULLIF(%s, ''), job_number),
+                            user_source = 'dingtalk',
+                            dingtalk_data = %s,
+                            last_login_time = NOW(),
+                            updated_time = NOW()
+                        WHERE id = %s
+                        ''',
+                        (
+                            name,
+                            department,
+                            title,
+                            userid,
+                            unionid,
+                            job_number,
+                            json.dumps(dingtalk_data, ensure_ascii=False, default=str),
+                            int(existing['id']),
+                        ),
+                    )
+                    user_id = int(existing['id'])
+                    logger.info("钉钉用户已绑定现有账号: userid=%s, user_id=%s", userid, user_id)
+                else:
+                    username = job_number or userid
+                    cursor.execute('SELECT id FROM users WHERE username = %s LIMIT 1', (username,))
+                    if cursor.fetchone():
+                        username = userid
+                    unusable_password = PasswordHasher.hash_password(
+                        'dingtalk-disabled-' + secrets.token_urlsafe(48)
+                    )
+                    cursor.execute(
+                        '''
+                        INSERT INTO users (
+                            username, password, name, department, job_position,
+                            roles, library_roles, status, created_time, updated_time,
+                            last_login_time, dingtalk_userid, dingtalk_unionid,
+                            job_number, user_source, dingtalk_data
+                        )
+                        VALUES (%s, %s, %s, %s, %s, 'user', '', %s, NOW(), NOW(),
+                            NOW(), %s, %s, %s, 'dingtalk', %s)
+                        ''',
+                        (
+                            username,
+                            unusable_password,
+                            name,
+                            department,
+                            title or None,
+                            STATUS_ACTIVE,
+                            userid,
+                            unionid or None,
+                            job_number or None,
+                            json.dumps(dingtalk_data, ensure_ascii=False, default=str),
+                        ),
+                    )
+                    user_id = int(cursor.lastrowid)
+                    logger.info("钉钉首次登录自动创建普通用户: userid=%s, user_id=%s", userid, user_id)
+
+            return self.get_user_by_id(user_id)
+        except Exception as e:
+            logger.error(f"钉钉登录用户绑定/创建失败: {e}", exc_info=True)
             return None
     
     def get_user_by_username(self, username: str) -> Optional[Dict[str, Any]]:
