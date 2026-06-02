@@ -1379,7 +1379,7 @@ class UserManager:
                     if cursor.fetchone():
                         username = userid
                     unusable_password = PasswordHasher.hash_password(
-                        'dingtalk-disabled-' + secrets.token_urlsafe(48)
+                        'dingtalk-disabled-' + secrets.token_urlsafe(24)
                     )
                     cursor.execute(
                         '''

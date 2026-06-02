@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>硬件研发部管理系统 · NEO Hardware AI</title>
-    <link rel="icon" href="/static/neo-logo.svg" type="image/svg+xml" />
+    <link rel="icon" href="static/neo-logo.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/css/neo-systm.css" />
-    <script src="/js/csrf-fetch.js"></script>
+    <link rel="stylesheet" href="css/neo-systm.css" />
+    <script src="js/csrf-fetch.js"></script>
     <style>
         :root {
             --primary: #2c3e50;
@@ -1387,7 +1387,7 @@
         <div class="header">
             <div class="header-top">
                 <div class="header-brand-column">
-                    <img src="/logo.png" alt="CHANGHONG NeoNet" class="brand-logo-top-index" />
+                    <img src="logo.png" alt="CHANGHONG NeoNet" class="brand-logo-top-index" />
                     <div class="header-brand-main">
                         <div class="header-title" style="margin:0;">
                             <div class="logo-text-index">NEO Hardware <span>AI</span></div>
@@ -1395,7 +1395,7 @@
                             <p class="sys-tagline-index">专业、高效、可靠的硬件研发管理平台</p>
                         </div>
                         <div class="user-info" id="userInfo" style="display: none;">
-                    <a href="/neo/leaderboard" class="leaderboard-nav-link-index" id="neoLeaderboardLink" title="打开 NEO Hardware AI 排行榜">
+                    <a href="neo/leaderboard" class="leaderboard-nav-link-index" id="neoLeaderboardLink" title="打开 NEO Hardware AI 排行榜">
                         <i class="fas fa-flag" aria-hidden="true"></i><span>排行榜</span>
                     </a>
                     <div id="neoLevelWrap" class="user-level-wrap user-level-in-nav tier-challenger" aria-label="用户积分与等级">
@@ -1421,7 +1421,7 @@
                         <button class="btn btn-primary" onclick="manageUsers()" id="adminBtn" style="display: none;">
                             <i class="fas fa-users"></i> 用户管理
                         </button>
-                        <button class="btn btn-primary" onclick="window.location.href='/board-management-unified'" id="boardBtn" style="display: none;">
+                        <button class="btn btn-primary" onclick="window.location.href=appPath('/board-management-unified')" id="boardBtn" style="display: none;">
                             <i class="fas fa-bullhorn"></i> 公告栏管理
                         </button>
                         <button class="btn btn-primary" onclick="showAddLinkDialog()" id="addLinkBtn" style="display: none;">
@@ -1513,7 +1513,7 @@
                     <div class="announcement-sidebar">
                         <div class="section-header">
                             <h2><i class="fas fa-bullhorn"></i> 最新公告</h2>
-                            <a href="/announcement" style="color: var(--secondary); text-decoration: none; font-weight: 600;">查看全部</a>
+                            <a href="announcement" style="color: var(--secondary); text-decoration: none; font-weight: 600;">查看全部</a>
                         </div>
                         <div id="announcement-sidebar-content">
                             <div style="text-align: center; padding: 20px; color: #7f8c8d;">正在加载公告...</div>
@@ -1615,6 +1615,29 @@
     </div>
 
     <script>
+        const APP_PATH_PREFIX = (function () {
+            const marker = '/neo_hardware_portal';
+            const path = window.location.pathname || '/';
+            if (path === marker || path.indexOf(marker + '/') === 0) {
+                return marker;
+            }
+            return '';
+        })();
+
+        function appPath(path) {
+            path = String(path || '/');
+            if (/^[a-z][a-z0-9+.-]*:/i.test(path) || path.indexOf('//') === 0) {
+                return path;
+            }
+            if (APP_PATH_PREFIX && (path === APP_PATH_PREFIX || path.indexOf(APP_PATH_PREFIX + '/') === 0)) {
+                return path;
+            }
+            if (path.charAt(0) !== '/') {
+                path = '/' + path;
+            }
+            return APP_PATH_PREFIX + path;
+        }
+
         // ========== 浏览器兼容性Polyfill ==========
         // 兼容Safari 11.1 (iOS 11.2.5) 和 Chrome 63+
         
@@ -1785,7 +1808,7 @@
             try {
                 var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
                 var timer = controller ? setTimeout(function () { controller.abort(); }, 15000) : null;
-                var res = await fetch('/api/leaderboard', {
+                var res = await fetch(appPath('/api/leaderboard'), {
                     credentials: 'include',
                     signal: controller ? controller.signal : undefined
                 });
@@ -1915,7 +1938,7 @@
                 var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
                 var timer = controller ? setTimeout(function () { controller.abort(); }, 15000) : null;
                 try {
-                    var response = await fetch('/api/auth/check?lite=1', {
+                    var response = await fetch(appPath('/api/auth/check?lite=1'), {
                         credentials: 'include',
                         signal: controller ? controller.signal : undefined
                     });
@@ -2005,7 +2028,7 @@
                     }
                     sessionStorage.removeItem('user');
                     var here = window.location.pathname + window.location.search;
-                    window.location.href = '/login?redirect=' + encodeURIComponent(here || '/');
+                    window.location.href = appPath('/login?redirect=') + encodeURIComponent(here || appPath('/'));
                 } else {
                     throw new Error('HTTP ' + response.status);
                 }
@@ -2033,7 +2056,7 @@
                 }
                 sessionStorage.removeItem('user');
                 var hereFail = window.location.pathname + window.location.search;
-                window.location.href = '/login?redirect=' + encodeURIComponent(hereFail || '/');
+                window.location.href = appPath('/login?redirect=') + encodeURIComponent(hereFail || appPath('/'));
             }
         }
         
@@ -2053,22 +2076,22 @@
         function navigateTo(page) {
             switch(page) {
                 case 'announcement':
-                    window.location.href = '/announcement';
+                    window.location.href = appPath('/announcement');
                     break;
                 case 'neo-hardware':
-                    window.location.href = '/neo/';
+                    window.location.href = appPath('/neo/');
                     break;
                 case 'bom-comparison':
-                    window.location.href = '/bom-comparison';
+                    window.location.href = appPath('/bom-comparison');
                     break;
                 case 'dingtalk-token-test':
-                    window.location.href = '/dingtalk-token-test';
+                    window.location.href = appPath('/dingtalk-token-test');
                     break;
                 case 'dingtalk-department-test':
-                    window.location.href = '/dingtalk-department-test';
+                    window.location.href = appPath('/dingtalk-department-test');
                     break;
                 case 'dingtalk-user-test':
-                    window.location.href = '/dingtalk-user-test';
+                    window.location.href = appPath('/dingtalk-user-test');
                     break;
                 default:
                     alert('功能开发中...');
@@ -2076,7 +2099,7 @@
         }
         
         function manageUsers() {
-            window.location.href = '/user-management';
+            window.location.href = appPath('/user-management');
         }
         
         async function logout() {
@@ -2100,7 +2123,7 @@
             try {
                 var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
                 var timer = controller ? setTimeout(function() { controller.abort(); }, 8000) : null;
-                await fetch('/api/auth/logout', {
+                await fetch(appPath('/api/auth/logout'), {
                     method: 'GET',
                     credentials: 'include',
                     cache: 'no-store',
@@ -2112,7 +2135,7 @@
             }
 
             try {
-                window.location.replace('/login?logout=true');
+                window.location.replace(appPath('/login?logout=true'));
             } catch (navErr) {
                 console.error('跳转登录页失败:', navErr);
                 window.__logoutBusy = false;
@@ -2147,7 +2170,7 @@
             
             // 从API获取
             try {
-                const response = await fetch('/api/quick-links', {
+                const response = await fetch(appPath('/api/quick-links'), {
                     credentials: 'include'
                 });
                 if (response.ok) {
@@ -2174,7 +2197,7 @@
             }
         }
         
-        const DEFAULT_QUICK_LINK_ICON = '/static/neo-logo.svg';
+        const DEFAULT_QUICK_LINK_ICON = appPath('/static/neo-logo.svg');
         let quickLinksCache = [];
         let quickLinksSearchBound = false;
         let quickLinkAddInFlight = false;
@@ -2201,7 +2224,7 @@
         function renderQuickLinkIconMarkup(link) {
             const iconUrl = (link.icon_url || '').trim();
             if (iconUrl) {
-                const src = escapeQuickLinkHtml(iconUrl);
+                const src = escapeQuickLinkHtml(appPath(iconUrl));
                 const fallback = escapeQuickLinkHtml(DEFAULT_QUICK_LINK_ICON);
                 return `<div class="quick-link-icon"><img src="${src}" alt="" loading="lazy" onerror="this.onerror=null;this.src='${fallback}';"></div>`;
             }
@@ -2370,7 +2393,7 @@
             }
             
             try {
-                const response = await fetch(`/api/quick-links/${linkId}`, {
+                const response = await fetch(appPath('/api/quick-links/' + encodeURIComponent(linkId)), {
                     method: 'DELETE',
                     credentials: 'include'
                 });
@@ -2469,7 +2492,7 @@
             if (quickLinkAddInFlight) return;
             quickLinkAddInFlight = true;
             try {
-                const response = await fetch('/api/quick-links/' + encodeURIComponent(linkId), {
+                const response = await fetch(appPath('/api/quick-links/' + encodeURIComponent(linkId)), {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
@@ -2500,7 +2523,7 @@
             }
             quickLinkAddInFlight = true;
             try {
-                const response = await fetch('/api/quick-links', {
+                const response = await fetch(appPath('/api/quick-links'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -2570,7 +2593,7 @@
                     try { return sessionStorage.getItem('announcement_list_dirty') === '1' ? '&_refresh=true' : ''; }
                     catch (e) { return ''; }
                 })();
-                const response = await fetch(`/api/announcement/list?status=approved&_t=${timestamp}${refreshFlag}`, {
+                const response = await fetch(appPath(`/api/announcement/list?status=approved&_t=${timestamp}${refreshFlag}`), {
                     credentials: 'include'
                 });
                 
@@ -2717,7 +2740,7 @@
                         break;
                 }
                 
-                html += '<div class="announcement-item" onclick="window.location.href=\'/announcement-detail/' + ann.id + '\'">' +
+                html += '<div class="announcement-item" onclick="window.location.href=appPath(\'/announcement-detail/' + ann.id + '\')">' +
                     '<span class="announcement-priority-indicator ' + priorityClass + '" title="' + tagText + '"></span>' +
                     '<div class="announcement-header">' +
                         '<div class="announcement-title">' + title + '</div>' +
@@ -3159,7 +3182,7 @@
                     submitBtn.textContent = '修改中...';
                     
                     try {
-                        const response = await fetch('/api/auth/change-password', {
+                        const response = await fetch(appPath('/api/auth/change-password'), {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
@@ -3180,7 +3203,7 @@
                             document.getElementById('changePasswordForm').reset();
                             document.getElementById('newPasswordStrength').innerHTML = '';
                             setTimeout(() => {
-                                window.location.href = '/login?logout=true';
+                                window.location.href = appPath('/login?logout=true');
                             }, 1500);
                         } else {
                             messageDiv.textContent = result.error || '密码修改失败';
