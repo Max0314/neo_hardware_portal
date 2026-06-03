@@ -255,11 +255,28 @@ class WSGIRequestAdapter:
         cookie_header = self.headers.get('Cookie', '')
         from server.auth.login_service import resolve_user_from_cookies
 
-        return resolve_user_from_cookies(
+        user = resolve_user_from_cookies(
             cookie_header,
             lite=skip_session_enrich,
             skip_session_enrich=skip_session_enrich,
         )
+        if not user or skip_session_enrich:
+            return user
+        try:
+            uid = user.get('id')
+            if uid is None or str(uid).strip() == '':
+                return user
+            fresh = self.user_manager.get_user_by_id(int(uid))
+            if not fresh:
+                return user
+            if str(fresh.get('status') or '').strip().lower() != 'active':
+                return None
+            fresh['_session_jti'] = user.get('_session_jti')
+            fresh['_session_rev'] = user.get('_session_rev')
+            return fresh
+        except Exception as exc:
+            logger.debug(f"刷新当前用户权限失败，使用会话数据: {exc}")
+            return user
     
     def _parse_cookies(self) -> Dict[str, str]:
         """解析Cookie"""
