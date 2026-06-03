@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>公告栏管理 - 硬件研发部管理系统</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/css/neo-systm.css" />
+    <link rel="stylesheet" href="css/neo-systm.css" />
     <style>
         * {
             margin: 0;
@@ -247,7 +247,7 @@
     <div class="container neo-page-wrap">
         <div class="neo-page-header">
             <div class="header-brand-column neo-header-brand-inline">
-                <img src="/logo.png" alt="CHANGHONG NeoNet" class="brand-logo-top-index" />
+                <img src="logo.png" alt="CHANGHONG NeoNet" class="brand-logo-top-index" />
                 <div class="header-brand-main">
                     <div class="header-title" style="margin:0;">
                         <div class="logo-text-index">NEO Hardware <span>AI</span></div>
@@ -259,7 +259,7 @@
                 <span class="neo-page-title">公告栏管理</span>
                 <button class="neo-btn neo-btn-success" id="createPrimaryBoardBtn" onclick="openCreatePrimaryBoardModal()" style="display: none;">+ 创建一级公告栏</button>
                 <button class="neo-btn neo-btn-success" onclick="openCreateSubBoardModal()">+ 创建二级公告栏</button>
-                <a href="/announcement" class="neo-btn neo-btn-secondary">← 返回公告栏</a>
+                <a href="announcement" class="neo-btn neo-btn-secondary">← 返回公告栏</a>
             </div>
         </div>
 
@@ -353,6 +353,29 @@
     <div id="messageContainer" style="position: fixed; top: 20px; right: 20px; z-index: 1001;"></div>
 
     <script>
+        const APP_PATH_PREFIX = (function () {
+            const marker = '/neo_hardware_portal';
+            const path = window.location.pathname || '/';
+            if (path === marker || path.indexOf(marker + '/') === 0) {
+                return marker;
+            }
+            return '';
+        })();
+
+        function appPath(path) {
+            path = String(path || '/');
+            if (/^[a-z][a-z0-9+.-]*:/i.test(path) || path.indexOf('//') === 0) {
+                return path;
+            }
+            if (APP_PATH_PREFIX && (path === APP_PATH_PREFIX || path.indexOf(APP_PATH_PREFIX + '/') === 0)) {
+                return path;
+            }
+            if (path.charAt(0) !== '/') {
+                path = '/' + path;
+            }
+            return APP_PATH_PREFIX + path;
+        }
+
         const ANNOUNCEMENT_BOARDS = {
             'hardware': '硬件研发部',
             'circuit': '电路设计组',
@@ -445,10 +468,10 @@
         // 加载一级公告栏
         async function loadPrimaryBoards() {
             try {
-                const response = await fetch('/api/announcement/boards');
+                const response = await fetch(appPath('/api/announcement/boards'));
                 if (!response.ok) {
                     if (response.status === 302 || response.status === 401) {
-                        window.location.href = '/login';
+                        window.location.href = appPath('/login');
                         return;
                     }
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -520,7 +543,10 @@
                 const user = JSON.parse(sessionStorage.getItem('user') || '{}');
                 const roles = user.roles || [];
                 const username = (user.username || '').toLowerCase();
-                return username === 'zzw' || roles.includes('super_admin');
+                return username === 'zzw'
+                    || roles.includes('super_admin')
+                    || roles.includes('admin')
+                    || roles.includes('management');
             } catch (e) {
                 return false;
             }
@@ -529,7 +555,7 @@
         // 编辑一级公告栏
         function editPrimaryBoard(boardId) {
             // 获取当前公告栏信息
-            fetch('/api/announcement/boards')
+            fetch(appPath('/api/announcement/boards'))
                 .then(response => response.json())
                 .then(boards => {
                     const board = boards.find(b => b.id === boardId);
@@ -613,7 +639,7 @@
                     setTimeout(() => reject(new Error('删除操作超时，请刷新页面检查状态')), 30000);
                 });
                 
-                const fetchPromise = fetch('/api/announcement/boards/manage', {
+                const fetchPromise = fetch(appPath('/api/announcement/boards/manage'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -683,7 +709,7 @@
         // 查看公告栏详情（显示公告列表，支持编辑和删除）
         async function viewBoardDetails(boardId) {
             try {
-                const response = await fetch(`/api/announcement/list?board=${boardId}`);
+                const response = await fetch(appPath(`/api/announcement/list?board=${boardId}`));
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
@@ -778,7 +804,7 @@
         
         // 编辑公告
         function editAnnouncement(announcementId) {
-            window.location.href = `/announcement-editor?id=${announcementId}`;
+            window.location.href = appPath(`/announcement-editor?id=${announcementId}`);
         }
         
         // 删除公告
@@ -788,7 +814,7 @@
             }
             
             try {
-                const response = await fetch(`/api/announcement/delete/${announcementId}`, {
+                const response = await fetch(appPath(`/api/announcement/delete/${announcementId}`), {
                     method: 'DELETE'
                 });
                 
@@ -826,7 +852,7 @@
         
         // 创建新公告
         function createNewAnnouncement(boardId) {
-            window.location.href = `/announcement-editor?board=${boardId}`;
+            window.location.href = appPath(`/announcement-editor?board=${boardId}`);
         }
 
         // 加载所有二级公告栏
@@ -838,10 +864,10 @@
                 }
                 
                 console.log('开始加载二级公告栏...');
-                const response = await fetch('/api/announcement/sub-boards/all');
+                const response = await fetch(appPath('/api/announcement/sub-boards/all'));
                 if (!response.ok) {
                     if (response.status === 302 || response.status === 401) {
-                        window.location.href = '/login';
+                        window.location.href = appPath('/login');
                         return;
                     }
                     const errorText = await response.text();
@@ -1103,7 +1129,7 @@
                 
                 console.log(`[deleteSubBoard] 开始删除: parent=${parentId}, sub=${subBoardId}`);
                 
-                const response = await fetch(`/api/announcement/sub-boards/delete/${encodedParentId}/${encodedSubBoardId}`, {
+                const response = await fetch(appPath(`/api/announcement/sub-boards/delete/${encodedParentId}/${encodedSubBoardId}`), {
                     method: 'DELETE'
                 });
                 
@@ -1130,7 +1156,7 @@
                     // 验证删除是否真的完成
                     setTimeout(async () => {
                         try {
-                            const verifyResponse = await fetch('/api/announcement/sub-boards/all');
+                            const verifyResponse = await fetch(appPath('/api/announcement/sub-boards/all'));
                             const verifyData = await verifyResponse.json();
                             const parentSubBoards = verifyData[parentId] || [];
                             const stillExists = parentSubBoards.some(sb => sb.sub_board_id === subBoardId);
@@ -1189,7 +1215,7 @@
             }
             
             try {
-                const response = await fetch('/api/announcement/sub-boards', {
+                const response = await fetch(appPath('/api/announcement/sub-boards'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1247,7 +1273,7 @@
                     setTimeout(() => reject(new Error('创建操作超时，请刷新页面检查状态')), 30000);
                 });
                 
-                const fetchPromise = fetch('/api/announcement/boards/manage', {
+                const fetchPromise = fetch(appPath('/api/announcement/boards/manage'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1303,16 +1329,18 @@
         // 检查权限并显示创建按钮
         async function checkPermissions() {
             try {
-                const response = await fetch('/api/auth/check');
+                const response = await fetch(appPath('/api/auth/check'));
                 const result = await response.json();
                 
                 if (result.authenticated && result.user) {
                     const roles = result.user.roles || [];
                     const username = (result.user.username || '').toLowerCase();
-                    // 只有最高管理员可以管理公告栏
-                    const isSuperAdmin = username === 'zzw' || roles.includes('super_admin');
+                    const canManageBoards = username === 'zzw'
+                        || roles.includes('super_admin')
+                        || roles.includes('admin')
+                        || roles.includes('management');
                     
-                    if (isSuperAdmin) {
+                    if (canManageBoards) {
                         const createBtn = document.getElementById('createPrimaryBoardBtn');
                         if (createBtn) {
                             createBtn.style.display = 'inline-block';
@@ -1338,4 +1366,3 @@
     </script>
 </body>
 </html>
-

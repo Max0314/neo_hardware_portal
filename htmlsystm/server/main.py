@@ -295,6 +295,14 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
         if self._is_super_admin(user):
             return True
         return self._has_role(user, 'admin') or self._has_role(user, 'management')
+
+    def _can_manage_boards(self, user) -> bool:
+        """公告栏管理：最高管理员、管理员、管理组。"""
+        if not user:
+            return False
+        if self._is_super_admin(user):
+            return True
+        return self._has_role(user, 'admin') or self._has_role(user, 'management')
     
     def _can_approve_announcement(self, user) -> bool:
         """检查用户是否具备公告审批权限（与 ANNOUNCEMENT_APPROVERS 配置一致）"""
@@ -1085,9 +1093,8 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
                 return
             
             user = self.get_current_user()
-            # 只有最高管理员可以删除二级公告栏
-            if not self._is_super_admin(user):
-                self.send_json_response({'error': '仅最高管理员可以删除二级公告栏'}, status=403)
+            if not self._can_manage_boards(user):
+                self.send_json_response({'error': '仅管理员、管理组成员和最高管理员可以删除二级公告栏'}, status=403)
                 return
             
             from server.sub_board_manager import SubBoardManager
@@ -2711,9 +2718,8 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
                 return
             
             user = self.get_current_user()
-            # 只有最高管理员可以管理公告栏
-            if not self._is_super_admin(user):
-                self.send_json_response({'error': '仅最高管理员可以管理公告栏'}, status=403)
+            if not self._can_manage_boards(user):
+                self.send_json_response({'error': '仅管理员、管理组成员和最高管理员可以管理公告栏'}, status=403)
                 return
             
             try:
@@ -2854,9 +2860,8 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
                 return
             
             user = self.get_current_user()
-            # 只有最高管理员可以管理二级公告栏
-            if not self._is_super_admin(user):
-                self.send_json_response({'error': '仅最高管理员可以管理二级公告栏'}, status=403)
+            if not self._can_manage_boards(user):
+                self.send_json_response({'error': '仅管理员、管理组成员和最高管理员可以管理二级公告栏'}, status=403)
                 return
             
             try:
@@ -4252,7 +4257,7 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
             if not self.check_auth():
                 return
             user = self.get_current_user()
-            if not (self._is_super_admin(user) or self._has_role(user, 'management')):
+            if not self._can_manage_boards(user):
                 self.redirect_to_home()
                 return
             # 使用合并后的公告栏管理页面
