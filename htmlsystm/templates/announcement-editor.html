@@ -1211,16 +1211,24 @@
                 submitBtn.textContent = '📤 提交审核';
 
                 if (result.success) {
-                    let updateMsg = '公告更新成功！已提交审核，等待管理员审批。';
-                    if (result.approval_notification_sent === true) {
-                        updateMsg += ' 已向审批人发送工作通知。';
-                    } else if (result.approval_notification_error) {
-                        showMessage('【审批通知】' + result.approval_notification_error, 'error');
+                    const approvalFailed = !!result.approval_notification_error;
+                    if (approvalFailed) {
+                        // 公告已更新，但审批通知没发出去——不要静默跳走，让发布者看清原因
+                        showMessage(
+                            '公告已更新并提交审核，但未能通知审批人：' + result.approval_notification_error +
+                            '。审批人仍可在「审核中心」看到该公告；如持续失败请联系管理员检查钉钉工作通知配置。',
+                            'error'
+                        );
+                    } else {
+                        let updateMsg = '公告更新成功！已提交审核，等待管理员审批。';
+                        if (result.approval_notification_sent === true) {
+                            updateMsg += ' 已向审批人发送工作通知。';
+                        }
+                        showMessage(updateMsg, 'success');
+                        setTimeout(() => {
+                            window.location.href = `/announcement-detail/${editAnnouncementId}`;
+                        }, 2000);
                     }
-                    showMessage(updateMsg, 'success');
-                    setTimeout(() => {
-                        window.location.href = `/announcement-detail/${editAnnouncementId}`;
-                    }, 2000);
                 } else {
                     showMessage(result.message || result.error || '更新失败', 'error');
                 }
@@ -2384,12 +2392,19 @@
                     if (status === 'pending' && result.approval_notification_sent === true) {
                         successMsg += ' 已向审批人发送工作通知。';
                     }
-                    showMessage(successMsg, 'success');
-                    if (status === 'pending' && result.approval_notification_error) {
-                        showMessage('【审批通知】' + result.approval_notification_error, 'error');
+                    const approvalFailed = status === 'pending' && !!result.approval_notification_error;
+                    if (approvalFailed) {
+                        // 公告已保存，但审批通知没发出去——不要静默跳走，让发布者看清原因
+                        showMessage(
+                            '公告已提交为待审批，但未能通知审批人：' + result.approval_notification_error +
+                            '。审批人仍可在「审核中心」看到该公告；如持续失败请联系管理员检查钉钉工作通知配置。',
+                            'error'
+                        );
+                    } else {
+                        showMessage(successMsg, 'success');
                     }
 
-                    if (status === 'pending') {
+                    if (status === 'pending' && !approvalFailed) {
                         setTimeout(() => { window.location.href = '/announcement'; }, 2000);
                     }
                 } else {

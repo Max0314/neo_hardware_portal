@@ -2114,7 +2114,79 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 logger.error(f"获取审批人列表失败: {e}", exc_info=True)
                 self.send_json_response({'success': False, 'error': f'获取审批人列表失败: {str(e)}'})
-        
+
+        elif self.path == '/api/announcement/approval-diagnostics':
+            # 审批通知自检：定位「发公告后审批人收不到工作通知」的断点
+            if not self.check_auth():
+                return
+            user = self.get_current_user()
+            if not (self._is_super_admin(user) or self._can_approve_announcement(user)):
+                self.send_json_response(
+                    {'success': False, 'error': '无权限：仅管理组/管理员可查看审批通知诊断'},
+                    status=403,
+                )
+                return
+            try:
+                diag = {'success': True}
+
+                # 1) 钉钉配置是否完整
+                config_ok, config_err = check_dingtalk_config()
+                diag['dingtalk_config'] = {
+                    'ok': config_ok,
+                    'error': config_err,
+                    'client_id_set': bool(DINGTALK_CONFIG.get('client_id')),
+                    'client_secret_set': bool(DINGTALK_CONFIG.get('client_secret')),
+                    'corp_id_set': bool(DINGTALK_CONFIG.get('corp_id')),
+                    'agent_id': get_dingtalk_agent_id_numeric(),
+                }
+
+                # 2) access_token 能否取到（不回传 token 本身）
+                token = None
+                token_err = None
+                try:
+                    token = self._get_dingtalk_access_token_simple()
+                except Exception as e:
+                    token_err = str(e)
+                diag['access_token'] = {
+                    'ok': bool(token),
+                    'error': token_err or (None if token else (config_err or '无法获取 access_token')),
+                }
+
+                # 3) 审批人列表及其 userid 是否可解析
+                approvers = self._get_approvers()
+                approver_diag = []
+                for a in approvers:
+                    ident = a.get('userid') or a.get('username') or str(a.get('id', ''))
+                    resolved = self._resolve_dingtalk_userid(ident)
+                    approver_diag.append({
+                        'name': a.get('name', ''),
+                        'username': a.get('username', ''),
+                        'has_userid': bool(a.get('userid')),
+                        'resolved_userid': bool(resolved),
+                    })
+                resolvable = [a for a in approver_diag if a['resolved_userid']]
+                diag['approvers'] = {
+                    'count': len(approvers),
+                    'resolvable_count': len(resolvable),
+                    'list': approver_diag,
+                }
+
+                # 4) 给出结论，指向最可能的断点
+                if not config_ok:
+                    diag['conclusion'] = '钉钉配置不完整：' + (config_err or '')
+                elif not token:
+                    diag['conclusion'] = '无法获取钉钉 access_token：请检查 DINGTALK_CLIENT_SECRET 与应用凭证/可见性'
+                elif len(approvers) == 0:
+                    diag['conclusion'] = '未找到任何审批人：请确认有用户具备 management/admin/super_admin 角色，或在 ANNOUNCEMENT_APPROVERS 中配置 userids/titles'
+                elif len(resolvable) == 0:
+                    diag['conclusion'] = '审批人均无法解析出钉钉 userid：请先同步钉钉用户后重试'
+                else:
+                    diag['conclusion'] = 'OK：配置/token/审批人均正常。若仍收不到，请检查钉钉应用「工作通知」权限与接收人可见范围'
+                self.send_json_response(diag)
+            except Exception as e:
+                logger.error(f"审批通知诊断失败: {e}", exc_info=True)
+                self.send_json_response({'success': False, 'error': f'诊断失败: {str(e)}'}, status=500)
+
         elif self.path == '/api/announcement/pending':
             # API请求，认证失败时返回JSON错误，而不是重定向
             user = self.get_current_user()
