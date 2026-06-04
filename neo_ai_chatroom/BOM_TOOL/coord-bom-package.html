@@ -8,11 +8,11 @@
     <script src="../vendor/xlsx.full.min.js"></script>
     <style>
         :root {
-            --primary-color: #3498db;
-            --secondary-color: #2980b9;
-            --success-color: #2ecc71;
-            --warning-color: #f39c12;
-            --danger-color: #e74c3c;
+            --primary-color: var(--neo-primary);
+            --secondary-color: var(--neo-primary-strong);
+            --success-color: var(--neo-success);
+            --warning-color: var(--neo-warning);
+            --danger-color: var(--neo-danger);
             --light-color: #f8f9fa;
             --dark-color: #343a40;
             --gray-color: #6c757d;
@@ -653,8 +653,9 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="../neo-tools-theme.css" />
 </head>
-<body>
+<body class="neo-tool">
     <div class="container">
         <header>
             <h1>坐标文件与BOM封装对比工具</h1>
