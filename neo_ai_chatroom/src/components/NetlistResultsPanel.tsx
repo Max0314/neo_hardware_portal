@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { apiUrl } from '@/utils/apiBase';
-import { getExternalOpenMessage, isDingTalkBrowser, openCurrentPageExternally } from '@/utils/externalOpen';
+import { printHtmlDocument, getPrintMessage } from '@/utils/externalOpen';
 import { NetlistResultModal } from './NetlistResultModal';
 import { SchematicReviewPanel } from './SchematicReviewPanel';
 import { formatNetConnectionsFull } from '@/utils/schematicReview';
@@ -415,25 +415,11 @@ const ClassicNetlistResultsPanel: React.FC<NetlistResultsPanelProps> = ({
       lines.push('</div>');
 
       lines.push('</body></html>');
-      if (isDingTalkBrowser()) {
-        const result = await openCurrentPageExternally();
-        alert(`钉钉内置浏览器无法稳定导出 PDF，${getExternalOpenMessage(result)}`);
-        return;
-      }
-
       const html = lines.join('\n');
-      const win = window.open('', '_blank');
-      if (!win) {
-        const result = await openCurrentPageExternally();
-        alert(`无法打开打印窗口，${getExternalOpenMessage(result)}`);
-        return;
+      const result = await printHtmlDocument(html);
+      if (result === 'external' || result === 'failed') {
+        alert(getPrintMessage(result));
       }
-      win.document.open();
-      win.document.write(html);
-      win.document.close();
-      win.focus();
-      // 让用户使用浏览器的“另存为 PDF”
-      win.print();
     } catch (e) {
       console.error('导出评审结果失败', e);
     }

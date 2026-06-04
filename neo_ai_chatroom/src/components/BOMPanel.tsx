@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { apiUrl } from '@/utils/apiBase';
-import { getExternalOpenMessage, isDingTalkBrowser, openCurrentPageExternally } from '@/utils/externalOpen';
+import { printHtmlDocument, getPrintMessage } from '@/utils/externalOpen';
 import { trackNeoPoints } from '@/utils/neoPoints';
 import type { BOMState, BOMItem, BOMDesignatorTagIssue } from '@/utils/bomStore';
 import { fetchMaterialLibraries, buildCodeToGroupLabel } from '@/utils/materialDb';
@@ -2832,27 +2832,11 @@ ${workflowRowsHtml}
 </html>
 `);
 
-        if (isDingTalkBrowser()) {
-          const result = await openCurrentPageExternally();
-          alert(`钉钉内置浏览器无法稳定导出 PDF，${getExternalOpenMessage(result)}`);
-          return;
-        }
-
         const reportHtml = htmlParts.join('');
-        const win = window.open('', '_blank');
-        if (!win) {
-          const result = await openCurrentPageExternally();
-          alert(`无法打开新窗口导出 PDF，${getExternalOpenMessage(result)}`);
-          return;
+        const result = await printHtmlDocument(reportHtml);
+        if (result === 'external' || result === 'failed') {
+          alert(getPrintMessage(result));
         }
-        win.document.open();
-        win.document.write(reportHtml);
-        win.document.close();
-        // 让浏览器用“打印为 PDF”的方式导出
-        win.focus();
-        setTimeout(() => {
-          win.print();
-        }, 300);
       };
 
       return (
