@@ -4191,6 +4191,10 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             return
 
+        if parsed_page.path in ('/dingtalk-token-test', '/dingtalk-department-test', '/dingtalk-user-test'):
+            self.send_error(404, 'DingTalk test page removed')
+            return
+
         # 登录页面不需要认证
         if self.path == '/login':
             self.serve_template('login.html')
@@ -4231,8 +4235,6 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
             self.serve_template('bom-comparison.html')
         elif self.path == '/announcement':
             self.serve_template('announcement.html')
-        elif self.path in ('/dingtalk-token-test', '/dingtalk-department-test', '/dingtalk-user-test'):
-            self.send_error(404, 'DingTalk test page removed')
         elif self.path == '/announcement-editor' or self.path.startswith('/announcement-editor?'):
             self.serve_template('announcement-editor.html')
         elif self.path.startswith('/announcement-version/'):
