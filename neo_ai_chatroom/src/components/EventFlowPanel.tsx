@@ -407,8 +407,6 @@ export const EventFlowPanel: React.FC<EventFlowPanelProps> = ({
     handleNextStep();
   };
 
-  const currentStep = runState ? runState.flow.steps[runState.stepIndex] : null;
-  const isPromptStep = currentStep?.eventType === 'prompt_review_chat';
   const steps = editingFlow?.steps ?? [];
 
   return (

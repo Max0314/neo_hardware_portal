@@ -631,7 +631,7 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
     e.target.value = '';
   };
 
-  const parseFromHeaderAndRows = async (header: string[], rows: string[][], source: string) => {
+  const parseFromHeaderAndRows = async (_header: string[], rows: string[][], source: string) => {
     const codeIdx = mapCodeIdx;
     const nameIdx = mapNameIdx;
     const qtyIdx = mapQtyIdx;
@@ -690,7 +690,7 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
     }
   };
 
-  const parseBOMText = (text: string, source: string) => {
+  const parseBOMText = (text: string, _source: string) => {
     const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
     if (lines.length <= 1) {
       alert('BOM 文件内容不足，请检查是否包含表头和数据行');
@@ -707,7 +707,7 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
     setMapDesIdx(-1);
   };
 
-  const parseBOMFromAOA = (aoa: any[][], source: string) => {
+  const parseBOMFromAOA = (aoa: any[][], _source: string) => {
     if (!aoa || aoa.length <= 1) {
       alert('Excel BOM 内容不足，请检查是否包含表头和数据行');
       return;
@@ -1057,7 +1057,6 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
                 const allDesignators = Array.from(
                   new Set(items.flatMap((i) => i.designators || []).map((d) => d.trim()).filter(Boolean))
                 ).sort((a, b) => a.localeCompare(b));
-                const totalQty = items.reduce((sum, i) => sum + (i.quantity || 0), 0);
                 const collapsed = collapsedGroups[key] ?? true;
                 const fullDes = allDesignators.join(', ');
                 const maxShown = 6;
@@ -1977,7 +1976,6 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
                 );
               }
               const missingItems = g.items.filter((it) => !it.inBom);
-              const presentItems = g.items.filter((it) => it.inBom);
               const hasInfo = missingItems.length > 0;
               const allMissingHandled = missingItems.length
                 ? missingItems.every((m, i) => {

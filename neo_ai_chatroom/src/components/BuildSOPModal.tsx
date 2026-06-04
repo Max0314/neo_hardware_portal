@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ListOrdered, X } from 'lucide-react';
 import { getEventFlows, addSOP, type EventFlowForSOP } from '@/utils/sopStorage';
 

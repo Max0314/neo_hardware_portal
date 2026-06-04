@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthGate } from './components/AuthGate';
 import { NeoErrorBoundary } from './components/NeoErrorBoundary';

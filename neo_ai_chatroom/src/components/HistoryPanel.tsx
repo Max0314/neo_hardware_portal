@@ -22,14 +22,13 @@ interface HistoryPanelProps {
 }
 
 export const HistoryPanel: React.FC<HistoryPanelProps> = ({
-  conversationId,
   onLoadConversation
 }) => {
   const [activeTab, setActiveTab] = useState<'conversations' | 'netlist'>('conversations');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
-  const [showNetlistTable, setShowNetlistTable] = useState(false);
+  const [, setShowNetlistTable] = useState(false);
   const [selectedNetlistResult, setSelectedNetlistResult] = useState<{id: string, type: 'comparison' | 'analysis'} | null>(null);
 
   // 加载对话列表

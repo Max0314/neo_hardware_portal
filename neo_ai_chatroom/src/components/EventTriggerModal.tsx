@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Plus, Trash2, Edit2, Save } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Trash2, Edit2, Save } from 'lucide-react';
 import axios from 'axios';
 import { apiUrl } from '@/utils/apiBase';
 
