@@ -3,7 +3,7 @@
 #   1. cp .env.example .env 并填写 MYSQL_ROOT_PASSWORD、MYSQL_PASSWORD、API 密钥等
 #   2. bash migration/deploy.sh          # 推荐：build + 健康/DB 检查 + 开放登录
 #      bash migration/deploy.sh --no-build   # 仅重启，不重建镜像
-#   3. 浏览器访问 PUBLIC_BASE_URL — 管理系统在 / ，NEO 在 /neo/（端口见 GATEWAY_PUBLISH_PORT）
+#   3. 浏览器访问 PUBLIC_BASE_URL — 管理系统在 /neo_hardware/，NEO 在 /neo_hardware/neo/（端口见 GATEWAY_PUBLISH_PORT）
 #
 # 说明：若仅部署 NEO 聊天室，仍可使用子目录 neo_ai_chatroom/docker-compose.yml
 
@@ -63,6 +63,7 @@ services:
       SUPER_ADMIN_USERNAME: ${SUPER_ADMIN_USERNAME:-zzw}
       DINGTALK_CLIENT_SECRET: ${DINGTALK_CLIENT_SECRET:-}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      PUBLIC_PATH_PREFIX: ${PUBLIC_PATH_PREFIX:-/neo_hardware}
       # 知识库 ID 勿在此写 ${VAR:-}：未在 .env 配置时会注入空字符串，覆盖 config.py 默认值导致钉钉 API 404
       # 需要覆盖时在 .env 中设置 DINGTALK_WORKSPACE_ID / DINGTALK_DOC_PARENT_NODE_ID / DINGTALK_DOC_OPERATOR_UNIONID
       # 避免 master 阻塞钉钉全量同步导致 healthcheck 超时（RK3568 等）
@@ -159,7 +160,7 @@ services:
       args:
         # 国内网络慢时可加速 npm ci；海外可设为空或 registry.npmjs.org
         NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
-        VITE_NEO_PATH_PREFIX: ${NEO_PATH_PREFIX:-/neo_hardware_portal/neo}
+        VITE_NEO_PATH_PREFIX: ${NEO_PATH_PREFIX:-/neo_hardware/neo}
     container_name: stack-neo-web
     restart: unless-stopped
     labels:
