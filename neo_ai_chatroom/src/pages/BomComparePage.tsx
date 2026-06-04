@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getExternalOpenMessage, openCurrentPageExternally } from '@/utils/externalOpen';
 import { trackNeoPoints } from '@/utils/neoPoints';
 
 type CompareMode = 'full' | 'refdes' | 'coordPackage';
@@ -48,6 +49,10 @@ export const BomComparePage: React.FC = () => {
 
   const iframeSrc = useMemo(() => bomToolUrl(modeToFile(mode)), [mode]);
   const meta = MODE_META[mode];
+  const handleExternalOpen = async () => {
+    const result = await openCurrentPageExternally();
+    alert(getExternalOpenMessage(result));
+  };
 
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
@@ -71,11 +76,21 @@ export const BomComparePage: React.FC = () => {
         <div className="flex items-center gap-4 min-w-0 flex-1">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/90 transition-colors border border-transparent hover:border-slate-200 shrink-0"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-sky-800 bg-white hover:text-sky-950 hover:bg-sky-50 transition-colors border border-sky-100 hover:border-sky-200 shadow-sm shrink-0"
+            title="返回主页"
           >
             <i className="fas fa-arrow-left" aria-hidden />
             <span>返回主页</span>
           </Link>
+          <button
+            type="button"
+            onClick={handleExternalOpen}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-sky-800 bg-white hover:text-sky-950 hover:bg-sky-50 transition-colors border border-sky-100 hover:border-sky-200 shadow-sm shrink-0"
+            title="在外部浏览器打开"
+          >
+            <i className="fas fa-up-right-from-square" aria-hidden />
+            <span>外部打开</span>
+          </button>
           <div className="h-8 w-px bg-slate-200 hidden sm:block shrink-0" aria-hidden />
           <div className="min-w-0 flex-1">
             <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900 truncate">

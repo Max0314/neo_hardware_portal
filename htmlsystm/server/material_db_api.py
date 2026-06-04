@@ -19,6 +19,12 @@ class MaterialDbApi:
     def __init__(self, handler: Any):
         self.h = handler
 
+    def _can_change_password_without_old_password(self, user: Dict[str, Any]) -> bool:
+        roles = user.get('roles') or []
+        if isinstance(roles, str):
+            roles = [r.strip() for r in roles.split(',') if r.strip()]
+        return bool({'admin', 'management', 'super_admin'} & set(roles))
+
     def dispatch(self, method: str, path: str, parsed_path: Any) -> None:
         if not self.h.check_auth():
             return
@@ -110,6 +116,23 @@ class MaterialDbApi:
                         logger.warning(f"delete_library: 清理用户 library_roles 失败: {e}", exc_info=True)
                 self.h.send_json_response({'success': ok})
                 return
+
+        m_change_password = re.match(r'^/api/material-db/libraries/([^/]+)/change-password$', path)
+        if m_change_password and method == 'POST':
+            lib_id = m_change_password.group(1)
+            new_password = body.get('newPassword') or body.get('new_password') or ''
+            if not self._can_change_password_without_old_password(user):
+                old_password = body.get('oldPassword') or body.get('old_password') or ''
+                if not mdb.verify_library_password(lib_id, old_password):
+                    self.h.send_json_response({'success': False, 'error': '原密码错误'}, status=403)
+                    return
+            try:
+                lib = mdb.change_library_password(lib_id, new_password, user_id, user_display)
+                self.h.send_json_response({'success': True, 'library': lib})
+                award_neo_points(user, 'material_db_edit')
+            except ValueError as e:
+                self.h.send_json_response({'success': False, 'error': str(e)}, status=400)
+            return
 
         m_unlock = re.match(r'^/api/material-db/libraries/([^/]+)/unlock$', path)
         if m_unlock and method == 'POST':

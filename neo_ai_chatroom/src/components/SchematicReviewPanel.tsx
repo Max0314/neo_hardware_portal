@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import { apiUrl } from '@/utils/apiBase';
+import { getExternalOpenMessage, isDingTalkBrowser, openCurrentPageExternally } from '@/utils/externalOpen';
 import { trackNeoPoints } from '@/utils/neoPoints';
 import {
   SCHEMATIC_WORKFLOW_STEPS,
@@ -268,7 +269,7 @@ export const SchematicReviewPanel: React.FC<SchematicReviewPanelProps> = ({
     reader.readAsText(file, 'UTF-8');
   };
 
-  const handleExportReview = useCallback(() => {
+  const handleExportReview = useCallback(async () => {
     if (!aggregatedReviewSummary) {
       alert('请先完成 AI 评审并生成报告');
       return;
@@ -318,9 +319,16 @@ export const SchematicReviewPanel: React.FC<SchematicReviewPanelProps> = ({
         lines.push('</div>');
       }
       lines.push('</body></html>');
+      if (isDingTalkBrowser()) {
+        const result = await openCurrentPageExternally();
+        alert(`钉钉内置浏览器无法稳定导出 PDF，${getExternalOpenMessage(result)}`);
+        return;
+      }
+
       const win = window.open('', '_blank');
       if (!win) {
-        alert('无法打开打印窗口，请检查浏览器弹窗设置');
+        const result = await openCurrentPageExternally();
+        alert(`无法打开打印窗口，${getExternalOpenMessage(result)}`);
         return;
       }
       win.document.write(lines.join('\n'));

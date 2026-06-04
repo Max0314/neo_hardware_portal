@@ -44,8 +44,9 @@ import {
 import { loadReplacementGroupsAsync } from '@/utils/replacementPairsStorage';
 import { buildMessageWithAttachments } from '@/utils/chatAttachmentMarkers';
 import { apiUrl, appUrl, getWsUrl } from '@/utils/apiBase';
+import { getExternalOpenMessage, openCurrentPageExternally } from '@/utils/externalOpen';
 import { buildAttachmentDigest, parseChatFile } from '@/utils/chatFileParse';
-import { Plus, Trash2, ChevronLeft, ChevronRight, Home, ListOrdered, Database, BarChart3, KeyRound, FileText } from 'lucide-react';
+import { Plus, Trash2, ChevronLeft, ChevronRight, Home, ListOrdered, Database, BarChart3, KeyRound, FileText, ExternalLink } from 'lucide-react';
 import { AIKeysSettingsModal } from './AIKeysSettingsModal';
 import axios from 'axios';
 import type { AuthMeResponse, AuthMeUser } from '@/utils/authDisplay';
@@ -1955,6 +1956,11 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
     }
   };
 
+  const handleExternalOpen = async () => {
+    const result = await openCurrentPageExternally();
+    alert(getExternalOpenMessage(result));
+  };
+
   return (
     <div className="flex h-screen bg-gray-50 flex-col">
       {isSchematic && !chatPanelExpanded && (
@@ -1967,6 +1973,14 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
             >
               <Home size={20} />
             </Link>
+            <button
+              type="button"
+              onClick={handleExternalOpen}
+              className="p-2 hover:bg-sky-50 rounded-lg transition text-sky-700 hover:text-sky-900"
+              title="在外部浏览器打开"
+            >
+              <ExternalLink size={20} />
+            </button>
             <h1 className="text-xl font-bold text-gray-800 truncate">{title}</h1>
           </div>
           <div className="flex items-center space-x-4 shrink-0">
@@ -2088,6 +2102,16 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
               >
                 <Home size={20} />
               </Link>
+            )}
+            {!isSopMode && (
+              <button
+                type="button"
+                onClick={handleExternalOpen}
+                className="p-2 hover:bg-sky-50 rounded-lg transition text-sky-700 hover:text-sky-900"
+                title="在外部浏览器打开"
+              >
+                <ExternalLink size={20} />
+              </button>
             )}
             <h1 className="text-xl font-bold text-gray-800 truncate">
               {isSopMode && sopFromUrl ? sopFromUrl.name : title}

@@ -2624,21 +2624,18 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path == '/api/dingtalk/login':
             self.handle_dingtalk_login()
         
-        # 钉钉获取AccessToken API（新API）
+        # 已移除钉钉测试 API，保留正式 /api/dingtalk/login 免登链路
         elif self.path == '/api/dingtalk/get-access-token':
-            self.handle_dingtalk_get_access_token()
+            self.send_json_response({'success': False, 'error': '钉钉测试接口已移除'}, status=404)
         
-        # 钉钉获取用户信息API（使用access_token和授权码）
         elif self.path == '/api/dingtalk/get-user-info':
-            self.handle_dingtalk_get_user_info()
+            self.send_json_response({'success': False, 'error': '钉钉测试接口已移除'}, status=404)
         
-        # 钉钉获取部门列表API
         elif self.path == '/api/dingtalk/get-departments':
-            self.handle_dingtalk_get_departments()
+            self.send_json_response({'success': False, 'error': '钉钉测试接口已移除'}, status=404)
         
-        # 钉钉获取部门用户列表API
         elif self.path == '/api/dingtalk/get-department-users':
-            self.handle_dingtalk_get_department_users()
+            self.send_json_response({'success': False, 'error': '钉钉测试接口已移除'}, status=404)
         
         elif actual_path == '/api/quick-links/refresh-icons':
             if not self.check_auth():
@@ -4234,18 +4231,8 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
             self.serve_template('bom-comparison.html')
         elif self.path == '/announcement':
             self.serve_template('announcement.html')
-        elif self.path == '/dingtalk-token-test':
-            if not self.check_auth(require_super_admin=True):
-                return
-            self.serve_template('dingtalk-token-test.html')
-        elif self.path == '/dingtalk-department-test':
-            if not self.check_auth(require_super_admin=True):
-                return
-            self.serve_template('dingtalk-department-test.html')
-        elif self.path == '/dingtalk-user-test':
-            if not self.check_auth(require_super_admin=True):
-                return
-            self.serve_template('dingtalk-user-test.html')
+        elif self.path in ('/dingtalk-token-test', '/dingtalk-department-test', '/dingtalk-user-test'):
+            self.send_error(404, 'DingTalk test page removed')
         elif self.path == '/announcement-editor' or self.path.startswith('/announcement-editor?'):
             self.serve_template('announcement-editor.html')
         elif self.path.startswith('/announcement-version/'):

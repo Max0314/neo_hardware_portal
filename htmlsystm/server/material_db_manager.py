@@ -126,6 +126,12 @@ def verify_unlock_token(token: Optional[str], user_id: int, library_id: str) -> 
     return True
 
 
+def clear_unlock_tokens_for_library(library_id: str) -> None:
+    for token, entry in list(_unlock_tokens.items()):
+        if entry.get('library_id') == library_id:
+            _unlock_tokens.pop(token, None)
+
+
 def log_audit(
     user_id: Optional[int],
     user_display: str,
@@ -309,6 +315,7 @@ def update_library(
     if new_password and new_password.strip():
         pwd_hash = PasswordHasher.hash_password(new_password.strip())
         log_audit(user_id, user_display, 'change_password', lib_id, lib_name)
+        clear_unlock_tokens_for_library(lib_id)
 
     now = _now_str()
     pool = get_connection_pool()
@@ -331,6 +338,34 @@ def update_library(
             ),
         )
     log_audit(user_id, user_display, 'update_library', lib_id, lib_name)
+    return get_library(lib_id)
+
+
+def change_library_password(
+    lib_id: str,
+    new_password: str,
+    user_id: Optional[int],
+    user_display: str,
+) -> Dict[str, Any]:
+    row = _get_library_row(lib_id)
+    if not row:
+        raise ValueError('物料库不存在')
+    if not (new_password or '').strip():
+        raise ValueError('请设置新的物料库访问密码')
+
+    pwd_hash = PasswordHasher.hash_password(new_password.strip())
+    pool = get_connection_pool()
+    with pool.get_cursor() as cursor:
+        cursor.execute(
+            '''
+            UPDATE material_db_libraries
+            SET password_hash=%s, updated_at=%s
+            WHERE id=%s
+            ''',
+            (pwd_hash, _now_str(), lib_id),
+        )
+    clear_unlock_tokens_for_library(lib_id)
+    log_audit(user_id, user_display, 'change_password', lib_id, row.get('name'))
     return get_library(lib_id)
 
 

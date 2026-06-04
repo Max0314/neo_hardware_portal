@@ -16,6 +16,7 @@ import {
   unlockReplacementPairs,
 } from '@/utils/replacementPairsApi';
 import { fetchMaterialLibraries, extractMaterialCodesFromLibs } from '@/utils/materialDb';
+import { getExternalOpenMessage, openCurrentPageExternally } from '@/utils/externalOpen';
 
 function promptPassword(message: string): Promise<string | null> {
   return new Promise((resolve) => {
@@ -38,6 +39,10 @@ export function ReplacementPairsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editItemLines, setEditItemLines] = useState<{ code: string; name: string }[]>([]);
   const [editRemarkInput, setEditRemarkInput] = useState('');
+  const handleExternalOpen = async () => {
+    const result = await openCurrentPageExternally();
+    alert(getExternalOpenMessage(result));
+  };
 
   const persistGroups = useCallback(async (nextGroups: ReplacementGroup[]) => {
     await saveReplacementGroupsRemote(nextGroups);
@@ -296,6 +301,25 @@ export function ReplacementPairsPage() {
       <div className="max-w-5xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <Link
+                to="/"
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-sky-800 bg-white hover:text-sky-950 hover:bg-sky-50 transition-colors border border-sky-100 hover:border-sky-200 shadow-sm no-underline"
+                title="返回 NEO"
+              >
+                <i className="fas fa-arrow-left" aria-hidden />
+                <span>返回 NEO</span>
+              </Link>
+              <button
+                type="button"
+                onClick={handleExternalOpen}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-sky-800 bg-white hover:text-sky-950 hover:bg-sky-50 transition-colors border border-sky-100 hover:border-sky-200 shadow-sm"
+                title="在外部浏览器打开"
+              >
+                <i className="fas fa-up-right-from-square" aria-hidden />
+                <span>外部打开</span>
+              </button>
+            </div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
               <span className="text-blue-600">替换对管理</span>
             </h1>
@@ -326,12 +350,6 @@ export function ReplacementPairsPage() {
             >
               导入 Excel
             </button>
-            <Link
-              to="/"
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              返回 NEO
-            </Link>
             <a
               href={`${import.meta.env.BASE_URL}systm_tool/material-database.html`}
               className="px-4 py-2 text-sm font-medium text-blue-700 bg-white border border-blue-300 rounded-lg hover:bg-blue-50 no-underline"

@@ -473,28 +473,6 @@ export function HomePage() {
           </Link>
         </section>
 
-        {/* 活跃评审 + NEO Product life cycle */}
-        <div className="recent-mini">
-          <div className="recent-header">
-            <i className="fas fa-microchip" style={{ color: '#2C7DA0' }} />
-            <span style={{ fontWeight: 600, color: '#0F4B66' }}>活跃评审</span>
-          </div>
-          <div className="recent-tag">
-            <span className="neo-chip-small"><i className="fas fa-diagram-project" /> 5G前端PA_v4</span>
-            <span className="neo-chip-small"><i className="fas fa-bolt" /> 电源BOM成本</span>
-            <span className="neo-chip-small"><i className="fas fa-chart-line" /> 网表对比 · DDR</span>
-            <span className="neo-chip-small"><i className="fas fa-arrow-right" /> 所有项目</span>
-          </div>
-          <div className="product-life-row">
-            <span className="neo-chip-small" style={{ background: '#E4F0F7', borderColor: '#7FADCC' }}>
-              <i className="fas fa-sync-alt" /> NEO Product life cycle
-            </span>
-            <span className="product-life-desc">
-              <i className="fas fa-info-circle" style={{ color: '#3A7C9C' }} /> 代表着NEO公司下的所有产品管理
-            </span>
-          </div>
-        </div>
-
         {/* 底部 */}
         <footer className="neo-footer">
           <span><i className="fas fa-shield-halved" /> NEO Hardware AI · 评审套件 v2.0</span>

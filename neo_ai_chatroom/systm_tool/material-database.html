@@ -108,6 +108,30 @@
         .batch-status-ok { color: #059669; }
         .batch-status-err { color: #dc2626; }
         .batch-hint { font-size: 0.8rem; color: #64748b; margin-top: 8px; line-height: 1.5; }
+        .page-top-actions {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .page-top-action {
+            border: 1px solid #bfdbfe;
+            background: #ffffff;
+            color: #1d4ed8;
+            text-decoration: none;
+            border-radius: 12px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px -8px rgba(37, 99, 235, 0.35);
+        }
+        .page-top-action:hover { background: #eff6ff; }
         .link-import {
             color: #2563eb;
             text-decoration: none;
@@ -502,6 +526,10 @@
 <body>
 <div class="container">
     <div class="main-card">
+        <div class="page-top-actions">
+            <a href="../" class="page-top-action"><i class="fas fa-arrow-left"></i> 返回 NEO</a>
+            <button type="button" id="btnExternalOpen" class="page-top-action"><i class="fas fa-up-right-from-square"></i> 外部打开</button>
+        </div>
         <h1><i class="fas fa-database"></i> 物料数据库</h1>
         <div class="subtitle">
             <i class="fas fa-circle-info" style="margin-right: 8px;"></i>
@@ -516,7 +544,6 @@
                 <span id="currentUserBadge" class="user-badge" style="display:none;"></span>
             </div>
             <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-                <a href="../" class="link-import" style="margin-right: 8px;"><i class="fas fa-home"></i> 返回 NEO</a>
                 <a href="#" id="dingtalkOpenMaterialDb" class="link-import" style="display:none;" title="复制后在钉钉中打开"><i class="fas fa-mobile-screen"></i> 钉钉内打开</a>
                 <a href="../replacement-pairs" class="link-import"><i class="fas fa-right-left"></i> 替换对管理</a>
                 <a href="material-import.html" class="link-import"><i class="fas fa-file-import"></i> 前往三源聚合导入</a>
@@ -577,7 +604,7 @@
                 <label id="libPasswordLabel">访问密码 <span class="badge-required">必填</span></label>
                 <input type="password" id="libPassword" autocomplete="new-password" placeholder="上传/删除/下载前须验证此密码">
                 <input type="password" id="libPasswordConfirm" autocomplete="new-password" placeholder="再次输入密码" style="margin-top:8px;">
-                <p class="pwd-hint">密码仅用于校验，服务器保存哈希值，不会以明文存储或返回。</p>
+                <p class="pwd-hint" id="libPasswordHint">密码仅用于校验，服务器保存哈希值，不会以明文存储或返回。</p>
             </div>
             <div class="form-group">
                 <label>当前应用 Excel 物料表</label>
@@ -708,6 +735,32 @@
         <div class="modal-footer">
             <button type="button" class="btn-cancel" id="modalPasswordCancel">取消</button>
             <button type="button" class="btn-save" id="modalPasswordConfirm">确认</button>
+        </div>
+    </div>
+</div>
+
+<!-- 修改物料库密码 -->
+<div id="modalChangePassword" class="modal-overlay">
+    <div class="modal" style="max-width:440px;">
+        <div class="modal-header">
+            <h2 id="modalChangePasswordTitle">修改物料库密码</h2>
+            <button type="button" class="modal-close" id="modalChangePasswordClose">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="modalChangePasswordHint" class="pwd-hint" style="margin-bottom:12px;"></p>
+            <div class="form-group" id="changePasswordOldGroup">
+                <label>原访问密码 <span class="badge-required">必填</span></label>
+                <input type="password" id="changePasswordOld" autocomplete="current-password" placeholder="普通用户需输入原访问密码">
+            </div>
+            <div class="form-group">
+                <label>新访问密码 <span class="badge-required">必填</span></label>
+                <input type="password" id="changePasswordNew" autocomplete="new-password" placeholder="请输入新访问密码">
+                <input type="password" id="changePasswordConfirm" autocomplete="new-password" placeholder="再次输入新访问密码" style="margin-top:8px;">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" id="modalChangePasswordCancel">取消</button>
+            <button type="button" class="btn-save" id="modalChangePasswordSave">保存</button>
         </div>
     </div>
 </div>
@@ -925,6 +978,7 @@
 
     let libList = [];
     let editingId = null; // 编辑时的库 id
+    let changePasswordLibId = null;
     let tempWorkbook = null;
     let tempFileName = '';
     let tempSheetData = { headers: [], dataRows: [] };
@@ -939,6 +993,9 @@
     const modalLibSave = document.getElementById('modalLibSave');
     const libName = document.getElementById('libName');
     const libPrefix = document.getElementById('libPrefix');
+    const libPasswordGroup = document.getElementById('libPasswordGroup');
+    const libPasswordLabel = document.getElementById('libPasswordLabel');
+    const libPasswordHint = document.getElementById('libPasswordHint');
     const libPassword = document.getElementById('libPassword');
     const libPasswordConfirm = document.getElementById('libPasswordConfirm');
     const libFile = document.getElementById('libFile');
@@ -965,6 +1022,17 @@
     const modalHistoryClose = document.getElementById('modalHistoryClose');
     const historyList = document.getElementById('historyList');
     const historyEmpty = document.getElementById('historyEmpty');
+
+    const modalChangePassword = document.getElementById('modalChangePassword');
+    const modalChangePasswordTitle = document.getElementById('modalChangePasswordTitle');
+    const modalChangePasswordHint = document.getElementById('modalChangePasswordHint');
+    const modalChangePasswordClose = document.getElementById('modalChangePasswordClose');
+    const modalChangePasswordCancel = document.getElementById('modalChangePasswordCancel');
+    const modalChangePasswordSave = document.getElementById('modalChangePasswordSave');
+    const changePasswordOldGroup = document.getElementById('changePasswordOldGroup');
+    const changePasswordOld = document.getElementById('changePasswordOld');
+    const changePasswordNew = document.getElementById('changePasswordNew');
+    const changePasswordConfirm = document.getElementById('changePasswordConfirm');
 
     let previewCurrentData = null;
     let previewLibId = null;
@@ -1043,6 +1111,7 @@
                         <button type="button" class="btn-sm primary btn-view-current" data-id="${lib.id}"><i class="fas fa-eye"></i> 查看当前表</button>
                         <button type="button" class="btn-sm btn-history" data-id="${lib.id}"><i class="fas fa-history"></i> 历史</button>
                         <button type="button" class="btn-sm btn-edit" data-id="${lib.id}"><i class="fas fa-edit"></i> 编辑</button>
+                        <button type="button" class="btn-sm btn-change-password" data-id="${lib.id}"><i class="fas fa-key"></i> 修改密码</button>
                         <button type="button" class="btn-sm danger btn-delete" data-id="${lib.id}"><i class="fas fa-trash"></i> 删除</button>
                     </div>
                 </div>
@@ -1090,6 +1159,7 @@
         libGrid.querySelectorAll('.btn-view-current').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); openPreview(el.dataset.id, false); }));
         libGrid.querySelectorAll('.btn-history').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); openHistory(el.dataset.id); }));
         libGrid.querySelectorAll('.btn-edit').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); openEdit(el.dataset.id); }));
+        libGrid.querySelectorAll('.btn-change-password').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); openChangePassword(el.dataset.id); }));
         libGrid.querySelectorAll('.btn-delete').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); deleteLib(el.dataset.id); }));
         libGrid.querySelectorAll('.lib-card').forEach(card => {
             card.addEventListener('click', function(e) {
@@ -1336,12 +1406,26 @@
         return div.innerHTML;
     }
 
+    function currentUserRoles() {
+        const roles = currentUser && currentUser.roles;
+        if (Array.isArray(roles)) return roles;
+        if (typeof roles === 'string') return roles.split(',').map(r => r.trim()).filter(Boolean);
+        return [];
+    }
+
+    function isCurrentUserMaterialAdmin() {
+        const roles = currentUserRoles();
+        return roles.includes('admin') || roles.includes('management') || roles.includes('super_admin');
+    }
+
     function openAdd() {
         editingId = null;
         modalLibTitle.textContent = '新增物料库';
-        document.getElementById('libPasswordLabel').innerHTML = '访问密码 <span class="badge-required">必填</span>';
-        document.getElementById('libPassword').style.display = '';
-        document.getElementById('libPasswordConfirm').style.display = '';
+        libPasswordGroup.style.display = '';
+        libPasswordLabel.innerHTML = '访问密码 <span class="badge-required">必填</span>';
+        libPasswordHint.textContent = '密码仅用于校验，服务器保存哈希值，不会以明文存储或返回。';
+        libPassword.style.display = '';
+        libPasswordConfirm.style.display = '';
         libPassword.value = '';
         libPasswordConfirm.value = '';
         libName.value = '';
@@ -1359,7 +1443,7 @@
         if (!lib) return;
         editingId = id;
         modalLibTitle.textContent = '编辑物料库';
-        document.getElementById('libPasswordLabel').innerHTML = '修改访问密码（留空则不修改）';
+        libPasswordGroup.style.display = 'none';
         libPassword.value = '';
         libPasswordConfirm.value = '';
         libName.value = lib.name;
@@ -1480,13 +1564,11 @@
         try {
             if (editingId) {
                 await ensureUnlocked(editingId, '编辑物料库');
-                if (pwd && pwd !== pwd2) { alert('两次输入的密码不一致'); return; }
                 const token = getUnlockToken(editingId);
                 const body = { name: name, prefix: prefix, unlockToken: token };
                 if (newTableData) {
                     body.currentTable = { fileName: tempFileName, updatedAt: now, data: newTableData };
                 }
-                if (pwd) body.newPassword = pwd;
                 const headers = token ? { 'X-Material-Unlock-Token': token } : {};
                 const { ok, data } = await apiFetch(API_BASE + '/libraries/' + encodeURIComponent(editingId), {
                     method: 'PUT',
@@ -1526,6 +1608,66 @@
     modalLibClose.addEventListener('click', () => modalLib.classList.remove('show'));
     modalLibCancel.addEventListener('click', () => modalLib.classList.remove('show'));
     btnAddLib.addEventListener('click', openAdd);
+
+    function openChangePassword(id) {
+        const lib = libList.find(l => l.id === id);
+        if (!lib) return;
+        changePasswordLibId = id;
+        const isAdmin = isCurrentUserMaterialAdmin();
+        modalChangePasswordTitle.textContent = `修改密码 · ${lib.name || '物料库'}`;
+        modalChangePasswordHint.textContent = isAdmin
+            ? '管理员可直接设置新访问密码。保存后，该库已有解锁状态会立即失效。'
+            : '普通用户需输入原访问密码。保存后，该库已有解锁状态会立即失效。';
+        changePasswordOldGroup.style.display = isAdmin ? 'none' : '';
+        changePasswordOld.value = '';
+        changePasswordNew.value = '';
+        changePasswordConfirm.value = '';
+        modalChangePassword.classList.add('show');
+        setTimeout(() => (isAdmin ? changePasswordNew : changePasswordOld).focus(), 50);
+    }
+
+    function closeChangePasswordModal() {
+        modalChangePassword.classList.remove('show');
+        changePasswordLibId = null;
+    }
+
+    modalChangePasswordClose.addEventListener('click', closeChangePasswordModal);
+    modalChangePasswordCancel.addEventListener('click', closeChangePasswordModal);
+    modalChangePasswordSave.addEventListener('click', async function() {
+        if (!changePasswordLibId) return;
+        const isAdmin = isCurrentUserMaterialAdmin();
+        const oldPassword = changePasswordOld.value;
+        const newPassword = changePasswordNew.value;
+        const confirmPassword = changePasswordConfirm.value;
+        if (!isAdmin && !oldPassword) {
+            alert('请输入原访问密码');
+            return;
+        }
+        if (!newPassword) {
+            alert('请输入新访问密码');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            alert('两次输入的新密码不一致');
+            return;
+        }
+
+        const body = { newPassword: newPassword };
+        if (!isAdmin) body.oldPassword = oldPassword;
+        const { ok, data } = await apiFetch(API_BASE + '/libraries/' + encodeURIComponent(changePasswordLibId) + '/change-password', {
+            method: 'POST',
+            body: JSON.stringify(body)
+        });
+        if (!ok || !data.success) {
+            alert((data && data.error) || '修改密码失败');
+            return;
+        }
+        delete unlockCache[changePasswordLibId];
+        await reloadLibraries();
+        closeChangePasswordModal();
+        renderLibGrid();
+        alert('密码已修改');
+    });
 
     const btnBatchImport = document.getElementById('btnBatchImport');
     const modalBatchImport = document.getElementById('modalBatchImport');
@@ -2043,6 +2185,49 @@
     });
     document.getElementById('btnAuditRefresh').addEventListener('click', loadAuditLogs);
     document.getElementById('auditLibFilter').addEventListener('change', loadAuditLogs);
+
+    function copyTextFallback(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            return navigator.clipboard.writeText(text).then(() => true).catch(() => false);
+        }
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            const ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            return Promise.resolve(ok);
+        } catch (e) {
+            return Promise.resolve(false);
+        }
+    }
+
+    document.getElementById('btnExternalOpen').addEventListener('click', async function() {
+        const url = window.location.href;
+        try {
+            const openLink = window.dd && window.dd.biz && window.dd.biz.util && window.dd.biz.util.openLink;
+            if (openLink) {
+                openLink({ url: url });
+                return;
+            }
+            if (window.dd && window.dd.openLink) {
+                window.dd.openLink({ url: url });
+                return;
+            }
+        } catch (e) {
+            console.warn('钉钉外部打开失败', e);
+        }
+        const win = window.open(url, '_blank', 'noopener,noreferrer');
+        if (win) return;
+        if (await copyTextFallback(url)) {
+            alert('无法直接打开外部浏览器，已复制链接，请粘贴到系统浏览器打开。');
+        } else {
+            prompt('请复制以下链接到系统浏览器打开：', url);
+        }
+    });
 
     async function loadDingtalkOpenLink() {
         const linkEl = document.getElementById('dingtalkOpenMaterialDb');

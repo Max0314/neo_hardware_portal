@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
 import * as XLSX from 'xlsx';
 import './HomePage.css';
 import type { LeaderboardEntry } from '@/types/leaderboard';
 import { fetchLeaderboard } from '@/utils/leaderboardApi';
 import { formatNeoPoints } from '@/utils/neoPoints';
 import { appUrl } from '@/utils/apiBase';
+import { getExternalOpenMessage, openCurrentPageExternally } from '@/utils/externalOpen';
 
 export function LeaderboardPage() {
   const [leaderboardType, setLeaderboardType] = useState<'total' | 'month'>('month');
@@ -91,12 +91,30 @@ export function LeaderboardPage() {
     const filename = `积分排行榜_${leaderboardType === 'total' ? '总榜' : '月榜'}_${dateTag}.xlsx`;
     XLSX.writeFile(workbook, filename);
   };
+  const handleExternalOpen = async () => {
+    const result = await openCurrentPageExternally();
+    alert(getExternalOpenMessage(result));
+  };
 
   return (
     <div className="neo-home leaderboard-theme">
       <div className="neo-container">
         <header className="navbar">
           <div className="logo-area">
+            <div className="neo-page-actions">
+              <Link to="/" className="neo-page-action" title="返回首页">
+                <i className="fas fa-arrow-left" aria-hidden />
+                <span>返回首页</span>
+              </Link>
+              <a href={appUrl('/')} className="neo-page-action" title="返回硬件研发部管理系统">
+                <i className="fas fa-house" aria-hidden />
+                <span>管理系统</span>
+              </a>
+              <button type="button" className="neo-page-action subtle" onClick={handleExternalOpen} title="在外部浏览器打开">
+                <i className="fas fa-up-right-from-square" aria-hidden />
+                <span>外部打开</span>
+              </button>
+            </div>
             <div className="brand-title-wrap">
               <img src={`${import.meta.env.BASE_URL}logo.png`} alt="CHANGHONG NeoNet" className="brand-logo-inline" />
               <div className="brand-title-row">
@@ -105,13 +123,7 @@ export function LeaderboardPage() {
               </div>
             </div>
           </div>
-          <div className="nav-right">
-            <a href={appUrl('/')} className="nav-back-admin-link" title="返回硬件研发部管理系统">
-              <i className="fas fa-arrow-left" aria-hidden />
-              <span>返回管理系统</span>
-            </a>
-            <Link to="/" className="leaderboard-nav-link">返回首页</Link>
-          </div>
+          <div className="nav-right" />
         </header>
 
         <section className="leaderboard-page-section">

@@ -7,6 +7,7 @@ import { ActivityTicker } from '@/components/dashboard/ActivityTicker';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { KpiDetailModal } from '@/components/dashboard/KpiDetailModal';
 import { apiUrl } from '@/utils/apiBase';
+import { getExternalOpenMessage, openCurrentPageExternally } from '@/utils/externalOpen';
 import './HomePage.css';
 import './DashboardPage.css';
 
@@ -30,26 +31,28 @@ export function DashboardPage() {
   const s = stats;
   const fmt = (v: number | null | undefined, suffix = '') =>
     v != null ? `${v}${suffix}` : '--';
+  const handleExternalOpen = async () => {
+    const result = await openCurrentPageExternally();
+    alert(getExternalOpenMessage(result));
+  };
 
   return (
     <div className="neo-home dash-page">
       <div className="neo-container">
         <header className="navbar" style={{ marginBottom: '1.5rem' }}>
-          <div className="logo-area">
+          <div className="logo-area neo-page-actions">
             <Link
               to="/"
-              className="action-btn"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                textDecoration: 'none',
-                color: '#105A87',
-              }}
+              className="neo-page-action"
+              title="返回主页"
             >
               <i className="fas fa-arrow-left" />
               <span>返回主页</span>
             </Link>
+            <button type="button" className="neo-page-action subtle" onClick={handleExternalOpen} title="在外部浏览器打开">
+              <i className="fas fa-up-right-from-square" />
+              <span>外部打开</span>
+            </button>
           </div>
           <h1 className="logo-text" style={{ margin: 0, fontSize: '1.5rem' }}>
             <i className="fas fa-chart-line" style={{ marginRight: 8, color: '#1E749C' }} />

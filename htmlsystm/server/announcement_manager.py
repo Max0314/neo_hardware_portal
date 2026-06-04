@@ -1059,6 +1059,11 @@ class AnnouncementManager:
             editor: 编辑人（可选，用于记录最后编辑人）
             **updates: 要更新的字段（包括content, title, attachments等）
         """
+        if 'title' in updates:
+            updates['title'] = sanitize_announcement_title(updates.get('title'))
+        if 'content' in updates:
+            updates['content'] = sanitize_announcement_content(updates.get('content'))
+
         # 获取线程锁（防止同一进程内并发编辑）
         thread_lock = self._get_file_lock(announcement_id)
         

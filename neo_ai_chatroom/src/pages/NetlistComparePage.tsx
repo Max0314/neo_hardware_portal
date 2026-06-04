@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { apiUrl } from '@/utils/apiBase';
+import { getExternalOpenMessage, openCurrentPageExternally } from '@/utils/externalOpen';
 import { trackNeoPoints } from '@/utils/neoPoints';
 import { NetlistResultModal } from '../components/NetlistResultModal';
 
@@ -94,6 +95,10 @@ export const NetlistComparePage: React.FC = () => {
   const [resultId, setResultId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [copyHint, setCopyHint] = useState<string | null>(null);
+  const handleExternalOpen = async () => {
+    const result = await openCurrentPageExternally();
+    alert(getExternalOpenMessage(result));
+  };
 
   const handleFileUpload = useCallback(
     (file: File, setter: (content: string) => void, setName?: (name: string) => void) => {
@@ -178,11 +183,21 @@ export const NetlistComparePage: React.FC = () => {
         <div className="flex items-center gap-4 min-w-0">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/90 transition-colors border border-transparent hover:border-slate-200"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-sky-800 bg-white hover:text-sky-950 hover:bg-sky-50 transition-colors border border-sky-100 hover:border-sky-200 shadow-sm"
+            title="返回主页"
           >
             <i className="fas fa-arrow-left" aria-hidden />
             <span>返回主页</span>
           </Link>
+          <button
+            type="button"
+            onClick={handleExternalOpen}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-sky-800 bg-white hover:text-sky-950 hover:bg-sky-50 transition-colors border border-sky-100 hover:border-sky-200 shadow-sm"
+            title="在外部浏览器打开"
+          >
+            <i className="fas fa-up-right-from-square" aria-hidden />
+            <span>外部打开</span>
+          </button>
           <div className="h-8 w-px bg-slate-200 hidden sm:block" aria-hidden />
           <div className="min-w-0">
             <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900 truncate">

@@ -297,6 +297,49 @@
   font-size: 0.8rem;
 }
 
+.neo-page-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.neo-page-action {
+  text-decoration: none;
+  border: 1px solid rgba(31, 108, 158, 0.28);
+  background: #fff;
+  color: #0f5885;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  box-shadow: 0 4px 12px -6px rgba(20, 80, 120, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  flex-shrink: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.neo-page-action:hover {
+  filter: brightness(1.02);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px -8px rgba(20, 80, 120, 0.35);
+  color: #0a4570;
+}
+
+.neo-page-action i {
+  color: #1f6c9e;
+  font-size: 0.85rem;
+}
+
+.neo-page-action.subtle {
+  background: #f6fbff;
+  border-color: rgba(31, 108, 158, 0.18);
+}
+
 .avatar {
   background: linear-gradient(145deg, #1F6390, #1D7AB0);
   width: 36px;
@@ -1064,60 +1107,6 @@
 }
 .bi-card:hover .bar {
   background: #59A5D1;
-}
-
-.recent-mini {
-  margin-top: 3rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid rgba(37,99,235,0.08);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.recent-header {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.recent-tag {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
-.neo-chip-small {
-  background: white;
-  padding: 6px 18px;
-  border-radius: 40px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #1D5980;
-  border: 0.6px solid #C1D9E8;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: 0.1s;
-}
-.neo-chip-small i {
-  color: #2C7DA0;
-}
-
-.product-life-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-top: 4px;
-}
-.product-life-desc {
-  font-size: 0.8rem;
-  color: #3C748C;
-  background: rgba(44,125,160,0.04);
-  padding: 4px 14px;
-  border-radius: 60px;
-  border: 0.5px dashed #93B7CC;
 }
 
 .neo-footer {

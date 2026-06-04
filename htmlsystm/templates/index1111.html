@@ -976,67 +976,6 @@
             }
         }
         
-        /* 钉钉测试按钮容器 - 保持小方块形式 */
-        .dingtalk-container {
-            grid-column: 1 / -1;
-            margin-top: 10px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-        }
-        
-        .dingtalk-mini-card {
-            background: white;
-            border-radius: 8px;
-            padding: 10px 15px;
-            box-shadow: var(--card-shadow);
-            transition: all 0.3s;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            border: 2px dashed transparent;
-        }
-        
-        .dingtalk-mini-card:hover {
-            transform: translateY(-3px);
-            box-shadow: var(--hover-shadow);
-        }
-        
-        .dingtalk-mini-card.token {
-            border-color: #9b59b6;
-        }
-        
-        .dingtalk-mini-card.department {
-            border-color: #16a085;
-        }
-        
-        .dingtalk-mini-card.user {
-            border-color: #e67e22;
-        }
-        
-        .dingtalk-mini-card i {
-            font-size: 1.2rem;
-        }
-        
-        .dingtalk-mini-card.token i {
-            color: #9b59b6;
-        }
-        
-        .dingtalk-mini-card.department i {
-            color: #16a085;
-        }
-        
-        .dingtalk-mini-card.user i {
-            color: #e67e22;
-        }
-        
-        .dingtalk-mini-card span {
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-        
         /* 调试模式切换按钮 - 参考文件 */
         .debug-toggle {
             position: fixed;
@@ -1236,22 +1175,6 @@
                     </div>
                     
                     <!-- 钉钉测试功能 - 迷你按钮形式 -->
-                    <div id="dingtalkTestCards" style="display: none; grid-column: 1 / -1; margin-top: 10px;">
-                        <div class="dingtalk-container">
-                            <div class="dingtalk-mini-card token" onclick="navigateTo('dingtalk-token-test')">
-                                <i class="fas fa-key"></i>
-                                <span>钉钉Token测试</span>
-                            </div>
-                            <div class="dingtalk-mini-card department" onclick="navigateTo('dingtalk-department-test')">
-                                <i class="fas fa-building"></i>
-                                <span>钉钉部门列表</span>
-                            </div>
-                            <div class="dingtalk-mini-card user" onclick="navigateTo('dingtalk-user-test')">
-                                <i class="fas fa-users"></i>
-                                <span>钉钉部门用户</span>
-                            </div>
-                        </div>
-                    </div>
                 </div>
                 
                 <!-- 快捷链接区域 -->
@@ -1543,14 +1466,6 @@
                         boardBtn.style.display = 'flex';
                     }
                     
-                    // 仅最高管理员可见钉钉测试功能
-                    if (isSuperAdmin) {
-                        const dingtalkTestCards = document.getElementById('dingtalkTestCards');
-                        if (dingtalkTestCards) {
-                            dingtalkTestCards.style.display = 'block';
-                        }
-                    }
-                    
                     // 保存用户信息到sessionStorage
                     sessionStorage.setItem('user', JSON.stringify(result.user));
                 } else {
@@ -1589,15 +1504,6 @@
                     break;
                 case 'bom-comparison':
                     window.location.href = '/bom-comparison';
-                    break;
-                case 'dingtalk-token-test':
-                    window.location.href = '/dingtalk-token-test';
-                    break;
-                case 'dingtalk-department-test':
-                    window.location.href = '/dingtalk-department-test';
-                    break;
-                case 'dingtalk-user-test':
-                    window.location.href = '/dingtalk-user-test';
                     break;
                 default:
                     alert('功能开发中...');
@@ -1908,7 +1814,7 @@
             });
             
             // 为所有卡片添加点击效果
-            const cards = document.querySelectorAll('.card, .quick-link-item, .ai-item, .announcement-item, .dingtalk-mini-card');
+            const cards = document.querySelectorAll('.card, .quick-link-item, .ai-item, .announcement-item');
             cards.forEach(card => {
                 card.addEventListener('click', function() {
                     this.style.transform = 'scale(0.98)';

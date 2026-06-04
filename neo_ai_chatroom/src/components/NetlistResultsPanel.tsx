@@ -5,6 +5,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { apiUrl } from '@/utils/apiBase';
+import { getExternalOpenMessage, isDingTalkBrowser, openCurrentPageExternally } from '@/utils/externalOpen';
 import { NetlistResultModal } from './NetlistResultModal';
 import { SchematicReviewPanel } from './SchematicReviewPanel';
 import { formatNetConnectionsFull } from '@/utils/schematicReview';
@@ -256,7 +257,7 @@ const ClassicNetlistResultsPanel: React.FC<NetlistResultsPanelProps> = ({
   };
 
   // 导出当前评审结果为 PDF（通过浏览器打印为 PDF 实现）
-  const handleExportReview = () => {
+  const handleExportReview = async () => {
     try {
       const lines: string[] = [];
       lines.push('<!DOCTYPE html><html><head><meta charSet="utf-8" />');
@@ -414,9 +415,19 @@ const ClassicNetlistResultsPanel: React.FC<NetlistResultsPanelProps> = ({
       lines.push('</div>');
 
       lines.push('</body></html>');
+      if (isDingTalkBrowser()) {
+        const result = await openCurrentPageExternally();
+        alert(`钉钉内置浏览器无法稳定导出 PDF，${getExternalOpenMessage(result)}`);
+        return;
+      }
+
       const html = lines.join('\n');
       const win = window.open('', '_blank');
-      if (!win) return;
+      if (!win) {
+        const result = await openCurrentPageExternally();
+        alert(`无法打开打印窗口，${getExternalOpenMessage(result)}`);
+        return;
+      }
       win.document.open();
       win.document.write(html);
       win.document.close();

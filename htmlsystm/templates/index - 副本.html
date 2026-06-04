@@ -1211,20 +1211,6 @@
                         </div>
                     </div>
                     
-                    <!-- 钉钉测试功能（仅最高管理员可见） - 迷你按钮形式 -->
-                    <div id="dingtalkTestCards" style="display: none; grid-column: 1 / -1; margin-top: 10px;">
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <button class="btn btn-secondary" style="background:#9b59b6; color:#fff; padding:10px 14px; border-radius:6px; font-size:0.9rem;" onclick="navigateTo('dingtalk-token-test')">
-                                <i class="fas fa-key"></i> 钉钉Token测试
-                            </button>
-                            <button class="btn btn-secondary" style="background:#16a085; color:#fff; padding:10px 14px; border-radius:6px; font-size:0.9rem;" onclick="navigateTo('dingtalk-department-test')">
-                                <i class="fas fa-building"></i> 钉钉部门列表
-                            </button>
-                            <button class="btn btn-secondary" style="background:#e67e22; color:#fff; padding:10px 14px; border-radius:6px; font-size:0.9rem;" onclick="navigateTo('dingtalk-user-test')">
-                                <i class="fas fa-users"></i> 钉钉部门用户
-                            </button>
-                        </div>
-                    </div>
                 </div>
                 
                 <!-- 快捷链接区域 -->
@@ -1432,14 +1418,6 @@
                         boardBtn.style.display = 'flex';
                     }
                     
-                    // 仅最高管理员可见钉钉测试功能
-                    if (isSuperAdmin) {
-                        const dingtalkTestCards = document.getElementById('dingtalkTestCards');
-                        if (dingtalkTestCards) {
-                            dingtalkTestCards.style.display = 'block';
-                        }
-                    }
-                    
                     // 保存用户信息到sessionStorage
                     sessionStorage.setItem('user', JSON.stringify(result.user));
                 } else {
@@ -1468,15 +1446,6 @@
                     break;
                 case 'material-approval':
                     window.location.href = '/material-management-center?tab=pending';
-                    break;
-                case 'dingtalk-token-test':
-                    window.location.href = '/dingtalk-token-test';
-                    break;
-                case 'dingtalk-department-test':
-                    window.location.href = '/dingtalk-department-test';
-                    break;
-                case 'dingtalk-user-test':
-                    window.location.href = '/dingtalk-user-test';
                     break;
                 default:
                     alert('功能开发中...');
