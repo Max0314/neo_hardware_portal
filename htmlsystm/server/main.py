@@ -6524,12 +6524,25 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
         text: str = None,
         max_retries: int = None,
         retry_delay: float = None,
+        allow_super_admin: bool = False,
     ) -> tuple:
-        """发送钉钉工作通知。Returns: (success, error_message)"""
+        """发送钉钉工作通知。Returns: (success, error_message)
+
+        allow_super_admin=True 时仅去重去空、不排除超级管理员；用于审批通知
+        （审批人由发布人主动指定，即使是超管也应收到，否则会被 _filter_valid_todo_userids
+        静默过滤掉，导致“审批人收不到通知”）。
+        """
         from server.dingtalk_notify_util import send_corpconversation_with_retry
 
         resolved = self._resolve_dingtalk_userids(userids)
-        valid_userids = self._filter_valid_todo_userids(resolved)
+        if allow_super_admin:
+            valid_userids = []
+            for uid in resolved:
+                u = str(uid).strip() if uid is not None else ''
+                if u and u not in valid_userids:
+                    valid_userids.append(u)
+        else:
+            valid_userids = self._filter_valid_todo_userids(resolved)
         if not valid_userids:
             return False, '没有有效的待通知用户 userid'
 
@@ -6607,6 +6620,7 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
                     userids=[approver_userid],
                     access_token=access_token,
                     text=notification_text,
+                    allow_super_admin=True,
                 )
                 if success:
                     logger.info(f"成功发送审批通知给审批人: {approver_identifier} (userid={approver_userid})")
@@ -6635,6 +6649,7 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
                 userids=userids,
                 access_token=access_token,
                 text=notification_text,
+                allow_super_admin=True,
             )
             if success:
                 logger.info(f"成功发送审批通知给 {len(userids)} 位审批人")
