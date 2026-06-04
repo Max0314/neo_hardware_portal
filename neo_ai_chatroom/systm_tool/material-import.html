@@ -361,7 +361,7 @@
 <body class="neo-tool">
 <div class="container">
     <div class="main-card">
-        <h1><i class="fas fa-merge"></i> 物料聚合 · 替换策略 <span class="strategy-badge"><i class="fas-regular fa-pen"></i> 优选库决定增删</span></h1>
+        <h1><i class="fas fa-code-merge"></i> 物料聚合 · 替换策略 <span class="strategy-badge"><i class="far fa-pen"></i> 优选库决定增删</span></h1>
         <div class="subtitle">
             <i class="fas fa-circle-info" style="margin-right: 8px;"></i> 
             <strong>替换规则：</strong>若优选库已配置，物料列表以优选库为准（增删同步）；成本采购仅更新价格；现有库提供物料描述和 pads库物料描述。预览显示所有字段，下载Excel包含六列。
@@ -402,7 +402,7 @@
                 </div>
                 <!-- sheet 选择 -->
                 <div id="materialSheetSection" class="sheet-section" style="display: none;">
-                    <label><i class="fas fa-sheet-plain"></i> 选择工作表:</label>
+                    <label><i class="fas fa-file-lines"></i> 选择工作表:</label>
                     <select id="materialSheetSelect" class="sheet-select"></select>
                 </div>
                 <!-- 列映射区域 -->
@@ -427,7 +427,7 @@
                     <button id="clearCost" class="clear-btn" style="display: none;"><i class="fas fa-times"></i> 清除</button>
                 </div>
                 <div id="costSheetSection" class="sheet-section" style="display: none;">
-                    <label><i class="fas fa-sheet-plain"></i> 选择工作表:</label>
+                    <label><i class="fas fa-file-lines"></i> 选择工作表:</label>
                     <select id="costSheetSelect" class="sheet-select"></select>
                 </div>
                 <div id="costMapping" class="mapping-section" style="display: none;">
@@ -450,7 +450,7 @@
                     <button id="clearPrefer" class="clear-btn" style="display: none;"><i class="fas fa-times"></i> 清除</button>
                 </div>
                 <div id="preferSheetSection" class="sheet-section" style="display: none;">
-                    <label><i class="fas fa-sheet-plain"></i> 选择工作表:</label>
+                    <label><i class="fas fa-file-lines"></i> 选择工作表:</label>
                     <select id="preferSheetSelect" class="sheet-select"></select>
                 </div>
                 <div id="preferMapping" class="mapping-section" style="display: none;">
@@ -556,7 +556,7 @@
             </div>
         </div>
         <div class="footer-note">
-            <i class="fas-regular fa-clipboard"></i> 替换策略：若优选库已配置，物料列表完全取自优选库（实现增删）；成本价格取自成本采购；物料描述取自现有库；<strong>pads库物料描述</strong>取自现有库的替代组标签，<strong>替代组标签</strong>优先取自优选库（若映射），否则回退到现有库的替代组标签。
+            <i class="far fa-clipboard"></i> 替换策略：若优选库已配置，物料列表完全取自优选库（实现增删）；成本价格取自成本采购；物料描述取自现有库；<strong>pads库物料描述</strong>取自现有库的替代组标签，<strong>替代组标签</strong>优先取自优选库（若映射），否则回退到现有库的替代组标签。
         </div>
     </div>
 </div>
