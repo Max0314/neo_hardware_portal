@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Upload, Plus, Trash2, FileText } from 'lucide-react';
+import { X, Upload, Plus, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import { apiUrl } from '@/utils/apiBase';
 
@@ -500,7 +500,6 @@ export const KnowledgeBaseModal: React.FC<KnowledgeBaseModalProps> = ({
 
     // 检查文件类型
     const validTypes = ['.txt', '.json', 'text/plain', 'application/json'];
-    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
     const isValidType = validTypes.some(type => 
       file.name.toLowerCase().endsWith(type) || file.type.includes(type)
     );

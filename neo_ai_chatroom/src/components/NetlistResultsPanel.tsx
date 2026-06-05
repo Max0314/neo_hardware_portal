@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { apiUrl } from '@/utils/apiBase';
-import { getExternalOpenMessage, isDingTalkBrowser, openCurrentPageExternally } from '@/utils/externalOpen';
+import { printHtmlDocument, getPrintMessage } from '@/utils/externalOpen';
 import { NetlistResultModal } from './NetlistResultModal';
 import { SchematicReviewPanel } from './SchematicReviewPanel';
 import { formatNetConnectionsFull } from '@/utils/schematicReview';
@@ -28,6 +28,7 @@ export interface AIReviewEntry {
 }
 
 interface NetlistResultsPanelProps {
+  aiReviewRound?: number;
   selectedResultId: string | null;
   resultType: 'comparison' | 'analysis' | null;
   onResultSelected?: (id: string, type: 'comparison' | 'analysis') => void;
@@ -87,8 +88,9 @@ const ClassicNetlistResultsPanel: React.FC<NetlistResultsPanelProps> = ({
     if (aggregatedReviewSummary) setActiveTab('summary');
   }, [aggregatedReviewSummary]);
   const [results, setResults] = useState<NetlistResult[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [analysisData, setAnalysisData] = useState<any>(null);
+  const [comparisonData, setComparisonData] = useState<any>(null);
   const [reviewData, setReviewData] = useState<any>(null);
   const [summaryData, setSummaryData] = useState<any>(null);
   const [checklistData, setChecklistData] = useState<any>(null);
@@ -106,7 +108,7 @@ const ClassicNetlistResultsPanel: React.FC<NetlistResultsPanelProps> = ({
     }
   }, [selectedResultId]);
 
-  // 当选中结果ID变化时，加载对应的数据（右侧栏不再展示对比类型）
+  // 当选中结果ID变化时，加载对应的数据（comparison → 对比视图，analysis → 解析标签页）
   useEffect(() => {
     if (selectedResultId) {
       loadResultData(selectedResultId, resultType || 'analysis');
@@ -136,9 +138,11 @@ const ClassicNetlistResultsPanel: React.FC<NetlistResultsPanelProps> = ({
       if (response.data.success) {
         const data = response.data.data;
         if (data.type === 'comparison') {
+          setComparisonData(data.result);
           return;
         }
         if (data.type === 'analysis') {
+          setComparisonData(null);
           setAnalysisData(data.result);
           extractReviewData(data.result);
         }
@@ -225,10 +229,6 @@ const ClassicNetlistResultsPanel: React.FC<NetlistResultsPanelProps> = ({
     return checklist;
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('zh-CN');
-  };
 
   // 判断各功能是否完成
   const isAnalysisCompleted = !!analysisData;
@@ -415,29 +415,19 @@ const ClassicNetlistResultsPanel: React.FC<NetlistResultsPanelProps> = ({
       lines.push('</div>');
 
       lines.push('</body></html>');
-      if (isDingTalkBrowser()) {
-        const result = await openCurrentPageExternally();
-        alert(`钉钉内置浏览器无法稳定导出 PDF，${getExternalOpenMessage(result)}`);
-        return;
-      }
-
       const html = lines.join('\n');
-      const win = window.open('', '_blank');
-      if (!win) {
-        const result = await openCurrentPageExternally();
-        alert(`无法打开打印窗口，${getExternalOpenMessage(result)}`);
-        return;
+      const result = await printHtmlDocument(html);
+      if (result === 'external' || result === 'failed') {
+        alert(getPrintMessage(result));
       }
-      win.document.open();
-      win.document.write(html);
-      win.document.close();
-      win.focus();
-      // 让用户使用浏览器的“另存为 PDF”
-      win.print();
     } catch (e) {
       console.error('导出评审结果失败', e);
     }
   };
+
+  if (resultType === 'comparison') {
+    return <ComparisonResultView data={comparisonData} />;
+  }
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -539,581 +529,49 @@ const ClassicNetlistResultsPanel: React.FC<NetlistResultsPanelProps> = ({
   );
 };
 
-// 对比结果标签页
-const ComparisonTab: React.FC<{
-  readOnly?: boolean;
-  data: any;
-  results: NetlistResult[];
-  onSelectResult: (id: string) => void;
-  onViewDetails: (id: string) => void;
-  onResultCreated?: (id: string, type?: 'comparison' | 'analysis') => void;
-  onRefreshResults?: () => void;
-}> = ({ readOnly, data, results, onSelectResult, onViewDetails, onResultCreated, onRefreshResults }) => {
-  const [netlist1, setNetlist1] = React.useState('');
-  const [netlist2, setNetlist2] = React.useState('');
-  const [netlist1Name, setNetlist1Name] = React.useState('网表1');
-  const [netlist2Name, setNetlist2Name] = React.useState('网表2');
-  const [loading, setLoading] = React.useState(false);
-  const [comparisonResult, setComparisonResult] = React.useState<any>(data);
-  const [selectedDetail, setSelectedDetail] = React.useState<string | null>(null);
-  const fileInput1Ref = React.useRef<HTMLInputElement>(null);
-  const fileInput2Ref = React.useRef<HTMLInputElement>(null);
-  const comparisonResults = results.filter(r => r.type === 'comparison');
 
-  // 当外部data变化时更新本地状态
-  React.useEffect(() => {
-    setComparisonResult(data);
-  }, [data]);
-
-  const handleFileUpload = async (file: File, setter: (content: string) => void, setName?: (name: string) => void) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      setter(content);
-      if (setName) {
-        setName(file.name.replace(/\.(asc|txt)$/i, ''));
-      }
-    };
-    reader.onerror = () => {
-      alert('文件读取失败');
-    };
-    reader.readAsText(file, 'UTF-8');
-  };
-
-  const handleCompare = async () => {
-    if (!netlist1.trim() || !netlist2.trim()) {
-      alert('请提供两个网表内容');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await axios.post(apiUrl('/api/netlist/compare'), {
-        netlist1: netlist1,
-        netlist2: netlist2,
-        netlist1_name: netlist1Name,
-        netlist2_name: netlist2Name
-      });
-
-      if (response.data.success) {
-        // 直接使用返回的对比结果，如果没有则加载
-        if (response.data.result) {
-          setComparisonResult(response.data.result);
-        } else {
-          // 如果没有直接返回结果，则加载
-          const resultResponse = await axios.get(apiUrl(`/api/netlist/result/${response.data.result_id}`));
-          if (resultResponse.data.success) {
-            setComparisonResult(resultResponse.data.data.result);
-          }
-        }
-        // 通知父组件更新结果ID
-        if (onResultCreated) {
-          onResultCreated(response.data.result_id);
-        }
-      } else {
-        alert(`对比失败: ${response.data.error}`);
-      }
-    } catch (error: any) {
-      console.error('对比失败:', error);
-      alert(`对比失败: ${error.response?.data?.error || error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleClear = () => {
-    setNetlist1('');
-    setNetlist2('');
-    setNetlist1Name('网表1');
-    setNetlist2Name('网表2');
-    setComparisonResult(null);
-  };
-  
+// 网表对比结果视图（右侧面板展示对比结果，与独立 NetlistComparePage 同一数据结构）
+const ComparisonResultView: React.FC<{ data: any }> = ({ data }) => {
+  if (!data) {
+    return <div className="p-4 text-sm text-gray-500">正在加载对比结果…</div>;
+  }
+  const toIds = (v: any): string[] => (Array.isArray(v) ? v.map((x) => String(x)) : []);
+  const sections = [
+    { label: '新增元件', ids: toIds(data.added_components), color: 'text-green-600' },
+    { label: '移除元件', ids: toIds(data.removed_components), color: 'text-red-600' },
+    { label: '修改元件', ids: toIds(data.changed_components), color: 'text-amber-600' },
+    { label: '新增网络', ids: toIds(data.added_nets), color: 'text-green-600' },
+    { label: '移除网络', ids: toIds(data.removed_nets), color: 'text-red-600' },
+    { label: '修改网络', ids: toIds(data.changed_nets), color: 'text-amber-600' },
+  ];
   return (
-    <div className="flex flex-col h-full">
-      {/* 输入区域 - SOP 模式下禁止输入 */}
-      {!readOnly ? (
-      <div className="flex-shrink-0 border-b p-4 bg-gray-50">
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          {/* 网表1 */}
-          <div className="border rounded-lg p-3 bg-white">
-            <div className="flex justify-between items-center mb-2">
-              <label className="font-semibold text-sm">网表 1</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={netlist1Name}
-                  onChange={(e) => setNetlist1Name(e.target.value)}
-                  placeholder="网表名称"
-                  className="px-2 py-1 border rounded text-xs w-24"
-                />
-                <input
-                  type="file"
-                  ref={fileInput1Ref}
-                  accept=".asc,.txt"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      handleFileUpload(file, setNetlist1, setNetlist1Name);
-                    }
-                  }}
-                  className="hidden"
-                />
-                <button
-                  onClick={() => fileInput1Ref.current?.click()}
-                  className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
-                >
-                  上传
-                </button>
-              </div>
-            </div>
-            <textarea
-              value={netlist1}
-              onChange={(e) => setNetlist1(e.target.value)}
-              placeholder="粘贴第一个网表内容，或点击上传文件..."
-              className="w-full h-32 p-2 border rounded font-mono text-xs resize-none"
-            />
-          </div>
-
-          {/* 网表2 */}
-          <div className="border rounded-lg p-3 bg-white">
-            <div className="flex justify-between items-center mb-2">
-              <label className="font-semibold text-sm">网表 2</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={netlist2Name}
-                  onChange={(e) => setNetlist2Name(e.target.value)}
-                  placeholder="网表名称"
-                  className="px-2 py-1 border rounded text-xs w-24"
-                />
-                <input
-                  type="file"
-                  ref={fileInput2Ref}
-                  accept=".asc,.txt"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      handleFileUpload(file, setNetlist2, setNetlist2Name);
-                    }
-                  }}
-                  className="hidden"
-                />
-                <button
-                  onClick={() => fileInput2Ref.current?.click()}
-                  className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
-                >
-                  上传
-                </button>
-              </div>
-            </div>
-            <textarea
-              value={netlist2}
-              onChange={(e) => setNetlist2(e.target.value)}
-              placeholder="粘贴第二个网表内容，或点击上传文件..."
-              className="w-full h-32 p-2 border rounded font-mono text-xs resize-none"
-            />
-          </div>
-        </div>
-        
-        {/* 操作按钮 */}
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={handleClear}
-            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition text-sm"
-          >
-            清空
-          </button>
-          <button
-            onClick={handleCompare}
-            disabled={loading || !netlist1 || !netlist2}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
-          >
-            {loading ? '对比中...' : '开始对比'}
-          </button>
-        </div>
+    <div className="flex flex-col h-full bg-white">
+      <div className="flex items-center border-b bg-gray-50 flex-shrink-0 px-4 py-3">
+        <h3 className="text-sm font-semibold text-gray-800">网表对比结果</h3>
       </div>
-      ) : (
-        <div className="flex-shrink-0 border-b p-3 bg-amber-50 text-amber-800 text-sm">
-          SOP 模式下禁止输入，仅可查阅对比结果。
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3">
+        <div className="grid grid-cols-3 gap-2">
+          {sections.map((s) => (
+            <div key={s.label} className="rounded-lg border bg-white p-2 text-center">
+              <div className={`text-lg font-bold ${s.color}`}>{s.ids.length}</div>
+              <div className="text-xs text-gray-500">{s.label}</div>
+            </div>
+          ))}
         </div>
-      )}
-
-      {/* 对比结果区域 - 可滚动 */}
-      <div className="flex-1 overflow-auto p-4">
-        {comparisonResult ? (
-          <div>
-            <h3 className="text-lg font-semibold mb-4">对比结果</h3>
-            
-            {/* 总元件数统计 - 可点击查看 */}
-            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-              <div className="grid grid-cols-2 gap-4">
-                <div 
-                  onClick={() => setSelectedDetail(selectedDetail === 'all_components1' ? null : 'all_components1')}
-                  className="cursor-pointer hover:bg-gray-100 p-2 rounded transition"
-                >
-                  <div className="text-sm text-gray-600 mb-1">网表1总元件数</div>
-                  <div className="text-2xl font-bold text-gray-800">
-                    {Object.keys(comparisonResult.components1 || {}).length}
-                  </div>
-                </div>
-                <div 
-                  onClick={() => setSelectedDetail(selectedDetail === 'all_components2' ? null : 'all_components2')}
-                  className="cursor-pointer hover:bg-gray-100 p-2 rounded transition"
-                >
-                  <div className="text-sm text-gray-600 mb-1">网表2总元件数</div>
-                  <div className="text-2xl font-bold text-gray-800">
-                    {Object.keys(comparisonResult.components2 || {}).length}
-                  </div>
-                </div>
-              </div>
+        {sections.filter((s) => s.ids.length > 0).map((s) => (
+          <div key={s.label} className="rounded-lg border">
+            <div className={`px-3 py-1.5 text-xs font-semibold border-b bg-gray-50 ${s.color}`}>
+              {s.label}（{s.ids.length}）
             </div>
-            
-            <div className="grid grid-cols-4 gap-4 mb-6">
-              <div 
-                onClick={() => setSelectedDetail(selectedDetail === 'added_components' ? null : 'added_components')}
-                className="bg-blue-50 p-4 rounded-lg text-center cursor-pointer hover:bg-blue-100 transition"
-              >
-                <div className="text-2xl font-bold text-blue-600">
-                  {comparisonResult.added_components?.length || 0}
-                </div>
-                <div className="text-sm text-gray-600">新增元件</div>
-              </div>
-              <div 
-                onClick={() => setSelectedDetail(selectedDetail === 'removed_components' ? null : 'removed_components')}
-                className="bg-red-50 p-4 rounded-lg text-center cursor-pointer hover:bg-red-100 transition"
-              >
-                <div className="text-2xl font-bold text-red-600">
-                  {comparisonResult.removed_components?.length || 0}
-                </div>
-                <div className="text-sm text-gray-600">移除元件</div>
-              </div>
-              <div 
-                onClick={() => setSelectedDetail(selectedDetail === 'changed_components' ? null : 'changed_components')}
-                className="bg-yellow-50 p-4 rounded-lg text-center cursor-pointer hover:bg-yellow-100 transition"
-              >
-                <div className="text-2xl font-bold text-yellow-600">
-                  {comparisonResult.changed_components?.length || 0}
-                </div>
-                <div className="text-sm text-gray-600">修改元件</div>
-              </div>
-              <div 
-                onClick={() => setSelectedDetail(selectedDetail === 'added_nets' ? null : 'added_nets')}
-                className="bg-green-50 p-4 rounded-lg text-center cursor-pointer hover:bg-green-100 transition"
-              >
-                <div className="text-2xl font-bold text-green-600">
-                  {comparisonResult.added_nets?.length || 0}
-                </div>
-                <div className="text-sm text-gray-600">新增网络</div>
-              </div>
-            </div>
-            
-            {/* 详细数据表格 */}
-            {selectedDetail && (
-              <div className="mt-4 border rounded-lg p-4 bg-white">
-                <div className="flex justify-between items-center mb-3">
-                  <h4 className="font-semibold">
-                    {selectedDetail === 'all_components1' && '网表1所有元件列表'}
-                    {selectedDetail === 'all_components2' && '网表2所有元件列表'}
-                    {selectedDetail === 'added_components' && '新增元件列表'}
-                    {selectedDetail === 'removed_components' && '移除元件列表'}
-                    {selectedDetail === 'changed_components' && '修改元件列表'}
-                    {selectedDetail === 'added_nets' && '新增网络列表'}
-                    {selectedDetail === 'removed_nets' && '移除网络列表'}
-                    {selectedDetail === 'changed_nets' && '修改网络列表'}
-                  </h4>
-                  <button
-                    onClick={() => setSelectedDetail(null)}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div className="max-h-64 overflow-auto">
-                  {selectedDetail === 'all_components1' && (
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 sticky top-0">
-                        <tr>
-                          <th className="px-3 py-2 text-left">元件ID</th>
-                          <th className="px-3 py-2 text-left">类型</th>
-                          <th className="px-3 py-2 text-left">元件名称</th>
-                          <th className="px-3 py-2 text-left">值</th>
-                          <th className="px-3 py-2 text-left">封装</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Object.entries(comparisonResult.components1 || {}).map(([compId, comp]: [string, any]) => (
-                          <tr key={compId} className="hover:bg-gray-50">
-                            <td className="px-3 py-2">{compId}</td>
-                            <td className="px-3 py-2">{comp.type}</td>
-                            <td className="px-3 py-2 font-mono text-xs">{comp.part_number || compId}</td>
-                            <td className="px-3 py-2">{comp.value}</td>
-                            <td className="px-3 py-2">{comp.package}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                  
-                  {selectedDetail === 'all_components2' && (
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 sticky top-0">
-                        <tr>
-                          <th className="px-3 py-2 text-left">元件ID</th>
-                          <th className="px-3 py-2 text-left">类型</th>
-                          <th className="px-3 py-2 text-left">元件名称</th>
-                          <th className="px-3 py-2 text-left">值</th>
-                          <th className="px-3 py-2 text-left">封装</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Object.entries(comparisonResult.components2 || {}).map(([compId, comp]: [string, any]) => (
-                          <tr key={compId} className="hover:bg-gray-50">
-                            <td className="px-3 py-2">{compId}</td>
-                            <td className="px-3 py-2">{comp.type}</td>
-                            <td className="px-3 py-2 font-mono text-xs">{comp.part_number || compId}</td>
-                            <td className="px-3 py-2">{comp.value}</td>
-                            <td className="px-3 py-2">{comp.package}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                  
-                  {selectedDetail === 'added_components' && (
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 sticky top-0">
-                        <tr>
-                          <th className="px-3 py-2 text-left">元件ID</th>
-                          <th className="px-3 py-2 text-left">类型</th>
-                          <th className="px-3 py-2 text-left">值</th>
-                          <th className="px-3 py-2 text-left">封装</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(comparisonResult.added_components || []).map((compId: string) => {
-                          const comp = comparisonResult.components2?.[compId];
-                          return comp ? (
-                            <tr key={compId} className="hover:bg-gray-50">
-                              <td className="px-3 py-2">{compId}</td>
-                              <td className="px-3 py-2">{comp.type}</td>
-                              <td className="px-3 py-2 font-mono text-xs">{comp.part_number || compId}</td>
-                              <td className="px-3 py-2">{comp.value}</td>
-                              <td className="px-3 py-2">{comp.package}</td>
-                            </tr>
-                          ) : null;
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-                  
-                  {selectedDetail === 'removed_components' && (
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 sticky top-0">
-                        <tr>
-                          <th className="px-3 py-2 text-left">元件ID</th>
-                          <th className="px-3 py-2 text-left">类型</th>
-                          <th className="px-3 py-2 text-left">元件名称</th>
-                          <th className="px-3 py-2 text-left">值</th>
-                          <th className="px-3 py-2 text-left">封装</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(comparisonResult.removed_components || []).map((compId: string) => {
-                          const comp = comparisonResult.components1?.[compId];
-                          return comp ? (
-                            <tr key={compId} className="hover:bg-gray-50">
-                              <td className="px-3 py-2">{compId}</td>
-                              <td className="px-3 py-2">{comp.type}</td>
-                              <td className="px-3 py-2 font-mono text-xs">{comp.part_number || compId}</td>
-                              <td className="px-3 py-2">{comp.value}</td>
-                              <td className="px-3 py-2">{comp.package}</td>
-                            </tr>
-                          ) : null;
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-                  
-                  {selectedDetail === 'changed_components' && (
-                    <div className="space-y-4">
-                      {(comparisonResult.changed_components || []).map((compId: string) => {
-                        const comp1 = comparisonResult.components1?.[compId];
-                        const comp2 = comparisonResult.components2?.[compId];
-                        return (
-                          <div key={compId} className="border rounded p-3">
-                            <div className="font-semibold mb-2">{compId}</div>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <div className="text-gray-600 mb-1">网表1:</div>
-                                <div className="font-mono text-xs mb-1">{comp1?.part_number || compId}</div>
-                                <div>类型: {comp1?.type || '-'}</div>
-                                <div>值: {comp1?.value || '-'}</div>
-                                <div>封装: {comp1?.package || '-'}</div>
-                              </div>
-                              <div>
-                                <div className="text-gray-600 mb-1">网表2:</div>
-                                <div className="font-mono text-xs mb-1">{comp2?.part_number || compId}</div>
-                                <div>类型: {comp2?.type || '-'}</div>
-                                <div>值: {comp2?.value || '-'}</div>
-                                <div>封装: {comp2?.package || '-'}</div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  
-                  {selectedDetail === 'added_nets' && (
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 sticky top-0">
-                        <tr>
-                          <th className="px-3 py-2 text-left">网络名称</th>
-                          <th className="px-3 py-2 text-left">连接元件</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(comparisonResult.added_nets || []).map((netName: string) => {
-                          const connections = comparisonResult.nets2?.[netName] || [];
-                          return (
-                            <tr key={netName} className="hover:bg-gray-50">
-                              <td className="px-3 py-2 font-medium">{netName}</td>
-                              <td className="px-3 py-2">{connections.join(', ')}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-                  
-                  {selectedDetail === 'removed_nets' && (
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 sticky top-0">
-                        <tr>
-                          <th className="px-3 py-2 text-left">网络名称</th>
-                          <th className="px-3 py-2 text-left">连接元件</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(comparisonResult.removed_nets || []).map((netName: string) => {
-                          const connections = comparisonResult.nets1?.[netName] || [];
-                          return (
-                            <tr key={netName} className="hover:bg-gray-50">
-                              <td className="px-3 py-2 font-medium">{netName}</td>
-                              <td className="px-3 py-2">{connections.join(', ')}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-                  
-                  {selectedDetail === 'changed_nets' && (
-                    <div className="space-y-4">
-                      {(comparisonResult.changed_nets || []).map((netName: string) => {
-                        const conn1 = comparisonResult.nets1?.[netName] || [];
-                        const conn2 = comparisonResult.nets2?.[netName] || [];
-                        return (
-                          <div key={netName} className="border rounded p-3">
-                            <div className="font-semibold mb-2">{netName}</div>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <div className="text-gray-600 mb-1">网表1连接:</div>
-                                <div>{conn1.join(', ') || '-'}</div>
-                              </div>
-                              <div>
-                                <div className="text-gray-600 mb-1">网表2连接:</div>
-                                <div>{conn2.join(', ') || '-'}</div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            
-            {/* 移除网络和修改网络的统计卡片 */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div 
-                onClick={() => setSelectedDetail(selectedDetail === 'removed_nets' ? null : 'removed_nets')}
-                className="bg-red-50 p-4 rounded-lg text-center cursor-pointer hover:bg-red-100 transition"
-              >
-                <div className="text-2xl font-bold text-red-600">
-                  {comparisonResult.removed_nets?.length || 0}
-                </div>
-                <div className="text-sm text-gray-600">移除网络</div>
-              </div>
-              <div 
-                onClick={() => setSelectedDetail(selectedDetail === 'changed_nets' ? null : 'changed_nets')}
-                className="bg-yellow-50 p-4 rounded-lg text-center cursor-pointer hover:bg-yellow-100 transition"
-              >
-                <div className="text-2xl font-bold text-yellow-600">
-                  {comparisonResult.changed_nets?.length || 0}
-                </div>
-                <div className="text-sm text-gray-600">修改网络</div>
-              </div>
-            </div>
-            
-          </div>
-        ) : (
-          <div className="text-center text-gray-400 py-12">
-            <div className="text-4xl mb-4">📊</div>
-            <div>暂无对比结果</div>
-            <div className="text-sm mt-2">在上方输入两个网表内容后点击"开始对比"</div>
-          </div>
-        )}
-        
-        {comparisonResults.length > 0 && (
-          <div className="mt-6">
-            <h4 className="font-semibold mb-3">历史对比结果</h4>
-            <div className="space-y-2">
-              {comparisonResults.map((result) => (
-                <div
-                  key={result.id}
-                  className="p-3 border rounded-lg hover:bg-gray-50 flex items-center justify-between"
-                >
-                  <div
-                    onClick={() => onSelectResult(result.id)}
-                    className="flex-1 cursor-pointer"
-                  >
-                    <div className="font-medium">
-                      {result.netlist1_name} vs {result.netlist2_name}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {new Date(result.created_at).toLocaleString('zh-CN')}
-                    </div>
-                  </div>
-                  {!readOnly && (
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      if (confirm('确定要删除这个对比结果吗？')) {
-                        try {
-                          await axios.delete(apiUrl(`/api/netlist/result/${result.id}`));
-                          // 重新加载结果列表
-                          if (onRefreshResults) {
-                            onRefreshResults();
-                          }
-                        } catch (error) {
-                          console.error('删除失败:', error);
-                          alert('删除失败');
-                        }
-                      }
-                    }}
-                    className="ml-2 px-2 py-1 text-red-600 hover:bg-red-50 rounded transition"
-                    title="删除"
-                  >
-                    🗑️
-                  </button>
-                  )}
-                </div>
+            <div className="p-2 flex flex-wrap gap-1">
+              {s.ids.map((id, i) => (
+                <span key={i} className="px-1.5 py-0.5 rounded bg-gray-100 text-xs text-gray-700">{id}</span>
               ))}
             </div>
           </div>
+        ))}
+        {sections.every((s) => s.ids.length === 0) && (
+          <div className="text-sm text-gray-500 px-1">两份网表无差异，或对比结果为空。</div>
         )}
       </div>
     </div>
@@ -1128,7 +586,7 @@ const AnalysisTab: React.FC<{
   onSelectResult: (id: string) => void;
   onViewDetails: (id: string) => void;
   onResultCreated?: (id: string) => void;
-}> = ({ readOnly, data, results, onSelectResult, onViewDetails, onResultCreated }) => {
+}> = ({ readOnly, data, results, onSelectResult, onResultCreated }) => {
   const [netlist, setNetlist] = React.useState('');
   const [netlistName, setNetlistName] = React.useState('网表');
   const [loading, setLoading] = React.useState(false);
@@ -1591,7 +1049,7 @@ const SummaryTab: React.FC<{
               <tbody>
                 {(netlistNets as Array<{ name?: string; connection_count?: number; type?: string; connections?: string[] | Record<string, unknown> }>).map((net, idx) => (
                   <tr key={idx} className="border-b border-gray-100">
-                    <td className="py-1 px-2">{esc(net.name)}</td>
+                    <td className="py-1 px-2">{esc(net.name ?? '')}</td>
                     <td className="py-1 px-2">{net.connection_count ?? 0}</td>
                     <td className="py-1 px-2">{esc(net.type ?? 'Signal')}</td>
                     <td className="py-1 px-2 whitespace-pre-wrap break-all align-top">{connStr(net)}</td>

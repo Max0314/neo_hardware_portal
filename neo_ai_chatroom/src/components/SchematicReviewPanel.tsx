@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import { apiUrl } from '@/utils/apiBase';
-import { getExternalOpenMessage, isDingTalkBrowser, openCurrentPageExternally } from '@/utils/externalOpen';
+import { printHtmlDocument, getPrintMessage } from '@/utils/externalOpen';
 import { trackNeoPoints } from '@/utils/neoPoints';
 import {
   SCHEMATIC_WORKFLOW_STEPS,
@@ -319,22 +319,12 @@ export const SchematicReviewPanel: React.FC<SchematicReviewPanelProps> = ({
         lines.push('</div>');
       }
       lines.push('</body></html>');
-      if (isDingTalkBrowser()) {
-        const result = await openCurrentPageExternally();
-        alert(`钉钉内置浏览器无法稳定导出 PDF，${getExternalOpenMessage(result)}`);
+      const result = await printHtmlDocument(lines.join('\n'));
+      if (result === 'external' || result === 'failed') {
+        // 没有真正调起打印（回退外部浏览器或失败）：不计积分、不标记已导出、不保存历史
+        alert(getPrintMessage(result));
         return;
       }
-
-      const win = window.open('', '_blank');
-      if (!win) {
-        const result = await openCurrentPageExternally();
-        alert(`无法打开打印窗口，${getExternalOpenMessage(result)}`);
-        return;
-      }
-      win.document.write(lines.join('\n'));
-      win.document.close();
-      win.focus();
-      win.print();
 
       const rid = selectedResultId || 'session';
       if (!historyViewMode) {

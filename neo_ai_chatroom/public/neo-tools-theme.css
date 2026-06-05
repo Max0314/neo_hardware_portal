@@ -1,0 +1,154 @@
+/* ============================================================================
+ * NEO Hardware AI · 工具统一主题（neo-tools-theme）
+ * ----------------------------------------------------------------------------
+ * 目标：让 neo_ai_chatroom 下各静态工具（BOM_TOOL / systm_tool）的视觉风格
+ *       与管理系统 neo-systm.css 的品牌设计语言对齐——同一套配色 / 字体 /
+ *       按钮 / 卡片 / 表格观感。只统一“风格”，不改任何功能与布局结构。
+ *
+ * 用法：在工具 HTML 的 <head> 末尾（本页自有 <style> 之后）加：
+ *         <link rel="stylesheet" href="../neo-tools-theme.css" />
+ *       并给 <body> 加 class="neo-tool"。
+ *       本表所有规则都限定在 body.neo-tool 作用域内，未加该 class 的页面不受影响，
+ *       便于逐页灰度与回滚。
+ *
+ * 品牌 token 取自 htmlsystm/static/css/neo-systm.css（事实标准）。
+ * ========================================================================== */
+
+:root {
+  /* —— 品牌主色（蓝青系，与 neo-systm 一致）—— */
+  --neo-primary: #1F6C9E;
+  --neo-primary-strong: #15507B;
+  --neo-primary-soft: #2AA6E4;
+  --neo-accent: #0CA3B0;
+  --neo-primary-grad: linear-gradient(145deg, #2AA6E4, #1F6C9E);
+  --neo-brand-grad: linear-gradient(145deg, #2A7DE1, #0CA3B0);
+  --neo-deep-grad: linear-gradient(150deg, #052137, #15507B);
+
+  /* —— 语义色 —— */
+  --neo-success: #27ae60;
+  --neo-success-grad: linear-gradient(145deg, #34c759, #27ae60);
+  --neo-warning: #e67e22;
+  --neo-warning-grad: linear-gradient(145deg, #f5a623, #e67e22);
+  --neo-danger: #e74c3c;
+  --neo-danger-grad: linear-gradient(145deg, #e74c3c, #c0392b);
+
+  /* —— 中性 / 文本 / 背景 —— */
+  --neo-bg: #F3F8FC;
+  --neo-surface: #ffffff;
+  --neo-surface-soft: #FAFCFE;
+  --neo-text: #0C334E;
+  --neo-text-soft: #3C6478;
+  --neo-text-strong: #194D66;
+  --neo-border: #DCE8F3;
+  --neo-row-stripe: rgba(31, 108, 158, 0.06);
+  --neo-row-hover: rgba(42, 166, 228, 0.06);
+
+  /* —— 形状 / 字体 —— */
+  --neo-font: 'Inter', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --neo-radius: 14px;
+  --neo-radius-sm: 8px;
+  --neo-shadow: 0 16px 30px -18px rgba(12, 51, 78, 0.28);
+}
+
+/* —— 基础排版 / 背景 —— */
+body.neo-tool {
+  font-family: var(--neo-font);
+  background: var(--neo-bg);
+  color: var(--neo-text);
+}
+
+body.neo-tool h1,
+body.neo-tool h2,
+body.neo-tool h3 {
+  color: var(--neo-text);
+}
+
+body.neo-tool a {
+  color: var(--neo-primary);
+}
+
+/* —— 卡片 / 容器（仅在使用通用类名时统一观感）—— */
+body.neo-tool .container,
+body.neo-tool .main-card,
+body.neo-tool .card,
+body.neo-tool .panel {
+  border-radius: var(--neo-radius);
+}
+
+/* —— 主按钮：仅统一“无语义类”的按钮与 .btn / .btn-primary，
+ *    成功/危险/警告按钮保留各自语义色（见下）。—— */
+body.neo-tool button,
+body.neo-tool .btn,
+body.neo-tool .btn-primary {
+  font-family: var(--neo-font);
+}
+
+body.neo-tool .btn,
+body.neo-tool button.btn-primary,
+body.neo-tool .btn-primary {
+  background: var(--neo-primary-grad);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+body.neo-tool .btn:hover,
+body.neo-tool .btn-primary:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+/* 语义按钮统一到品牌语义色（覆盖各工具五花八门的绿色/红色） */
+body.neo-tool .btn-success,
+body.neo-tool .export-btn,
+body.neo-tool .btn.btn-success {
+  background: var(--neo-success-grad);
+  color: #fff;
+}
+body.neo-tool .btn-warning {
+  background: var(--neo-warning-grad);
+  color: #fff;
+}
+body.neo-tool .btn-danger,
+body.neo-tool .clear-btn,
+body.neo-tool .btn.btn-danger {
+  background: var(--neo-danger-grad);
+  color: #fff;
+}
+
+/* —— 表单控件 —— */
+body.neo-tool input[type="text"],
+body.neo-tool input[type="search"],
+body.neo-tool input[type="number"],
+body.neo-tool select,
+body.neo-tool textarea {
+  font-family: var(--neo-font);
+  color: var(--neo-text);
+  background: var(--neo-surface-soft);
+}
+body.neo-tool input:focus,
+body.neo-tool select:focus,
+body.neo-tool textarea:focus {
+  outline: none;
+  border-color: var(--neo-primary-soft);
+}
+
+/* —— 表格 —— */
+body.neo-tool table th {
+  background: #EEF4F9;
+  color: var(--neo-text-strong);
+}
+body.neo-tool table tr:hover td {
+  background: var(--neo-row-hover);
+}
+
+/* —— 滚动条 —— */
+body.neo-tool ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+body.neo-tool ::-webkit-scrollbar-thumb {
+  background: #b9cfe0;
+  border-radius: 4px;
+}

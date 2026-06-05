@@ -1211,16 +1211,30 @@
                 submitBtn.textContent = '📤 提交审核';
 
                 if (result.success) {
-                    let updateMsg = '公告更新成功！已提交审核，等待管理员审批。';
-                    if (result.approval_notification_sent === true) {
-                        updateMsg += ' 已向审批人发送工作通知。';
-                    } else if (result.approval_notification_error) {
-                        showMessage('【审批通知】' + result.approval_notification_error, 'error');
+                    const approvalFailed = !!result.approval_notification_error;
+                    if (approvalFailed) {
+                        // 公告已更新/已创建待审批副本，但通知失败：展示原因，禁用按钮防止重复提交，随后跳转
+                        showMessage(
+                            '公告已更新并提交审核，但未能通知审批人：' + result.approval_notification_error +
+                            '。审批人仍可在「审核中心」看到该公告；如持续失败请联系管理员检查钉钉工作通知配置。即将跳转…',
+                            'error'
+                        );
+                        saveBtn.disabled = true;
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = '已提交';
+                        setTimeout(() => {
+                            window.location.href = `/announcement-detail/${editAnnouncementId}`;
+                        }, 4500);
+                    } else {
+                        let updateMsg = '公告更新成功！已提交审核，等待管理员审批。';
+                        if (result.approval_notification_sent === true) {
+                            updateMsg += ' 已向审批人发送工作通知。';
+                        }
+                        showMessage(updateMsg, 'success');
+                        setTimeout(() => {
+                            window.location.href = `/announcement-detail/${editAnnouncementId}`;
+                        }, 2000);
                     }
-                    showMessage(updateMsg, 'success');
-                    setTimeout(() => {
-                        window.location.href = `/announcement-detail/${editAnnouncementId}`;
-                    }, 2000);
                 } else {
                     showMessage(result.message || result.error || '更新失败', 'error');
                 }
@@ -2384,13 +2398,25 @@
                     if (status === 'pending' && result.approval_notification_sent === true) {
                         successMsg += ' 已向审批人发送工作通知。';
                     }
-                    showMessage(successMsg, 'success');
-                    if (status === 'pending' && result.approval_notification_error) {
-                        showMessage('【审批通知】' + result.approval_notification_error, 'error');
+                    const approvalFailed = status === 'pending' && !!result.approval_notification_error;
+                    if (approvalFailed) {
+                        // 公告已创建为待审批，但通知失败：展示原因，并禁用按钮防止重复创建，随后跳转到列表
+                        showMessage(
+                            '公告已提交为待审批，但未能通知审批人：' + result.approval_notification_error +
+                            '。审批人仍可在「审核中心」看到该公告；如持续失败请联系管理员检查钉钉工作通知配置。即将跳转到公告列表…',
+                            'error'
+                        );
+                        saveBtn.disabled = true;
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = '已提交';
+                    } else {
+                        showMessage(successMsg, 'success');
                     }
 
                     if (status === 'pending') {
-                        setTimeout(() => { window.location.href = '/announcement'; }, 2000);
+                        // 公告已创建，无论通知是否成功都必须离开本页，避免停留导致重复提交；
+                        // 通知失败时延长停留时间，便于阅读错误原因。
+                        setTimeout(() => { window.location.href = '/announcement'; }, approvalFailed ? 4500 : 2000);
                     }
                 } else {
                     showMessage(result.error || result.message || '操作失败', 'error');

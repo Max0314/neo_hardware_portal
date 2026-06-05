@@ -41,7 +41,7 @@
             color: #0b1f33;
         }
         h1 i {
-            color: #2563eb;
+            color: #1F6C9E;
             background: #e6edfc;
             padding: 12px;
             border-radius: 24px;
@@ -51,7 +51,7 @@
             color: #5e6f8d;
             margin-bottom: 30px;
             font-size: 1rem;
-            border-left: 4px solid #3b82f6;
+            border-left: 4px solid #2AA6E4;
             padding-left: 18px;
             background: #f8fbff;
             border-radius: 0 12px 12px 0;
@@ -92,7 +92,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #2563eb;
+            color: #1F6C9E;
         }
         .card-header h3 {
             font-size: 1.3rem;
@@ -127,7 +127,7 @@
         }
         .file-label {
             display: inline-block;
-            background: #3b82f6;
+            background: #2AA6E4;
             color: white;
             font-weight: 500;
             padding: 10px 24px;
@@ -135,11 +135,11 @@
             font-size: 0.9rem;
             cursor: pointer;
             transition: 0.15s;
-            box-shadow: 0 6px 12px #3b82f633;
-            border: 1px solid #3b82f6;
+            box-shadow: 0 6px 12px #2AA6E433;
+            border: 1px solid #2AA6E4;
         }
         .file-label:hover {
-            background: #2563eb;
+            background: #1F6C9E;
         }
         .file-info {
             font-size: 0.8rem;
@@ -245,7 +245,7 @@
         }
         .progress-bar {
             height: 100%;
-            background: #3b82f6;
+            background: #2AA6E4;
             color: white;
             font-size: 0.75rem;
             line-height: 26px;
@@ -260,7 +260,7 @@
             margin: 20px 0 25px;
             font-size: 0.95rem;
             color: #1e3a8a;
-            border-left: 5px solid #3b82f6;
+            border-left: 5px solid #2AA6E4;
         }
         .preview-section {
             background: #fafdff;
@@ -356,19 +356,20 @@
             margin-left: 15px;
         }
     </style>
+    <link rel="stylesheet" href="../neo-tools-theme.css" />
 </head>
-<body>
+<body class="neo-tool">
 <div class="container">
     <div class="main-card">
-        <h1><i class="fas fa-merge"></i> 物料聚合 · 替换策略 <span class="strategy-badge"><i class="fas-regular fa-pen"></i> 优选库决定增删</span></h1>
+        <h1><i class="fas fa-code-merge"></i> 物料聚合 · 替换策略 <span class="strategy-badge"><i class="far fa-pen"></i> 优选库决定增删</span></h1>
         <div class="subtitle">
             <i class="fas fa-circle-info" style="margin-right: 8px;"></i> 
             <strong>替换规则：</strong>若优选库已配置，物料列表以优选库为准（增删同步）；成本采购仅更新价格；现有库提供物料描述和 pads库物料描述。预览显示所有字段，下载Excel包含六列。
             <br><strong>密码说明：</strong>点击「确认导入」写入服务器物料库前，须验证<strong>目标物料库的访问密码</strong>（与「物料数据库」页面一致，服务端仅存哈希）。
             <span style="display:inline-flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
-                <a href="../" style="color:#2563eb; text-decoration:none;"><i class="fas fa-home"></i> 返回 NEO</a>
-                <a href="material-database.html" style="color:#2563eb; text-decoration:none;"><i class="fas fa-database"></i> 物料数据库（多库管理）</a>
-                <a href="../replacement-pairs" style="color:#2563eb; text-decoration:none;"><i class="fas fa-right-left"></i> 替换对管理</a>
+                <a href="../" style="color:#1F6C9E; text-decoration:none;"><i class="fas fa-home"></i> 返回 NEO</a>
+                <a href="material-database.html" style="color:#1F6C9E; text-decoration:none;"><i class="fas fa-database"></i> 物料数据库（多库管理）</a>
+                <a href="../replacement-pairs" style="color:#1F6C9E; text-decoration:none;"><i class="fas fa-right-left"></i> 替换对管理</a>
             </span>
         </div>
 
@@ -401,7 +402,7 @@
                 </div>
                 <!-- sheet 选择 -->
                 <div id="materialSheetSection" class="sheet-section" style="display: none;">
-                    <label><i class="fas fa-sheet-plain"></i> 选择工作表:</label>
+                    <label><i class="fas fa-file-lines"></i> 选择工作表:</label>
                     <select id="materialSheetSelect" class="sheet-select"></select>
                 </div>
                 <!-- 列映射区域 -->
@@ -426,7 +427,7 @@
                     <button id="clearCost" class="clear-btn" style="display: none;"><i class="fas fa-times"></i> 清除</button>
                 </div>
                 <div id="costSheetSection" class="sheet-section" style="display: none;">
-                    <label><i class="fas fa-sheet-plain"></i> 选择工作表:</label>
+                    <label><i class="fas fa-file-lines"></i> 选择工作表:</label>
                     <select id="costSheetSelect" class="sheet-select"></select>
                 </div>
                 <div id="costMapping" class="mapping-section" style="display: none;">
@@ -449,7 +450,7 @@
                     <button id="clearPrefer" class="clear-btn" style="display: none;"><i class="fas fa-times"></i> 清除</button>
                 </div>
                 <div id="preferSheetSection" class="sheet-section" style="display: none;">
-                    <label><i class="fas fa-sheet-plain"></i> 选择工作表:</label>
+                    <label><i class="fas fa-file-lines"></i> 选择工作表:</label>
                     <select id="preferSheetSelect" class="sheet-select"></select>
                 </div>
                 <div id="preferMapping" class="mapping-section" style="display: none;">
@@ -508,7 +509,7 @@
         <!-- 预览区域 + 下载 -->
         <div class="preview-section">
             <div class="preview-header">
-                <h2><i class="fas fa-table" style="color:#2563eb; margin-right: 10px;"></i>变更预览 (最多100行)</h2>
+                <h2><i class="fas fa-table" style="color:#1F6C9E; margin-right: 10px;"></i>变更预览 (最多100行)</h2>
                 <button id="downloadBtn" class="download-btn" disabled><i class="fas fa-download"></i> 下载变更预览 Excel</button>
                 <button id="confirmImportBtn" class="download-btn" style="background:#059669; border-color:#047857; margin-left:8px;" disabled><i class="fas fa-check-double"></i> 确认导入</button>
             </div>
@@ -555,7 +556,7 @@
             </div>
         </div>
         <div class="footer-note">
-            <i class="fas-regular fa-clipboard"></i> 替换策略：若优选库已配置，物料列表完全取自优选库（实现增删）；成本价格取自成本采购；物料描述取自现有库；<strong>pads库物料描述</strong>取自现有库的替代组标签，<strong>替代组标签</strong>优先取自优选库（若映射），否则回退到现有库的替代组标签。
+            <i class="far fa-clipboard"></i> 替换策略：若优选库已配置，物料列表完全取自优选库（实现增删）；成本价格取自成本采购；物料描述取自现有库；<strong>pads库物料描述</strong>取自现有库的替代组标签，<strong>替代组标签</strong>优先取自优选库（若映射），否则回退到现有库的替代组标签。
         </div>
     </div>
 </div>
@@ -568,7 +569,7 @@
 .modal-overlay .modal-body { padding:16px 20px; }
 .modal-overlay .modal-footer { display:flex; justify-content:flex-end; gap:8px; padding:12px 20px 16px; }
 .modal-overlay .btn-cancel, .modal-overlay .btn-save { padding:8px 16px; border-radius:8px; cursor:pointer; border:1px solid #cbd5e1; }
-.modal-overlay .btn-save { background:#2563eb; color:#fff; border-color:#2563eb; }
+.modal-overlay .btn-save { background:#1F6C9E; color:#fff; border-color:#1F6C9E; }
 </style>
 
 <div id="modalPassword" class="modal-overlay">

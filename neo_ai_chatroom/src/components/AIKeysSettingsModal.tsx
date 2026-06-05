@@ -143,7 +143,7 @@ export const AIKeysSettingsModal: React.FC<AIKeysSettingsModalProps> = ({
   };
 
   return (
-    <motionlessModalBackdrop onClose={onClose}>
+    <MotionlessModalBackdrop onClose={onClose}>
       <div className="flex items-center justify-between border-b px-5 py-4 shrink-0">
         <div className="flex items-center gap-2">
           <KeyRound className="text-indigo-600" size={22} />
@@ -181,7 +181,7 @@ export const AIKeysSettingsModal: React.FC<AIKeysSettingsModalProps> = ({
         ) : (
           providers.map((p) => (
             <div key={p.id} className="border rounded-lg p-4 space-y-3">
-              <motionlessProviderHeader provider={p} />
+              <MotionlessProviderHeader provider={p} />
               {p.configured && p.hint && (
                 <p className="text-xs text-gray-500">
                   当前：{p.hint}
@@ -190,12 +190,12 @@ export const AIKeysSettingsModal: React.FC<AIKeysSettingsModalProps> = ({
                   )}
                 </p>
               )}
-              <motionlessProviderKeyRow
+              <MotionlessProviderKeyRow
                 draft={draftKeys[p.id] || ''}
                 visible={!!showKey[p.id]}
                 saving={savingId === p.id}
                 canDeleteVault={p.source === 'vault'}
-                onDraftChange={(v) =>
+                onDraftChange={(v: string) =>
                   setDraftKeys((prev) => ({ ...prev, [p.id]: v }))
                 }
                 onToggleVisible={() =>
@@ -218,11 +218,11 @@ export const AIKeysSettingsModal: React.FC<AIKeysSettingsModalProps> = ({
           关闭
         </button>
       </div>
-    </motionlessModalBackdrop>
+    </MotionlessModalBackdrop>
   );
 };
 
-function motionlessModalBackdrop({
+function MotionlessModalBackdrop({
   onClose,
   children,
 }: {
@@ -230,11 +230,11 @@ function motionlessModalBackdrop({
   children: React.ReactNode;
 }) {
   return (
-    <motionlessModalBackdropDiv onClose={onClose}>{children}</motionlessModalBackdropDiv>
+    <MotionlessModalBackdropDiv onClose={onClose}>{children}</MotionlessModalBackdropDiv>
   );
 }
 
-function motionlessModalBackdropDiv({
+function MotionlessModalBackdropDiv({
   onClose,
   children,
 }: {
@@ -256,7 +256,7 @@ function motionlessModalBackdropDiv({
   );
 }
 
-function motionlessProviderHeader({ provider: p }: { provider: AIKeyProviderStatus }) {
+function MotionlessProviderHeader({ provider: p }: { provider: AIKeyProviderStatus }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div>
@@ -268,7 +268,7 @@ function motionlessProviderHeader({ provider: p }: { provider: AIKeyProviderStat
   );
 }
 
-function motionlessProviderKeyRow({
+function MotionlessProviderKeyRow({
   draft,
   visible,
   saving,

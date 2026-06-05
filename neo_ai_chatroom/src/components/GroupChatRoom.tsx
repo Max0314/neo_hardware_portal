@@ -98,7 +98,7 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
   const [selectedNetlistResult, setSelectedNetlistResult] = useState<{id: string, type: 'comparison' | 'analysis'} | null>(null);
   const [showNetlistSidebar, setShowNetlistSidebar] = useState(false);
   const [netlistSidebarMode, setNetlistSidebarMode] = useState<'compare' | 'analyze'>('compare');
-  const [currentConversationId, setCurrentConversationId] = useState<string>(conversationId);
+  const [, setCurrentConversationId] = useState<string>(conversationId);
   const [panelResultId, setPanelResultId] = useState<string | null>(null);
   const [panelResultType, setPanelResultType] = useState<'comparison' | 'analysis' | null>(null);
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
@@ -116,7 +116,7 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
   const [isSopMode, setIsSopMode] = useState(false);
   const [showBuildSOPModal, setShowBuildSOPModal] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const sopIdFromUrl = searchParams.get('sop');
   const sopFromUrl = sopIdFromUrl ? getSOPById(sopIdFromUrl) : undefined;
   const flowStepResponseCallbackRef = useRef<((content: string) => void) | null>(null);
@@ -1830,10 +1830,6 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
     }
   };
 
-  const handleMention = (aiName: string) => {
-    // 可以在这里处理提及逻辑
-    console.log('提及:', aiName);
-  };
 
   const handleCreateCustomAI = async (config: {
     name: string;
@@ -2682,7 +2678,7 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
               </button>
               <button
                 type="button"
-                disabled={!materialSearchQuery.trim() && !materialSearchQuery.trim() === ''}
+                disabled={!materialSearchQuery.trim()}
                 className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => {
                   const q = materialSearchQuery.trim();

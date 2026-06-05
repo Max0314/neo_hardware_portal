@@ -421,8 +421,9 @@
       color: #3a5f90;
     }
   </style>
+    <link rel="stylesheet" href="../neo-tools-theme.css" />
 </head>
-<body>
+<body class="neo-tool">
   <div class="chat-card">
     <!-- 左侧：文件浏览器（静态树） -->
     <div class="file-explorer">
@@ -464,7 +465,7 @@
       <div class="messages-area" id="messageList">
         <div class="message ai">
           <div class="bubble">
-            <i class="fas fa-sparkles" style="margin-right: 8px; color:#2d5c8f;"></i>
+            <i class="fas fa-wand-magic-sparkles" style="margin-right: 8px; color:#2d5c8f;"></i>
             你好，我是 <b>巴巴塔</b>。你可以和我聊天，也可以拖拽/上传文件，我会按类型帮你归类并指导你保存到本地文件夹。
           </div>
         </div>
@@ -655,7 +656,7 @@
               `✅ 已为这组文件建立索引：\n` +
               `描述：${entry.description || '（无）'}\n` +
               `关键词：${entry.keywords.join('，') || '（无）'}\n` +
-              `<a href="#" data-edit-entry="${entry.id}" style="color:#2563eb;text-decoration:underline;">编辑这组文件信息</a>`
+              `<a href="#" data-edit-entry="${entry.id}" style="color:#1F6C9E;text-decoration:underline;">编辑这组文件信息</a>`
             );
             pendingMetaGroup = null;
             // 不再把这两步元数据输入转发给后端作为对话内容

@@ -70,7 +70,7 @@ export const TetrisGame: React.FC<TetrisGameProps> = ({ isOpen, onClose }) => {
   const [lines, setLines] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
+  const gameLoopRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const dropTimeRef = useRef<number>(1000);
 
   // 检查碰撞
@@ -137,7 +137,7 @@ export const TetrisGame: React.FC<TetrisGameProps> = ({ isOpen, onClose }) => {
     if (cleared > 0) {
       setLines(prev => prev + cleared);
       setScore(prev => prev + cleared * 100 * level);
-      setLevel(prev => Math.floor((lines + cleared) / 10) + 1);
+      setLevel(Math.floor((lines + cleared) / 10) + 1);
       dropTimeRef.current = Math.max(100, 1000 - (level - 1) * 100);
     }
 

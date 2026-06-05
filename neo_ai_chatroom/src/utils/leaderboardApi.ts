@@ -14,6 +14,7 @@ interface ScoresResponse {
   pointsByUserKey?: Record<string, { total: number; month: number }>;
   myTotalPoints?: number;
   myMonthPoints?: number;
+  error?: string;
 }
 
 function buildEntriesFromParts(
