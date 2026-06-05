@@ -90,6 +90,7 @@ const ClassicNetlistResultsPanel: React.FC<NetlistResultsPanelProps> = ({
   const [results, setResults] = useState<NetlistResult[]>([]);
   const [, setLoading] = useState(false);
   const [analysisData, setAnalysisData] = useState<any>(null);
+  const [comparisonData, setComparisonData] = useState<any>(null);
   const [reviewData, setReviewData] = useState<any>(null);
   const [summaryData, setSummaryData] = useState<any>(null);
   const [checklistData, setChecklistData] = useState<any>(null);
@@ -107,7 +108,7 @@ const ClassicNetlistResultsPanel: React.FC<NetlistResultsPanelProps> = ({
     }
   }, [selectedResultId]);
 
-  // 当选中结果ID变化时，加载对应的数据（右侧栏不再展示对比类型）
+  // 当选中结果ID变化时，加载对应的数据（comparison → 对比视图，analysis → 解析标签页）
   useEffect(() => {
     if (selectedResultId) {
       loadResultData(selectedResultId, resultType || 'analysis');
@@ -137,9 +138,11 @@ const ClassicNetlistResultsPanel: React.FC<NetlistResultsPanelProps> = ({
       if (response.data.success) {
         const data = response.data.data;
         if (data.type === 'comparison') {
+          setComparisonData(data.result);
           return;
         }
         if (data.type === 'analysis') {
+          setComparisonData(null);
           setAnalysisData(data.result);
           extractReviewData(data.result);
         }
@@ -422,6 +425,10 @@ const ClassicNetlistResultsPanel: React.FC<NetlistResultsPanelProps> = ({
     }
   };
 
+  if (resultType === 'comparison') {
+    return <ComparisonResultView data={comparisonData} />;
+  }
+
   return (
     <div className="flex flex-col h-full bg-white">
       {/* 标签页 */}
@@ -522,6 +529,54 @@ const ClassicNetlistResultsPanel: React.FC<NetlistResultsPanelProps> = ({
   );
 };
 
+
+// 网表对比结果视图（右侧面板展示对比结果，与独立 NetlistComparePage 同一数据结构）
+const ComparisonResultView: React.FC<{ data: any }> = ({ data }) => {
+  if (!data) {
+    return <div className="p-4 text-sm text-gray-500">正在加载对比结果…</div>;
+  }
+  const toIds = (v: any): string[] => (Array.isArray(v) ? v.map((x) => String(x)) : []);
+  const sections = [
+    { label: '新增元件', ids: toIds(data.added_components), color: 'text-green-600' },
+    { label: '移除元件', ids: toIds(data.removed_components), color: 'text-red-600' },
+    { label: '修改元件', ids: toIds(data.changed_components), color: 'text-amber-600' },
+    { label: '新增网络', ids: toIds(data.added_nets), color: 'text-green-600' },
+    { label: '移除网络', ids: toIds(data.removed_nets), color: 'text-red-600' },
+    { label: '修改网络', ids: toIds(data.changed_nets), color: 'text-amber-600' },
+  ];
+  return (
+    <div className="flex flex-col h-full bg-white">
+      <div className="flex items-center border-b bg-gray-50 flex-shrink-0 px-4 py-3">
+        <h3 className="text-sm font-semibold text-gray-800">网表对比结果</h3>
+      </div>
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3">
+        <div className="grid grid-cols-3 gap-2">
+          {sections.map((s) => (
+            <div key={s.label} className="rounded-lg border bg-white p-2 text-center">
+              <div className={`text-lg font-bold ${s.color}`}>{s.ids.length}</div>
+              <div className="text-xs text-gray-500">{s.label}</div>
+            </div>
+          ))}
+        </div>
+        {sections.filter((s) => s.ids.length > 0).map((s) => (
+          <div key={s.label} className="rounded-lg border">
+            <div className={`px-3 py-1.5 text-xs font-semibold border-b bg-gray-50 ${s.color}`}>
+              {s.label}（{s.ids.length}）
+            </div>
+            <div className="p-2 flex flex-wrap gap-1">
+              {s.ids.map((id, i) => (
+                <span key={i} className="px-1.5 py-0.5 rounded bg-gray-100 text-xs text-gray-700">{id}</span>
+              ))}
+            </div>
+          </div>
+        ))}
+        {sections.every((s) => s.ids.length === 0) && (
+          <div className="text-sm text-gray-500 px-1">两份网表无差异，或对比结果为空。</div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // 解析结果标签页
 const AnalysisTab: React.FC<{
