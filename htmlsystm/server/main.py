@@ -6343,7 +6343,10 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
                 return None, {}, {}, False, valid_userids
             
             logger.info(f"✅ 成功创建本地待办Excel文件: {announcement_id}, 共 {len(valid_userids)} 条记录（不再调用钉钉API创建待办）")
-            
+            # 重建待办后必须失效内存缓存：create_todo_file 已把 Excel 重置为“未完成”，
+            # 若不刷新缓存，已读状态会读到旧缓存——公告更新重发时旧的“已阅读”会残留（小明仍显示已读）。
+            self._invalidate_todo_cache(announcement_id)
+
             notification_sent = False
             if not skip_notification:
                 if not access_token:
