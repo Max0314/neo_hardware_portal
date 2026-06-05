@@ -6008,10 +6008,11 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
             raise Exception(f"网络错误: {str(e)}")
     
     def _exclude_from_todo_user_selection(self, user: Dict[str, Any]) -> bool:
-        """待办/阅读人选中排除系统最高管理员（不必选、也不应收到待办）。"""
+        """仅排除系统占位账号『系统最高管理员/最高管理员』（非真实人员）。
+
+        注意：不再按 super_admin 角色排除——真实的最高管理员（例如既是发起人/审核人的
+        老板账号）应能被勾选为待办/阅读人，否则会出现『审核人/发起人在名单里根本没有』。"""
         if not user:
-            return True
-        if self.user_manager.is_super_admin(user):
             return True
         name = (user.get('name') or '').strip()
         return name in ('系统最高管理员', '最高管理员')
