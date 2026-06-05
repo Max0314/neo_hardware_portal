@@ -321,7 +321,9 @@ export const SchematicReviewPanel: React.FC<SchematicReviewPanelProps> = ({
       lines.push('</body></html>');
       const result = await printHtmlDocument(lines.join('\n'));
       if (result === 'external' || result === 'failed') {
+        // 没有真正调起打印（回退外部浏览器或失败）：不计积分、不标记已导出、不保存历史
         alert(getPrintMessage(result));
+        return;
       }
 
       const rid = selectedResultId || 'session';
