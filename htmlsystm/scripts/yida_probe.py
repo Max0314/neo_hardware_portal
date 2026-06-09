@@ -46,15 +46,17 @@ def probe_form(form_uuid, token):
             pid = f.get('parent_id')
             tail = f"  [{f.get('type')}]" + (f"  ↳子表单@{pid}" if pid else '')
             print(f"    {f['field_id']:34s} = {f.get('label') or '(无标题)'}{tail}")
-        mapping, unmatched = auto_map_material_fields(fields)
+        mp = auto_map_material_fields(fields)
         print('  —— 自动映射结果 ——')
-        for std, labels in MATERIAL_TARGET_LABELS.items():
-            fid = mapping.get(std)
-            print(f"    {std:18s} -> {fid or '❌ 未匹配 (标题候选: ' + '/'.join(labels) + ')'}")
-        if unmatched:
-            print(f'  ⚠️ 未匹配的目标字段: {unmatched}（该表标题可能特殊，需手工 field_map 覆盖）')
+        if mp['multi']:
+            print(f"  多物料替代组表：检测到 {mp['slot_count']} 个物料槽位（一条实例拆成 {mp['slot_count']} 行）")
+        for i, slot in enumerate(mp['slots'], 1):
+            cells = '  '.join(f"{k}={v or '∅'}" for k, v in slot.items())
+            print(f"    槽位{i}: {cells}")
+        if mp['missing_in_first_slot']:
+            print(f"  ⚠️ 必填项未匹配: {mp['missing_in_first_slot']}（该表标题用词不同，请把实际标题发我补同义词）")
         else:
-            print('  ✅ 4 个目标字段全部自动匹配成功')
+            print('  ✅ 必填三项(代码/描述/优选)齐全' + ('；替代组标签缺失=该表无此字段(可留空)' if not mp['slots'][0].get('replacement_group') else ''))
     except Exception as e:
         print(f'  [schema] ❌ 获取字段定义失败:\n    {e}')
 

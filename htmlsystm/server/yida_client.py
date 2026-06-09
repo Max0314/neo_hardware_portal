@@ -303,18 +303,55 @@ def get_form_schema(form_uuid: str, access_token: Optional[str] = None):
     return fields, url
 
 
-def auto_map_material_fields(schema_fields: List[Dict[str, Any]]):
-    """按中文标题把字段对到 4 个目标字段。Returns: (mapping{std:field_id}, unmatched[std])。"""
+def auto_map_material_fields(schema_fields: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """按中文标题映射 4 个目标字段，兼容三种表形态：
+      - 单物料表（物料代码/物料描述/...）              -> 1 个槽位
+      - 单物料无替代组（结构件）                        -> 1 个槽位，replacement_group 为 None
+      - 多物料替代组表（物料代码1..N/物料描述1..N/...） -> N 个槽位（一条实例拆成 N 行）
+
+    Returns: {
+        'multi': bool, 'slot_count': int,
+        'slots': [{material_code, material_name, preferred, replacement_group} -> field_id|None],
+        'missing_in_first_slot': [未匹配的目标字段],
+    }
+    """
     by_label: Dict[str, str] = {}
     for f in schema_fields:
         lb = (f.get('label') or '').strip()
-        if lb and lb not in by_label:
-            by_label[lb] = f['field_id']
-    mapping: Dict[str, str] = {}
-    for std, labels in MATERIAL_TARGET_LABELS.items():
-        for lb in labels:
-            if lb in by_label:
-                mapping[std] = by_label[lb]
-                break
-    unmatched = [k for k in MATERIAL_TARGET_LABELS if k not in mapping]
-    return mapping, unmatched
+        if lb:
+            by_label.setdefault(lb, f['field_id'])
+
+    def find(target: str, suffix: str = '') -> Optional[str]:
+        for lb in MATERIAL_TARGET_LABELS[target]:
+            for cand in (f'{lb}{suffix}', f'{lb} {suffix}'.rstrip()):
+                if cand in by_label:
+                    return by_label[cand]
+        return None
+
+    # 探测编号槽位（物料代码1、物料代码2 ...），最多 20 个
+    slot_numbers = [n for n in range(1, 21) if find('material_code', str(n))]
+    slots: List[Dict[str, Optional[str]]] = []
+    if slot_numbers:
+        for n in slot_numbers:
+            s = str(n)
+            slots.append({
+                'material_code': find('material_code', s),
+                'material_name': find('material_name', s),
+                'preferred': find('preferred', s),
+                # 替代组标签：优先带编号，否则取该表统一的替代组字段（多物料表常以实例本身为替代组）
+                'replacement_group': find('replacement_group', s) or find('replacement_group'),
+            })
+        multi = True
+    else:
+        slots.append({
+            'material_code': find('material_code'),
+            'material_name': find('material_name'),
+            'preferred': find('preferred'),
+            'replacement_group': find('replacement_group'),
+        })
+        multi = False
+
+    first = slots[0] if slots else {}
+    # 替代组标签缺失不算硬错误（结构件/多物料表可能本就没有），其余三项必须有
+    missing = [k for k in ('material_code', 'material_name', 'preferred') if not first.get(k)]
+    return {'multi': multi, 'slot_count': len(slots), 'slots': slots, 'missing_in_first_slot': missing}
