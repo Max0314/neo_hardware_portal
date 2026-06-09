@@ -43,7 +43,9 @@ def probe_form(form_uuid, token):
         print(f'  [schema] OK，endpoint = {used_url.split("?")[0]}')
         print('  字段ID → 标题:')
         for f in fields:
-            print(f"    {f['field_id']:34s} = {f.get('label') or '(无标题)'}  [{f.get('type')}]")
+            pid = f.get('parent_id')
+            tail = f"  [{f.get('type')}]" + (f"  ↳子表单@{pid}" if pid else '')
+            print(f"    {f['field_id']:34s} = {f.get('label') or '(无标题)'}{tail}")
         mapping, unmatched = auto_map_material_fields(fields)
         print('  —— 自动映射结果 ——')
         for std, labels in MATERIAL_TARGET_LABELS.items():

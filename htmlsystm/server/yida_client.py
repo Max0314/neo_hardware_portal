@@ -212,13 +212,11 @@ def extract_instance_meta(inst: Dict[str, Any]) -> Dict[str, Any]:
 
 # ==================== 表单字段定义（用于按中文标题自动映射） ====================
 # 不同表单组件ID不同，故同步时读取每张表的字段定义(字段ID↔中文标题)，自动对到 4 个目标字段。
-# v1.0 的“获取表单 schema”路径在文档里 JS 渲染、未能离线确认，这里放多个候选 endpoint，
-# 探针在服务器一次跑即可确认哪个可用（命中后把它固定为唯一项即可）。
-SCHEMA_URL_CANDIDATES = [
-    'https://api.dingtalk.com/v1.0/yida/forms/{form_uuid}/{app_type}/schemas',
-    'https://api.dingtalk.com/v1.0/yida/forms/schemas/{app_type}/{form_uuid}',
-    'https://api.dingtalk.com/v1.0/yida/apps/{app_type}/forms/{form_uuid}/schemas',
-]
+# 接口路径取自仓库内置官方 SDK（alibabacloud_dingtalk/yida_1_0：GetFormComponentDefinitionList）：
+#   GET /v1.0/yida/forms/definitions/{appType}/{formUuid}
+#   query: systemToken / userId / language；header: x-acs-dingtalk-access-token
+#   返回: {result: [{fieldId, label, componentName, parentId}]}（label 即中文标题，parentId 标识子表单字段）
+SCHEMA_URL = 'https://api.dingtalk.com/v1.0/yida/forms/definitions/{app_type}/{form_uuid}'
 
 
 def _get_json(url: str, headers: Dict[str, str], timeout: int = 30,
@@ -265,49 +263,44 @@ def _zh_label(label: Any) -> str:
 
 
 def _parse_schema_fields(result: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """从 schema 返回里抽出 [{field_id, label, type}]，兼容多种返回结构。"""
-    content = (result.get('content') or result.get('result')
-               or result.get('data') or result.get('items') or [])
-    if isinstance(content, dict):
-        content = content.get('items') or content.get('list') or content.get('content') or []
+    """从 GetFormComponentDefinitionList 返回里抽出字段。
+    返回结构 {result:[{fieldId,label,componentName,parentId}]}（兼容旧 content/key 写法）。"""
+    rows = result.get('result') or result.get('content') or result.get('data') or []
+    if isinstance(rows, dict):
+        rows = rows.get('result') or rows.get('list') or rows.get('content') or []
     fields: List[Dict[str, Any]] = []
-    for c in content:
+    for c in rows:
         if not isinstance(c, dict):
             continue
-        key = c.get('key') or c.get('fieldId') or c.get('componentId')
+        fid = c.get('fieldId') or c.get('key') or c.get('componentId')
+        if not fid:
+            continue
         label = c.get('label')
         if label is None and isinstance(c.get('props'), dict):
             label = c['props'].get('label')
-        if key:
-            fields.append({
-                'field_id': str(key),
-                'label': _zh_label(label),
-                'type': c.get('componentName') or c.get('type') or '',
-            })
+        fields.append({
+            'field_id': str(fid),
+            'label': _zh_label(label),
+            'type': c.get('componentName') or c.get('type') or '',
+            'parent_id': c.get('parentId') or '',
+        })
     return fields
 
 
 def get_form_schema(form_uuid: str, access_token: Optional[str] = None):
-    """获取表单字段定义。Returns: (fields, used_url)，fields=[{field_id,label,type}]。
-    依次尝试候选 endpoint，第一个返回可解析字段者即采用；全失败抛异常（含各候选错误）。"""
+    """获取表单字段定义。Returns: (fields, used_url)，fields=[{field_id,label,type,parent_id}]。"""
     token = access_token or get_access_token()
     headers = {'x-acs-dingtalk-access-token': token, 'Content-Type': 'application/json'}
     qs = urlencode({
-        'userId': YIDA_CONFIG['query_user_id'],
         'systemToken': YIDA_CONFIG['system_token'],
-        'appType': YIDA_CONFIG['app_type'],
+        'userId': YIDA_CONFIG['query_user_id'],
+        'language': 'zh_CN',
     })
-    errors = []
-    for tmpl in SCHEMA_URL_CANDIDATES:
-        url = tmpl.format(form_uuid=form_uuid, app_type=YIDA_CONFIG['app_type']) + '?' + qs
-        try:
-            fields = _parse_schema_fields(_get_json(url, headers))
-            if fields:
-                return fields, url
-            errors.append(f'{tmpl} -> 返回无可解析字段')
-        except Exception as e:
-            errors.append(f'{tmpl} -> {e}')
-    raise RuntimeError('获取表单 schema 失败，候选 endpoint 均不可用：\n  ' + '\n  '.join(errors))
+    url = SCHEMA_URL.format(app_type=YIDA_CONFIG['app_type'], form_uuid=form_uuid) + '?' + qs
+    fields = _parse_schema_fields(_get_json(url, headers))
+    if not fields:
+        raise RuntimeError(f'表单 schema 返回空字段（接口可达但无字段）: {url.split("?")[0]}')
+    return fields, url
 
 
 def auto_map_material_fields(schema_fields: List[Dict[str, Any]]):
