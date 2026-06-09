@@ -110,6 +110,7 @@ def search_form_instances(
         'systemToken': YIDA_CONFIG['system_token'],
         'userId': YIDA_CONFIG['query_user_id'],
         'formUuid': form_uuid,
+        'language': 'zh_CN',
         'searchFieldJson': search_field_json,
         'currentPage': current_page,
         'pageSize': min(int(page_size or 100), 100),
