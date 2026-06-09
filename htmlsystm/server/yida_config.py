@@ -46,7 +46,18 @@ def check_yida_config():
 #   replacement_group  替代组标签
 #   preferred          优选情况
 #
-# 用 scripts/yida_probe.py 拉一条样本实例，即可看到每个组件ID及其示例值，对完填到这里。
+# 注意：不同表单的组件ID不同（同事已确认），因此不手工逐表配 field_map，而是按下面的
+# 中文标题自动映射——同步时读每张表的字段定义(字段ID↔标题)，把目标字段对到本表的组件ID。
+# 仅当某表标题特殊、自动映射失败时，才在该表 source 里手工写 field_map 覆盖。
+
+# 目标字段 -> 该字段在宜搭表单里可能的中文标题（按标题自动匹配，含同义词；越靠前优先级越高）
+MATERIAL_TARGET_LABELS = {
+    'material_code': ['物料代码', '物料编码', '物料编号'],
+    'material_name': ['物料描述', '物料名称', '描述'],
+    'preferred': ['优选情况', '优选状态', '优选'],
+    'replacement_group': ['替代组标签', '替代组', '替代分组', '替代组别'],
+}
+
 YIDA_MATERIAL_SOURCES = [
     # {
     #     'source_name': '阻容物料优选表',

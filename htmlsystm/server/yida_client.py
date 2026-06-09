@@ -13,11 +13,12 @@ import ssl
 import time
 import urllib.error
 import urllib.request
+from urllib.parse import urlencode
 from typing import Any, Dict, List, Optional, Tuple
 
 from server.config import DINGTALK_CONFIG
 from server.logger import logger
-from server.yida_config import YIDA_CONFIG
+from server.yida_config import YIDA_CONFIG, MATERIAL_TARGET_LABELS
 
 ACCESS_TOKEN_URL = 'https://api.dingtalk.com/v1.0/oauth2/accessToken'
 INSTANCE_SEARCH_URL = 'https://api.dingtalk.com/v1.0/yida/forms/instances/search'
@@ -207,3 +208,120 @@ def extract_instance_meta(inst: Dict[str, Any]) -> Dict[str, Any]:
         'title': pick('title', 'formInstanceTitle'),
         'form_data': form_data,
     }
+
+
+# ==================== 表单字段定义（用于按中文标题自动映射） ====================
+# 不同表单组件ID不同，故同步时读取每张表的字段定义(字段ID↔中文标题)，自动对到 4 个目标字段。
+# v1.0 的“获取表单 schema”路径在文档里 JS 渲染、未能离线确认，这里放多个候选 endpoint，
+# 探针在服务器一次跑即可确认哪个可用（命中后把它固定为唯一项即可）。
+SCHEMA_URL_CANDIDATES = [
+    'https://api.dingtalk.com/v1.0/yida/forms/{form_uuid}/{app_type}/schemas',
+    'https://api.dingtalk.com/v1.0/yida/forms/schemas/{app_type}/{form_uuid}',
+    'https://api.dingtalk.com/v1.0/yida/apps/{app_type}/forms/{form_uuid}/schemas',
+]
+
+
+def _get_json(url: str, headers: Dict[str, str], timeout: int = 30,
+              max_retries: int = 3, retry_base_sec: float = 2.0) -> Dict[str, Any]:
+    last_err: Optional[Exception] = None
+    for attempt in range(max_retries):
+        try:
+            req = urllib.request.Request(url, headers=headers, method='GET')
+            with urllib.request.urlopen(req, timeout=timeout, context=_ssl_context()) as resp:
+                text = resp.read().decode('utf-8')
+                return json.loads(text) if text else {}
+        except urllib.error.HTTPError as e:
+            body = ''
+            try:
+                body = e.read().decode('utf-8')
+            except Exception:
+                pass
+            if 400 <= e.code < 500:
+                raise RuntimeError(f'{e.code}: {body[:300] or e.reason}')
+            last_err = RuntimeError(f'{e.code}: {body[:300] or e.reason}')
+        except (urllib.error.URLError, TimeoutError, ssl.SSLError) as e:
+            last_err = e
+        except json.JSONDecodeError as e:
+            last_err = RuntimeError(f'返回非 JSON: {e}')
+        if attempt < max_retries - 1:
+            time.sleep(retry_base_sec * (2 ** attempt))
+    raise last_err if last_err else RuntimeError('GET 调用失败')
+
+
+def _zh_label(label: Any) -> str:
+    """label 可能是 dict、i18n JSON 字符串或普通字符串，统一取中文标题。"""
+    if isinstance(label, dict):
+        return (label.get('zh_CN') or label.get('zhCN') or label.get('zh') or '').strip()
+    if isinstance(label, str):
+        s = label.strip()
+        if s.startswith('{'):
+            try:
+                d = json.loads(s)
+                return (d.get('zh_CN') or d.get('zhCN') or d.get('zh') or '').strip()
+            except Exception:
+                return s
+        return s
+    return ''
+
+
+def _parse_schema_fields(result: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """从 schema 返回里抽出 [{field_id, label, type}]，兼容多种返回结构。"""
+    content = (result.get('content') or result.get('result')
+               or result.get('data') or result.get('items') or [])
+    if isinstance(content, dict):
+        content = content.get('items') or content.get('list') or content.get('content') or []
+    fields: List[Dict[str, Any]] = []
+    for c in content:
+        if not isinstance(c, dict):
+            continue
+        key = c.get('key') or c.get('fieldId') or c.get('componentId')
+        label = c.get('label')
+        if label is None and isinstance(c.get('props'), dict):
+            label = c['props'].get('label')
+        if key:
+            fields.append({
+                'field_id': str(key),
+                'label': _zh_label(label),
+                'type': c.get('componentName') or c.get('type') or '',
+            })
+    return fields
+
+
+def get_form_schema(form_uuid: str, access_token: Optional[str] = None):
+    """获取表单字段定义。Returns: (fields, used_url)，fields=[{field_id,label,type}]。
+    依次尝试候选 endpoint，第一个返回可解析字段者即采用；全失败抛异常（含各候选错误）。"""
+    token = access_token or get_access_token()
+    headers = {'x-acs-dingtalk-access-token': token, 'Content-Type': 'application/json'}
+    qs = urlencode({
+        'userId': YIDA_CONFIG['query_user_id'],
+        'systemToken': YIDA_CONFIG['system_token'],
+        'appType': YIDA_CONFIG['app_type'],
+    })
+    errors = []
+    for tmpl in SCHEMA_URL_CANDIDATES:
+        url = tmpl.format(form_uuid=form_uuid, app_type=YIDA_CONFIG['app_type']) + '?' + qs
+        try:
+            fields = _parse_schema_fields(_get_json(url, headers))
+            if fields:
+                return fields, url
+            errors.append(f'{tmpl} -> 返回无可解析字段')
+        except Exception as e:
+            errors.append(f'{tmpl} -> {e}')
+    raise RuntimeError('获取表单 schema 失败，候选 endpoint 均不可用：\n  ' + '\n  '.join(errors))
+
+
+def auto_map_material_fields(schema_fields: List[Dict[str, Any]]):
+    """按中文标题把字段对到 4 个目标字段。Returns: (mapping{std:field_id}, unmatched[std])。"""
+    by_label: Dict[str, str] = {}
+    for f in schema_fields:
+        lb = (f.get('label') or '').strip()
+        if lb and lb not in by_label:
+            by_label[lb] = f['field_id']
+    mapping: Dict[str, str] = {}
+    for std, labels in MATERIAL_TARGET_LABELS.items():
+        for lb in labels:
+            if lb in by_label:
+                mapping[std] = by_label[lb]
+                break
+    unmatched = [k for k in MATERIAL_TARGET_LABELS if k not in mapping]
+    return mapping, unmatched
