@@ -26,6 +26,14 @@ YIDA_CONFIG = {
 }
 
 
+# 同步写入物料库时，新建库使用的默认访问密码（material_db 每个库要求有密码）。
+# 走环境变量，不写死；建议设置一个团队约定的物料库默认密码。
+LIBRARY_PASSWORD = (os.getenv('YIDA_LIBRARY_PASSWORD') or '').strip()
+
+# 自动发现物料表单时，按标题包含以下任一关键词判定为“物料优选表”（过滤掉 PCB/领料/测试等无关表单）。
+MATERIAL_FORM_TITLE_KEYWORDS = ['物料优选', '(FB)', '(L)', '(R)', '(C)', '(ECA)']
+
+
 def check_yida_config():
     """校验宜搭配置是否完整。Returns: (ok, error_message)。"""
     if not YIDA_CONFIG.get('system_token'):

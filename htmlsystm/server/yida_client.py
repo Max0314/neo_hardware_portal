@@ -303,6 +303,38 @@ def get_form_schema(form_uuid: str, access_token: Optional[str] = None):
     return fields, url
 
 
+FORM_LIST_URL = 'https://api.dingtalk.com/v1.0/yida/forms'
+
+
+def list_forms_in_app(form_types: str = 'receipt', page_size: int = 100, max_pages: int = 50):
+    """列出应用下的表单。Returns: [{form_uuid, title, form_type}]。
+    form_types: 'receipt'(普通表单) / 'process'(流程表单)，按官方 SDK GetFormListInApp。"""
+    token = get_access_token()
+    headers = {'x-acs-dingtalk-access-token': token, 'Content-Type': 'application/json'}
+    out: List[Dict[str, Any]] = []
+    page = 1
+    while page <= max_pages:
+        qs = urlencode({
+            'systemToken': YIDA_CONFIG['system_token'],
+            'userId': YIDA_CONFIG['query_user_id'],
+            'appType': YIDA_CONFIG['app_type'],
+            'formTypes': form_types,
+            'pageNumber': page,
+            'pageSize': min(int(page_size or 100), 100),
+        })
+        result = _get_json(FORM_LIST_URL + '?' + qs, headers)
+        body = result.get('result') if isinstance(result.get('result'), dict) else result
+        data = body.get('data') or []
+        for d in data:
+            if isinstance(d, dict) and d.get('formUuid'):
+                out.append({'form_uuid': d.get('formUuid'), 'title': d.get('title') or '', 'form_type': d.get('formType') or ''})
+        total = int(body.get('totalCount') or len(out))
+        if len(data) < page_size or len(out) >= total:
+            break
+        page += 1
+    return out
+
+
 def auto_map_material_fields(schema_fields: List[Dict[str, Any]]) -> Dict[str, Any]:
     """按中文标题映射 4 个目标字段，兼容三种表形态：
       - 单物料表（物料代码/物料描述/...）              -> 1 个槽位
