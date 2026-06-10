@@ -160,4 +160,8 @@ def sync_material_forms(sources: Optional[List[Dict[str, Any]]] = None, *,
             results.append({'library': src.get('library_name') or src.get('form_uuid'),
                             'form_uuid': src.get('form_uuid'), 'error': str(e)})
             failed += 1
-    return {'total': len(sources), 'ok': ok, 'failed': failed, 'results': results}
+    total_rows = sum(r.get('rows', 0) for r in results if not r.get('error'))
+    # 同步成功但写入 0 行的库（多为源表物料代码为空，如线材），单独计数便于排查
+    empty = sum(1 for r in results if not r.get('error') and r.get('rows', 0) == 0)
+    return {'total': len(sources), 'ok': ok, 'failed': failed,
+            'empty': empty, 'total_rows': total_rows, 'results': results}
