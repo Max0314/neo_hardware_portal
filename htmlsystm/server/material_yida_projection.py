@@ -33,6 +33,16 @@ def _s(v: Any) -> str:
     return '' if v is None else str(v).strip()
 
 
+def _field_value(fd: Dict[str, Any], field_id: Optional[str]) -> Any:
+    """读字段值；NumberField/部分组件的取值有时在 `field_id_value` 下，做兜底。"""
+    if not field_id:
+        return None
+    val = fd.get(field_id)
+    if val in (None, ''):
+        val = fd.get(f'{field_id}_value')
+    return val
+
+
 def discover_material_forms(return_all: bool = False):
     """自动发现应用下的物料优选表单，按标题关键词过滤（兼容全角括号）。
     return_all=True 时返回 (全部表单, 命中表单) 便于诊断。"""
@@ -75,20 +85,20 @@ def build_rows_for_form(form_uuid: str, library_name: str, *,
         fd = meta.get('form_data') or {}
         group_key = ''
         if multi:
-            seq = _s(fd.get(seq_field)) if seq_field else ''
+            seq = _s(_field_value(fd, seq_field)) if seq_field else ''
             inst_id = _s(meta.get('form_instance_id'))
             group_key = f'{library_name}#{seq or inst_id[-8:] or n_inst}'
         for slot in slots:
-            code = _s(fd.get(slot.get('material_code')))
+            code = _s(_field_value(fd, slot.get('material_code')))
             if not code:
                 continue
-            desc = _s(fd.get(slot.get('material_name')))
-            pref = _s(fd.get(slot.get('preferred')))
+            desc = _s(_field_value(fd, slot.get('material_name')))
+            pref = _s(_field_value(fd, slot.get('preferred')))
             if multi:
                 group = group_key
             else:
                 rg = slot.get('replacement_group')
-                group = _s(fd.get(rg)) if rg else ''
+                group = _s(_field_value(fd, rg)) if rg else ''
             # 列顺序：物料代码 物料描述 pads库物料描述 成本单价 替代组标签 优选情况 备注说明
             rows.append([code, desc, '', '', group, pref, ''])
     return {'rows': rows, 'instances': n_inst, 'multi': multi, 'slot_count': mp['slot_count']}
