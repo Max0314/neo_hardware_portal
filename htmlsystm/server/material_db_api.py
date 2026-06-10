@@ -75,6 +75,28 @@ class MaterialDbApi:
             self.h.send_json_response({'success': True, 'logs': logs})
             return
 
+        # GET /api/material-db/yida-sync-status  宜搭同步进度/上次结果
+        if method == 'GET' and path == '/api/material-db/yida-sync-status':
+            from server.yida_sync_runner import get_status
+            self.h.send_json_response({'success': True, 'status': get_status()})
+            return
+
+        # POST /api/material-db/yida-sync  触发宜搭→物料库同步（后台线程，管理员）
+        if method == 'POST' and path == '/api/material-db/yida-sync':
+            if not (self.h._is_super_admin(user) or self.h._has_role(user, 'admin')
+                    or self.h._has_role(user, 'management')):
+                self.h.send_json_response({'success': False, 'error': '仅管理员可触发宜搭同步'}, status=403)
+                return
+            from server.yida_config import check_yida_config
+            ok, err = check_yida_config()
+            if not ok:
+                self.h.send_json_response({'success': False, 'error': err}, status=400)
+                return
+            from server.yida_sync_runner import start_background_sync, get_status
+            started, msg = start_background_sync(user_display)
+            self.h.send_json_response({'success': started, 'message': msg, 'status': get_status()})
+            return
+
         m = re.match(r'^/api/material-db/libraries/([^/]+)$', path)
         if m:
             lib_id = m.group(1)
