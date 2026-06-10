@@ -17,6 +17,10 @@ from server.logger import logger
 # 每天定时同步的小时（0-23），可用环境变量覆盖
 import os
 DAILY_SYNC_HOUR = int(os.getenv('YIDA_SYNC_HOUR', '3'))
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - Windows/dev fallback
+    fcntl = None
 
 _lock = threading.Lock()
 _state: Dict[str, Any] = {
@@ -28,6 +32,7 @@ _state: Dict[str, Any] = {
     'error': None,
 }
 _scheduler_thread = None
+_scheduler_lock_file = None
 
 
 def get_status() -> Dict[str, Any]:
@@ -86,10 +91,40 @@ def _scheduler_loop():
         time.sleep(300)  # 每 5 分钟检查一次
 
 
+def _acquire_scheduler_process_lock() -> bool:
+    """Ensure only one gunicorn worker starts the daily scheduler."""
+    global _scheduler_lock_file
+    if _scheduler_lock_file:
+        return True
+    if fcntl is None:
+        return True
+    try:
+        from server.config import DATA_DIR
+        lock_dir = os.path.join(DATA_DIR, 'locks')
+        os.makedirs(lock_dir, exist_ok=True)
+        lock_path = os.path.join(lock_dir, 'yida_sync_scheduler.lock')
+        fh = open(lock_path, 'w')
+        try:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            fh.close()
+            return False
+        fh.write(str(os.getpid()))
+        fh.flush()
+        _scheduler_lock_file = fh
+        return True
+    except Exception as e:
+        logger.warning(f'宜搭定时同步进程锁获取失败，将继续启动: {e}')
+        return True
+
+
 def start_daily_scheduler() -> None:
     """启动每日定时同步线程（应用启动时调用，幂等）。"""
     global _scheduler_thread
     if _scheduler_thread and _scheduler_thread.is_alive():
+        return
+    if not _acquire_scheduler_process_lock():
+        logger.info('宜搭每日定时同步已在其他进程中运行，跳过启动')
         return
     _scheduler_thread = threading.Thread(target=_scheduler_loop, daemon=True)
     _scheduler_thread.start()

@@ -1345,6 +1345,20 @@ def _initialize_worker():
                 except Exception as e:
                     logger.error(f"❌ 启动定时通知任务失败（Worker进程）: {e}", exc_info=True)
                     logger.warning("   定时通知功能可能不可用（可能已在其他进程中运行）")
+
+                # 启动宜搭→物料库每日定时同步（gunicorn worker 模式）
+                logger.info("正在启动宜搭每日定时同步任务（Worker进程）...")
+                try:
+                    from server.yida_config import check_yida_config
+                    ok, _ = check_yida_config()
+                    if ok:
+                        from server.yida_sync_runner import start_daily_scheduler
+                        start_daily_scheduler()
+                    else:
+                        logger.info("未配置 YIDA_SYSTEM_TOKEN，跳过宜搭每日定时同步")
+                except Exception as e:
+                    logger.error(f"❌ 启动宜搭定时同步失败（Worker进程）: {e}", exc_info=True)
+                    logger.warning("   宜搭每日定时同步功能可能不可用")
                 
                 _worker_initialized = True
                 _worker_ready.set()
