@@ -70,9 +70,17 @@ def main():
             return
         forms = [(s['form_uuid'], s['library_name']) for s in sources]
     else:
-        forms = [(fu, fu) for fu in args if fu.startswith('FORM-')]
-        if not forms:
+        wanted = [a for a in args if a.startswith('FORM-')]
+        if not wanted:
             print('用法: python3 scripts/yida_sync_test.py FORM-xxxx [--write] | --discover'); sys.exit(0)
+        # 解析真实表名（否则库名会被写成 form_uuid）
+        title_map = {}
+        try:
+            from server.yida_client import list_forms_in_app
+            title_map = {f['form_uuid']: f['title'] for f in list_forms_in_app()}
+        except Exception as e:
+            print(f'⚠️ 取表名失败，将用 form_uuid 当库名: {e}')
+        forms = [(fu, title_map.get(fu) or fu) for fu in wanted]
 
     if do_write:
         for fu, name in forms:
