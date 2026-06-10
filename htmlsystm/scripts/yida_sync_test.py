@@ -56,13 +56,15 @@ def main():
         except Exception as e:
             print(f'❌ 列出表单失败(GetFormListInApp): {e}')
             sys.exit(1)
-        print(f'应用下共 {len(all_forms)} 张表单；命中物料优选表 {len(sources)} 张。')
-        print('— 全部表单前 20 条(排查标题/关键词用) —')
-        for f in all_forms[:20]:
-            print(f"  {f['form_uuid']}  {f['title']}  [{f['form_type']}]")
+        picked_ids = {s['form_uuid'] for s in sources}
+        unmatched = [f for f in all_forms if f['form_uuid'] not in picked_ids]
+        print(f'应用下共 {len(all_forms)} 张；命中物料优选表 {len(sources)} 张；未命中 {len(unmatched)} 张。')
         print('— 命中的物料表单 —')
         for s in sources:
             print(f"  {s['form_uuid']}  {s['source_name']}")
+        print('— 未命中的表单(扫一眼有没有漏掉的物料明细表) —')
+        for f in unmatched:
+            print(f"  {f['form_uuid']}  {f['title']}  [{f['form_type']}]")
         if not do_write:
             print('\n(仅列出。预览某张：python3 scripts/yida_sync_test.py FORM-xxxx)')
             return
