@@ -301,6 +301,35 @@ export function HomePage() {
                 <i className="fas fa-cubes" style={{ color: '#6F95B0', opacity: 0.8 }} />
               </div>
             </Link>
+
+            {/* 测试报告审核 */}
+            <a
+              href={appUrl('/report-audit/')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="feature-card"
+              style={{ textDecoration: 'none', color: 'inherit' }}
+              onClick={() => trackDashboardFeatureUse('report_audit')}
+            >
+              <div className="icon-wrapper dual-icon">
+                <i className="fas fa-file-alt" />
+                <i className="fas fa-clipboard-check" />
+              </div>
+              <div className="card-title">
+                测试报告审核
+                <span className="ai-tag" style={{ background: '#DDEFF7' }}>Excel</span>
+              </div>
+              <div className="card-desc">
+                上传测试报告 Excel，进行错别字、专业术语与一致性检查；支持测数聚合分析和图表结果查看。
+              </div>
+              <div className="card-action">
+                <div className="action-btn">
+                  <i className="fas fa-arrow-right" />
+                  <span>进入审核</span>
+                </div>
+                <i className="fas fa-chart-line" style={{ color: '#6F95B0', opacity: 0.8 }} />
+              </div>
+            </a>
           </div>
 
           {/* 物料数据库：独占一行；左图右名、说明随标题列、右下进入 */}

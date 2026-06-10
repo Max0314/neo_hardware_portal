@@ -22,6 +22,7 @@ const FEATURE_LABELS: Record<string, string> = {  dashboard: '评审效能看板
   netlist_compare: '网表对比',
   bom_compare: 'BOM 对比',
   bom_check: 'BOM AI 检查',
+  report_audit: '测试报告审核',
   material_db: '物料数据库',
 };
 
