@@ -33,6 +33,12 @@ LIBRARY_PASSWORD = (os.getenv('YIDA_LIBRARY_PASSWORD') or '').strip()
 # 自动发现物料表单时，按标题包含以下任一关键词判定为“物料优选表”（过滤掉 PCB/领料/测试等无关表单）。
 MATERIAL_FORM_TITLE_KEYWORDS = ['物料优选', '(FB)', '(L)', '(R)', '(C)', '(ECA)']
 
+# 命中后再排除：以下是“中间表/流程/统计/底层元数据”，不是物料明细优选表，不同步。
+MATERIAL_FORM_EXCLUDE_KEYWORDS = [
+    '中间表', '数据集', '统计', '申请表', '审批', '审核', '记录',
+    '表名', '名称与', '必填属性', '通知', '齐套', 'Etype', '配置', '建库',
+]
+
 
 def check_yida_config():
     """校验宜搭配置是否完整。Returns: (ok, error_message)。"""

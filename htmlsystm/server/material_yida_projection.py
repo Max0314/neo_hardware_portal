@@ -21,7 +21,8 @@ from server.yida_client import (
     iter_form_instances, list_forms_in_app,
 )
 from server.yida_config import (
-    LIBRARY_PASSWORD, MATERIAL_FORM_TITLE_KEYWORDS, YIDA_MATERIAL_SOURCES,
+    LIBRARY_PASSWORD, MATERIAL_FORM_TITLE_KEYWORDS, MATERIAL_FORM_EXCLUDE_KEYWORDS,
+    YIDA_MATERIAL_SOURCES,
 )
 
 # 物料库标准表头（与 material-database.html STANDARD_HEADERS 一致）
@@ -43,9 +44,12 @@ def discover_material_forms(return_all: bool = False):
         norm = title.replace('（', '(').replace('）', ')')
         if f['form_uuid'] in seen:
             continue
-        if any(kw in norm for kw in MATERIAL_FORM_TITLE_KEYWORDS):
-            seen.add(f['form_uuid'])
-            picked.append({'form_uuid': f['form_uuid'], 'source_name': title, 'library_name': title})
+        if not any(kw in norm for kw in MATERIAL_FORM_TITLE_KEYWORDS):
+            continue
+        if any(ex in norm for ex in MATERIAL_FORM_EXCLUDE_KEYWORDS):
+            continue
+        seen.add(f['form_uuid'])
+        picked.append({'form_uuid': f['form_uuid'], 'source_name': title, 'library_name': title})
     if return_all:
         return all_forms, picked
     return picked
