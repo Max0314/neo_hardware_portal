@@ -542,6 +542,8 @@
                 <button type="button" id="btnBatchImport" class="btn-batch"><i class="fas fa-file-import"></i> 批量导入</button>
                 <button type="button" id="btnExportAll" class="btn-add" style="background:#4f46e5;"><i class="fas fa-file-excel"></i> 导出全部物料库 Excel</button>
                 <button type="button" id="btnAuditLog" class="btn-audit"><i class="fas fa-clipboard-list"></i> 修改记录</button>
+                <button type="button" id="btnYidaSync" class="btn-add" style="background:#0CA3B0;"><i class="fas fa-rotate"></i> 从宜搭同步</button>
+                <span id="yidaSyncStatus" style="margin-left:8px;font-size:0.85rem;color:#3C6478;"></span>
                 <span id="currentUserBadge" class="user-badge" style="display:none;"></span>
             </div>
             <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
@@ -822,6 +824,71 @@
         }
         return { ok: res.ok, status: res.status, data: data };
     }
+
+    // ===== 从宜搭同步 =====
+    function renderYidaStatus(st) {
+        const el = document.getElementById('yidaSyncStatus');
+        const btn = document.getElementById('btnYidaSync');
+        if (!el) return;
+        if (!st) { el.textContent = ''; return; }
+        if (st.running) {
+            if (btn) btn.disabled = true;
+            el.textContent = `同步中…（开始于 ${st.started_at || ''}）`;
+            el.style.color = '#1F6C9E';
+        } else {
+            if (btn) btn.disabled = false;
+            if (st.error) {
+                el.textContent = `上次同步失败：${st.error}`;
+                el.style.color = '#c0392b';
+            } else if (st.summary) {
+                const s = st.summary;
+                let txt = `上次同步：成功 ${s.ok}/${s.total}，失败 ${s.failed}，共 ${s.total_rows || 0} 行`;
+                if (s.empty) txt += `，其中 ${s.empty} 张为空(源无物料代码)`;
+                txt += `（${st.finished_at || ''}）`;
+                el.textContent = txt;
+                el.style.color = (s.failed ? '#e67e22' : (s.empty ? '#e67e22' : '#27ae60'));
+            } else {
+                el.textContent = '';
+            }
+        }
+    }
+
+    let yidaPollTimer = null;
+    async function pollYidaStatus(loop) {
+        try {
+            const { ok, data } = await apiFetch(API_BASE + '/yida-sync-status');
+            if (ok && data.status) {
+                const wasRunning = data.status.running;
+                renderYidaStatus(data.status);
+                if (loop && wasRunning) {
+                    clearTimeout(yidaPollTimer);
+                    yidaPollTimer = setTimeout(() => pollYidaStatus(true), 3000);
+                } else if (loop && !wasRunning) {
+                    reloadLibraries();  // 刚跑完，刷新库列表
+                }
+            }
+        } catch (e) { /* ignore */ }
+    }
+
+    async function startYidaSync() {
+        const btn = document.getElementById('btnYidaSync');
+        if (!confirm('确定从宜搭拉取最新物料数据、覆盖对应物料库吗？（旧表会进历史，可回溯）')) return;
+        if (btn) btn.disabled = true;
+        const { ok, data } = await apiFetch(API_BASE + '/yida-sync', { method: 'POST', body: JSON.stringify({}) });
+        if (!ok) {
+            alert('启动同步失败：' + (data.error || data.message || '未知错误'));
+            if (btn) btn.disabled = false;
+            return;
+        }
+        renderYidaStatus(data.status);
+        pollYidaStatus(true);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const btn = document.getElementById('btnYidaSync');
+        if (btn) btn.addEventListener('click', startYidaSync);
+        pollYidaStatus(false);
+    });
 
     async function checkAuth() {
         try {

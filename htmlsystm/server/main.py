@@ -8132,7 +8132,19 @@ def run_server():
     except Exception as e:
         logger.error(f"❌ 启动定时通知任务失败: {e}", exc_info=True)
         logger.warning("   服务器将继续启动，但定时通知功能不可用")
-    
+
+    # 启动宜搭→物料库每日定时同步（仅在配置了 YIDA_SYSTEM_TOKEN 时实际生效）
+    try:
+        from server.yida_config import check_yida_config
+        ok, _ = check_yida_config()
+        if ok:
+            from server.yida_sync_runner import start_daily_scheduler
+            start_daily_scheduler()
+        else:
+            logger.info("未配置 YIDA_SYSTEM_TOKEN，跳过宜搭每日定时同步")
+    except Exception as e:
+        logger.error(f"❌ 启动宜搭定时同步失败: {e}", exc_info=True)
+
     # 使用ThreadingHTTPServer支持多线程并发（兼容所有Python版本）
     with ThreadingHTTPServer((HOST, PORT), HardwareRDBHandler) as httpd:
         logger.info(f"硬件研发部管理系统运行在 http://{HOST}:{PORT}")
