@@ -306,23 +306,24 @@ def get_form_schema(form_uuid: str, access_token: Optional[str] = None):
 FORM_LIST_URL = 'https://api.dingtalk.com/v1.0/yida/forms'
 
 
-def list_forms_in_app(form_types: str = 'receipt', page_size: int = 100, max_pages: int = 50):
+def list_forms_in_app(form_types: Optional[str] = None, page_size: int = 100, max_pages: int = 50):
     """列出应用下的表单。Returns: [{form_uuid, title, form_type}]。
-    form_types: 'receipt'(普通表单) / 'process'(流程表单)，按官方 SDK GetFormListInApp。"""
+    form_types 不传则取全部类型（普通表单+流程表单）。"""
     token = get_access_token()
     headers = {'x-acs-dingtalk-access-token': token, 'Content-Type': 'application/json'}
     out: List[Dict[str, Any]] = []
     page = 1
     while page <= max_pages:
-        qs = urlencode({
+        q = {
             'systemToken': YIDA_CONFIG['system_token'],
             'userId': YIDA_CONFIG['query_user_id'],
             'appType': YIDA_CONFIG['app_type'],
-            'formTypes': form_types,
             'pageNumber': page,
             'pageSize': min(int(page_size or 100), 100),
-        })
-        result = _get_json(FORM_LIST_URL + '?' + qs, headers)
+        }
+        if form_types:
+            q['formTypes'] = form_types
+        result = _get_json(FORM_LIST_URL + '?' + urlencode(q), headers)
         body = result.get('result') if isinstance(result.get('result'), dict) else result
         data = body.get('data') or []
         for d in data:

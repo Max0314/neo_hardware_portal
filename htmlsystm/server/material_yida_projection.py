@@ -32,23 +32,22 @@ def _s(v: Any) -> str:
     return '' if v is None else str(v).strip()
 
 
-def discover_material_forms() -> List[Dict[str, str]]:
-    """自动发现应用下的物料优选表单（普通表单 + 流程表单），按标题关键词过滤。"""
-    forms = []
-    for ft in ('receipt', 'process'):
-        try:
-            forms.extend(list_forms_in_app(form_types=ft))
-        except Exception as e:
-            logger.warning(f'列出表单失败(formTypes={ft}): {e}')
+def discover_material_forms(return_all: bool = False):
+    """自动发现应用下的物料优选表单，按标题关键词过滤（兼容全角括号）。
+    return_all=True 时返回 (全部表单, 命中表单) 便于诊断。"""
+    all_forms = list_forms_in_app()  # 不限类型，取全部
     seen = set()
     picked = []
-    for f in forms:
+    for f in all_forms:
         title = f.get('title') or ''
+        norm = title.replace('（', '(').replace('）', ')')
         if f['form_uuid'] in seen:
             continue
-        if any(kw in title for kw in MATERIAL_FORM_TITLE_KEYWORDS):
+        if any(kw in norm for kw in MATERIAL_FORM_TITLE_KEYWORDS):
             seen.add(f['form_uuid'])
             picked.append({'form_uuid': f['form_uuid'], 'source_name': title, 'library_name': title})
+    if return_all:
+        return all_forms, picked
     return picked
 
 

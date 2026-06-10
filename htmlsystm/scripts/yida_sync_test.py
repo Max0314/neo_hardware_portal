@@ -51,8 +51,16 @@ def main():
 
     if '--discover' in args:
         print('自动发现物料表单中…')
-        sources = discover_material_forms()
-        print(f'发现 {len(sources)} 张物料表单:')
+        try:
+            all_forms, sources = discover_material_forms(return_all=True)
+        except Exception as e:
+            print(f'❌ 列出表单失败(GetFormListInApp): {e}')
+            sys.exit(1)
+        print(f'应用下共 {len(all_forms)} 张表单；命中物料优选表 {len(sources)} 张。')
+        print('— 全部表单前 20 条(排查标题/关键词用) —')
+        for f in all_forms[:20]:
+            print(f"  {f['form_uuid']}  {f['title']}  [{f['form_type']}]")
+        print('— 命中的物料表单 —')
         for s in sources:
             print(f"  {s['form_uuid']}  {s['source_name']}")
         if not do_write:
