@@ -328,7 +328,8 @@ def list_forms_in_app(form_types: Optional[str] = None, page_size: int = 100, ma
         data = body.get('data') or []
         for d in data:
             if isinstance(d, dict) and d.get('formUuid'):
-                out.append({'form_uuid': d.get('formUuid'), 'title': d.get('title') or '', 'form_type': d.get('formType') or ''})
+                # title 可能是 i18n 字典/JSON 串，统一取中文
+                out.append({'form_uuid': d.get('formUuid'), 'title': _zh_label(d.get('title')), 'form_type': d.get('formType') or ''})
         total = int(body.get('totalCount') or len(out))
         if len(data) < page_size or len(out) >= total:
             break
