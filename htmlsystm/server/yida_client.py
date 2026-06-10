@@ -386,6 +386,6 @@ def auto_map_material_fields(schema_fields: List[Dict[str, Any]]) -> Dict[str, A
         multi = False
 
     first = slots[0] if slots else {}
-    # 替代组标签缺失不算硬错误（结构件/多物料表可能本就没有），其余三项必须有
-    missing = [k for k in ('material_code', 'material_name', 'preferred') if not first.get(k)]
+    # 仅 物料代码+物料描述 为硬必填；优选情况/替代组标签 有的表本就没有，缺失不阻断整表
+    missing = [k for k in ('material_code', 'material_name') if not first.get(k)]
     return {'multi': multi, 'slot_count': len(slots), 'slots': slots, 'missing_in_first_slot': missing}

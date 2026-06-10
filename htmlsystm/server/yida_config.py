@@ -70,7 +70,7 @@ MATERIAL_TARGET_LABELS = {
     'material_code': ['物料代码', '物料编码', '物料编号'],
     'material_name': ['物料描述', '物料名称', '描述'],
     'preferred': ['优选情况', '优选状态', '优选'],
-    'replacement_group': ['替代组标签', '替代组', '替代分组', '替代组别'],
+    'replacement_group': ['替代组标签', '替代组', '替代分组', '替代组别', '替代项目组', '替代项目'],
 }
 
 YIDA_MATERIAL_SOURCES = [
