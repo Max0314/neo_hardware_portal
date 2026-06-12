@@ -87,10 +87,18 @@ class MaterialDbApi:
                     or self.h._has_role(user, 'management')):
                 self.h.send_json_response({'success': False, 'error': '仅管理员可触发宜搭同步'}, status=403)
                 return
-            from server.yida_config import check_yida_config
+            from server.yida_config import check_yida_config, LIBRARY_PASSWORD
             ok, err = check_yida_config()
             if not ok:
                 self.h.send_json_response({'success': False, 'error': err}, status=400)
+                return
+            # 预检库密码：否则同步会启动、但每张表都因缺密码失败(成功 0/N)，原因不直观
+            if not LIBRARY_PASSWORD:
+                self.h.send_json_response({
+                    'success': False,
+                    'error': '未配置 YIDA_LIBRARY_PASSWORD（物料库默认访问密码）。'
+                             '请在服务器 .env 中添加后重建 htmlsystm 容器，再触发同步。',
+                }, status=400)
                 return
             from server.yida_sync_runner import start_background_sync, get_status
             started, msg = start_background_sync(user_display)

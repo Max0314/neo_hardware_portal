@@ -43,6 +43,16 @@ def _field_value(fd: Dict[str, Any], field_id: Optional[str]) -> Any:
     return val
 
 
+def _strip_group_comma_suffix(label: str) -> str:
+    """替代组标签只保留第一个逗号(含全角)前的部分。
+    源数据形如 'W-C-0.6PF|50V|A|HQ|0201,0.6PF,A'，逗号后是重复的规格摘要，按需求不拼入标签。"""
+    for sep in (',', '，'):
+        idx = label.find(sep)
+        if idx >= 0:
+            label = label[:idx]
+    return label.strip()
+
+
 def discover_material_forms(return_all: bool = False):
     """自动发现应用下的物料优选表单，按标题关键词过滤（兼容全角括号）。
     return_all=True 时返回 (全部表单, 命中表单) 便于诊断。"""
@@ -98,7 +108,7 @@ def build_rows_for_form(form_uuid: str, library_name: str, *,
                 group = group_key
             else:
                 rg = slot.get('replacement_group')
-                group = _s(_field_value(fd, rg)) if rg else ''
+                group = _strip_group_comma_suffix(_s(_field_value(fd, rg))) if rg else ''
             # 列顺序：物料代码 物料描述 pads库物料描述 成本单价 替代组标签 优选情况 备注说明
             rows.append([code, desc, '', '', group, pref, ''])
     return {'rows': rows, 'instances': n_inst, 'multi': multi, 'slot_count': mp['slot_count']}
