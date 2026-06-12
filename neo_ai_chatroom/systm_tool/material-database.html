@@ -844,8 +844,16 @@
                 let txt = `上次同步：成功 ${s.ok}/${s.total}，失败 ${s.failed}，共 ${s.total_rows || 0} 行`;
                 if (s.empty) txt += `，其中 ${s.empty} 张为空(源无物料代码)`;
                 txt += `（${st.finished_at || ''}）`;
+                if (s.failed && Array.isArray(s.results)) {
+                    const firstErr = s.results.find(r => r && r.error);
+                    if (firstErr) {
+                        let msg = String(firstErr.error);
+                        if (msg.length > 90) msg = msg.slice(0, 90) + '…';
+                        txt += ` ｜ 失败原因(首个): ${msg}`;
+                    }
+                }
                 el.textContent = txt;
-                el.style.color = (s.failed ? '#e67e22' : (s.empty ? '#e67e22' : '#27ae60'));
+                el.style.color = (s.failed ? '#c0392b' : (s.empty ? '#e67e22' : '#27ae60'));
             } else {
                 el.textContent = '';
             }

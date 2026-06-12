@@ -62,8 +62,9 @@ services:
       NEO_INTERNAL_URL: http://backend:8000
       SUPER_ADMIN_USERNAME: ${SUPER_ADMIN_USERNAME:-zzw}
       DINGTALK_CLIENT_SECRET: ${DINGTALK_CLIENT_SECRET:-}
-      # 宜搭(YiDa)表单同步：系统令牌；空值不影响其它功能，仅同步时校验
+      # 宜搭(YiDa)表单同步：系统令牌 + 物料库默认密码；空值不影响其它功能，仅同步时校验
       YIDA_SYSTEM_TOKEN: ${YIDA_SYSTEM_TOKEN:-}
+      YIDA_LIBRARY_PASSWORD: ${YIDA_LIBRARY_PASSWORD:-}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
       # 知识库 ID 勿在此写 ${VAR:-}：未在 .env 配置时会注入空字符串，覆盖 config.py 默认值导致钉钉 API 404
       # 需要覆盖时在 .env 中设置 DINGTALK_WORKSPACE_ID / DINGTALK_DOC_PARENT_NODE_ID / DINGTALK_DOC_OPERATOR_UNIONID
