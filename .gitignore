@@ -39,6 +39,11 @@ __pycache__/
 .venv/
 venv/
 
+# AI desktop local state
+.claude/
+.codex/
+.venv-test/
+
 # 编辑器与系统文件
 .DS_Store
 Thumbs.db

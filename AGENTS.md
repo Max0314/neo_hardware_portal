@@ -1,6 +1,6 @@
 # AGENTS.md
 
-本文件是 `neo_hardware_portal/neo_hardware_portal` 的 AI 工程化约束。Codex 或其他 AI Agent 修改本项目时，应优先读取本文件、`README.md`、`docs/workflow.md`、`docs/architecture.md`、`docs/coding-style.md` 和对应的 `tasks/*.md`。
+本文件是 `neo_hardware_portal/neo_hardware_portal` 的 AI 工程化约束。Codex 或其他 AI Agent 修改本项目时，应优先读取本文件、`README.md`、`docs/workflow.md`、`docs/git-workflow.md`、`docs/architecture.md`、`docs/coding-style.md` 和对应的 `tasks/*.md`。
 
 ## 项目边界
 
@@ -27,13 +27,14 @@
 
 ## 验证规则
 
-默认验证入口：
+当前工作模式是 PC 本地开发、Git 管理，Codex 通过 SSH 到服务器部署和验证。优先运行本地可执行检查：
 
 ```bash
+make quick
 make check
 ```
 
-至少运行 `make compile`；涉及前端时运行对应构建或说明依赖不可用。
+本地没有 `make`、Docker 或 Linux 虚拟环境路径时，至少运行等价编译检查，例如 `python -m compileall -q htmlsystm neo_ai_chatroom/backend scripts migration`。涉及前端时运行对应构建或说明依赖不可用；Docker Compose build、服务重启、健康检查和日志检查可在服务器通过 SSH 执行。
 
 ## Git 规则
 
