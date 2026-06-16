@@ -1312,6 +1312,12 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
                     logger.error("发送验证码错误响应也失败")
                 return
         
+        elif actual_path.startswith('/api/export/usage/'):
+            # BI 中心使用数据导出（只读，X-API-Key 鉴权，不走 Cookie/会话）
+            from server.bi_export_api import BiExportApi
+            BiExportApi(self).dispatch('GET', actual_path, parsed_path)
+            return
+
         elif actual_path.startswith('/api/material-db/'):
             from server.material_db_api import MaterialDbApi
             MaterialDbApi(self).dispatch('GET', actual_path, parsed_path)

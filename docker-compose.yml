@@ -60,6 +60,8 @@ services:
       ENABLE_GZIP: ${HTMLSYSTM_ENABLE_GZIP:-0}
       NEO_INTERNAL_SECRET: ${NEO_INTERNAL_SECRET:?请在 .env 中设置 NEO_INTERNAL_SECRET}
       NEO_INTERNAL_URL: http://backend:8000
+      # BI 中心使用数据导出接口查询密钥（X-API-Key）；留空则 /api/export/usage/* 返回 503，不影响其它功能
+      BI_EXPORT_API_KEY: ${BI_EXPORT_API_KEY:-}
       SUPER_ADMIN_USERNAME: ${SUPER_ADMIN_USERNAME:-zzw}
       DINGTALK_CLIENT_SECRET: ${DINGTALK_CLIENT_SECRET:-}
       # 宜搭(YiDa)表单同步：系统令牌 + 物料库默认密码；空值不影响其它功能，仅同步时校验
