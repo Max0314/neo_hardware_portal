@@ -84,6 +84,13 @@ class BiExportApi:
             return 0.0
 
     @staticmethod
+    def _float_value(value: Any) -> float:
+        try:
+            return float(value or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @staticmethod
     def _clean_key(value: Any) -> str:
         return str(value).strip() if value is not None else ""
 
@@ -116,6 +123,92 @@ class BiExportApi:
             return int(raw)
         except ValueError:
             return None
+
+    def _build_canonical_user_map(self, raw_keys: List[str]) -> Dict[str, str]:
+        """Map raw neo user_key values to DingTalk user ids when users can identify them."""
+        unique_keys = sorted({self._clean_key(k) for k in raw_keys if self._clean_key(k)})
+        canonical = {k: k for k in unique_keys}
+        if not unique_keys:
+            return canonical
+
+        pool = self._pool()
+        exact_dingtalk_matches = set()
+        matched_rows: List[Dict[str, Any]] = []
+        chunk = 500
+        for i in range(0, len(unique_keys), chunk):
+            part = unique_keys[i:i + chunk]
+            placeholders = ",".join(["%s"] * len(part))
+            rows = pool.execute_query(
+                f"""
+                SELECT dingtalk_userid, job_number
+                FROM users
+                WHERE dingtalk_userid IN ({placeholders})
+                   OR job_number IN ({placeholders})
+                """,
+                tuple(part) + tuple(part),
+            )
+            matched_rows.extend(rows or [])
+
+        # First prefer exact DingTalk userId matches.
+        for row in matched_rows:
+            dingtalk_id = self._clean_key(row.get("dingtalk_userid"))
+            if dingtalk_id and dingtalk_id in canonical:
+                canonical[dingtalk_id] = dingtalk_id
+                exact_dingtalk_matches.add(dingtalk_id)
+
+        # Then map job numbers to the matched user's DingTalk id.
+        for row in matched_rows:
+            dingtalk_id = self._clean_key(row.get("dingtalk_userid"))
+            job_number = self._clean_key(row.get("job_number"))
+            if (
+                dingtalk_id
+                and job_number
+                and job_number in canonical
+                and job_number not in exact_dingtalk_matches
+            ):
+                canonical[job_number] = dingtalk_id
+
+        return canonical
+
+    def _canonical_user_map_for_month(self, month: str) -> Dict[str, str]:
+        pool = self._pool()
+        rows = pool.execute_query(
+            """
+            SELECT user_key FROM (
+                SELECT user_key FROM neo_feature_uses
+                WHERE LEFT(created_at, 7) = %s AND user_key IS NOT NULL AND user_key <> ''
+                UNION
+                SELECT user_key FROM neo_point_events
+                WHERE LEFT(created_at, 7) = %s AND user_key IS NOT NULL AND user_key <> ''
+                UNION
+                SELECT user_key FROM neo_bom_info_snapshots
+                WHERE LEFT(created_at, 7) = %s AND user_key IS NOT NULL AND user_key <> ''
+                UNION
+                SELECT user_key FROM neo_user_point_balances
+                WHERE month_id = %s AND user_key IS NOT NULL AND user_key <> ''
+            ) raw_keys
+            """,
+            (month, month, month, month),
+        )
+        return self._build_canonical_user_map([r.get("user_key") for r in rows or []])
+
+    def _canonical_active_user_count(self, month: str) -> int:
+        pool = self._pool()
+        rows = pool.execute_query(
+            """
+            SELECT user_key FROM (
+                SELECT user_key FROM neo_feature_uses
+                WHERE LEFT(created_at, 7) = %s AND user_key IS NOT NULL AND user_key <> ''
+                UNION
+                SELECT user_key FROM neo_point_events
+                WHERE LEFT(created_at, 7) = %s AND user_key IS NOT NULL AND user_key <> ''
+            ) raw_keys
+            """,
+            (month, month),
+        )
+        raw_keys = [self._clean_key(r.get("user_key")) for r in rows or []]
+        canonical = self._build_canonical_user_map(raw_keys)
+        return len({canonical.get(k, k) for k in raw_keys if k})
 
     # ---------------------------------------------------- GET .../usage/monthly
     def _usage_monthly(self, parsed_path: Any) -> None:
@@ -151,6 +244,11 @@ class BiExportApi:
         """按「员工 × 月」聚合 neo_* 指标，返回稳定排序后的整表（分页在内存切片）。"""
         pool = self._pool()
         agg: Dict[str, Dict[str, Any]] = {}
+        canonical_by_raw = self._canonical_user_map_for_month(month)
+
+        def canonical_key(raw_key: Any) -> str:
+            key = self._clean_key(raw_key)
+            return canonical_by_raw.get(key, key)
 
         def slot(uk: str) -> Dict[str, Any]:
             s = agg.get(uk)
@@ -161,7 +259,7 @@ class BiExportApi:
                     "pointsEarned": 0.0,
                     "monthPoints": 0.0,
                     "bomInfoCount": 0,
-                    "activeDays": 0,
+                    "activeDates": set(),
                 }
                 agg[uk] = s
             return s
@@ -177,7 +275,7 @@ class BiExportApi:
             """,
             (month,),
         ):
-            uk = self._clean_key(r.get("user_key"))
+            uk = canonical_key(r.get("user_key"))
             feat = str(r.get("feature") or "").strip()
             if not uk or not feat:
                 continue
@@ -197,51 +295,53 @@ class BiExportApi:
             """,
             (month,),
         ):
-            uk = self._clean_key(r.get("user_key"))
+            uk = canonical_key(r.get("user_key"))
             if not uk:
                 continue
-            slot(uk)["pointsEarned"] = self._round1(r.get("pts"))
+            slot(uk)["pointsEarned"] += self._float_value(r.get("pts"))
 
         # 3) 活跃天数：feature + point 事件去重后的北京自然日数
         for r in pool.execute_query(
             """
-            SELECT user_key, COUNT(DISTINCT d) AS active_days FROM (
+            SELECT user_key, d FROM (
                 SELECT user_key, LEFT(created_at, 10) AS d FROM neo_feature_uses
                 WHERE LEFT(created_at, 7) = %s AND user_key IS NOT NULL AND user_key <> ''
                 UNION
                 SELECT user_key, LEFT(created_at, 10) AS d FROM neo_point_events
                 WHERE LEFT(created_at, 7) = %s AND user_key IS NOT NULL AND user_key <> ''
             ) t
-            GROUP BY user_key
             """,
             (month, month),
         ):
-            uk = self._clean_key(r.get("user_key"))
-            if not uk:
+            uk = canonical_key(r.get("user_key"))
+            day = str(r.get("d") or "").strip()
+            if not uk or not day:
                 continue
-            slot(uk)["activeDays"] = int(r.get("active_days") or 0)
+            slot(uk)["activeDates"].add(day)
 
         # 4) BOM 信息数：该月最新一条快照的 info_count（仅补给已有使用记录的员工）
+        latest_bom: Dict[str, tuple] = {}
         for r in pool.execute_query(
             """
-            SELECT s.user_key AS user_key, s.info_count AS info_count
-            FROM neo_bom_info_snapshots s
-            JOIN (
-                SELECT user_key, MAX(created_at) AS mx
-                FROM neo_bom_info_snapshots
-                WHERE LEFT(created_at, 7) = %s
-                  AND user_key IS NOT NULL AND user_key <> ''
-                GROUP BY user_key
-            ) m ON m.user_key = s.user_key AND m.mx = s.created_at
+            SELECT user_key, info_count, created_at
+            FROM neo_bom_info_snapshots
+            WHERE LEFT(created_at, 7) = %s
+              AND user_key IS NOT NULL AND user_key <> ''
             """,
             (month,),
         ):
-            uk = self._clean_key(r.get("user_key"))
+            uk = canonical_key(r.get("user_key"))
             if not uk or uk not in agg:
                 continue
-            s = agg[uk]
-            # 同秒并列时 JOIN 可能返回多行，取较大值以保证确定性
-            s["bomInfoCount"] = max(s["bomInfoCount"], int(r.get("info_count") or 0))
+            created_at = str(r.get("created_at") or "")
+            info_count = int(r.get("info_count") or 0)
+            prev = latest_bom.get(uk)
+            if prev is None or created_at > prev[0]:
+                latest_bom[uk] = (created_at, info_count)
+            elif created_at == prev[0]:
+                latest_bom[uk] = (created_at, max(prev[1], info_count))
+        for uk, (_, info_count) in latest_bom.items():
+            agg[uk]["bomInfoCount"] = info_count
 
         # 5) monthPoints：实时余额表，仅当前月 month_id 命中（历史月维持 0）
         for r in pool.execute_query(
@@ -252,9 +352,9 @@ class BiExportApi:
             """,
             (month,),
         ):
-            uk = self._clean_key(r.get("user_key"))
+            uk = canonical_key(r.get("user_key"))
             if uk in agg:
-                agg[uk]["monthPoints"] = self._round1(r.get("month_points"))
+                agg[uk]["monthPoints"] += self._float_value(r.get("month_points"))
 
         # 身份回填：users.dingtalk_userid = user_key
         identities = self._lookup_identities(list(agg.keys()))
@@ -269,10 +369,10 @@ class BiExportApi:
                 "jobNumber": ident.get("job_number"),   # 匹配不上给 null
                 "featureUses": s["featureUses"],
                 "totalFeatureUses": s["totalFeatureUses"],
-                "pointsEarned": s["pointsEarned"],
-                "monthPoints": s["monthPoints"],
+                "pointsEarned": self._round1(s["pointsEarned"]),
+                "monthPoints": self._round1(s["monthPoints"]),
                 "bomInfoCount": s["bomInfoCount"],
-                "activeDays": s["activeDays"],
+                "activeDays": len(s["activeDates"]),
             })
         # 稳定全序排序（使用次数→积分→userId），保证 bi_center 逐页拉取结果可重复
         out.sort(key=lambda x: (-x["totalFeatureUses"], -x["pointsEarned"], x["userId"]))
@@ -323,19 +423,7 @@ class BiExportApi:
         latest = (str(latest).strip() or None) if latest else None
         employee_count = 0
         if latest:
-            cnt_rows = pool.execute_query(
-                """
-                SELECT COUNT(*) AS c FROM (
-                    SELECT user_key FROM neo_feature_uses
-                    WHERE LEFT(created_at, 7) = %s AND user_key IS NOT NULL AND user_key <> ''
-                    UNION
-                    SELECT user_key FROM neo_point_events
-                    WHERE LEFT(created_at, 7) = %s AND user_key IS NOT NULL AND user_key <> ''
-                ) u
-                """,
-                (latest, latest),
-            )
-            employee_count = int(cnt_rows[0].get("c") or 0) if cnt_rows else 0
+            employee_count = self._canonical_active_user_count(latest)
         generated_at = datetime.now(timezone(timedelta(hours=8))).isoformat(timespec="seconds")
         self.h.send_json_response({
             "ok": True,
