@@ -24,6 +24,7 @@ export type MaterialCodeRow = {
   libName: string;
   desc: string;
   groupLabel: string;
+  sourceUpdatedAt?: string;
   raw: unknown[];
 };
 
@@ -57,6 +58,7 @@ export function buildCodeToMaterialRows(
     const libName = lib.name || '未命名物料库';
     const table = lib.currentTable;
     if (!table?.data || !Array.isArray(table.data) || table.data.length < 2) continue;
+    const sourceUpdatedAt = table.updatedAt || lib.updatedAt || '';
     for (const row of table.data.slice(1)) {
       const r = row as unknown[];
       const code = r[0] != null ? String(r[0]).trim() : '';
@@ -64,8 +66,19 @@ export function buildCodeToMaterialRows(
       const desc = r[1] != null ? String(r[1]).trim() : '';
       const groupLabel = r[4] != null ? String(r[4]).trim() : '';
       if (!codeToRows[code]) codeToRows[code] = [];
-      codeToRows[code].push({ libName, desc, groupLabel, raw: r });
+      codeToRows[code].push({ libName, desc, groupLabel, sourceUpdatedAt, raw: r });
     }
+  }
+  for (const rows of Object.values(codeToRows)) {
+    rows.sort((a, b) => {
+      const bt = Date.parse(b.sourceUpdatedAt || '') || 0;
+      const at = Date.parse(a.sourceUpdatedAt || '') || 0;
+      if (bt !== at) return bt - at;
+      const bClean = b.groupLabel && !b.groupLabel.includes(',');
+      const aClean = a.groupLabel && !a.groupLabel.includes(',');
+      if (bClean !== aClean) return bClean ? 1 : -1;
+      return (a.libName || '').localeCompare(b.libName || '');
+    });
   }
   return codeToRows;
 }
@@ -73,15 +86,10 @@ export function buildCodeToMaterialRows(
 /** 物料代码 → 替代组标签（BOM 导入时重写 groupKey） */
 export function buildCodeToGroupLabel(libs: MaterialLibrary[]): Record<string, string> {
   const codeToGroup: Record<string, string> = {};
-  for (const lib of libs) {
-    const table = lib.currentTable;
-    if (!table?.data || !Array.isArray(table.data) || table.data.length < 2) continue;
-    for (const row of table.data.slice(1)) {
-      const r = row as unknown[];
-      const code = r[0] != null ? String(r[0]).trim() : '';
-      const group = r[4] != null ? String(r[4]).trim() : '';
-      if (code && group) codeToGroup[code] = group;
-    }
+  const codeToRows = buildCodeToMaterialRows(libs);
+  for (const [code, rows] of Object.entries(codeToRows)) {
+    const group = rows.find((r) => r.groupLabel)?.groupLabel || '';
+    if (group) codeToGroup[code] = group;
   }
   return codeToGroup;
 }
