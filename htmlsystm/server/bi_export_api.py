@@ -94,9 +94,11 @@ class BiExportApi:
             return ""
         getter = getattr(headers, "get", None)
         if callable(getter):
-            value = getter(name, None)
-            if value is not None:
-                return str(value)
+            candidates = (name, name.title(), name.lower(), name.upper())
+            for candidate in candidates:
+                value = getter(candidate, None)
+                if value is not None:
+                    return str(value)
         target = name.lower()
         items = getattr(headers, "items", None)
         if callable(items):
