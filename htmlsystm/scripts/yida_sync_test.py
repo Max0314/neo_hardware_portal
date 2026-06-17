@@ -32,7 +32,11 @@ def preview(form_uuid, name):
         print(f'  ❌ {e}')
         return
     rows = built['rows']
-    print(f"  实例 {built['instances']} 条 → 物料 {len(rows)} 行 (multi={built['multi']}, 槽位={built['slot_count']})")
+    print(
+        f"  实例 {built['instances']} 条 → 物料 {len(rows)} 行 "
+        f"(multi={built['multi']}, 槽位={built['slot_count']}, "
+        f"替代组投影={built.get('group_projection')}, 字段={built.get('group_label_fields') or []})"
+    )
     print('  表头:', STANDARD_HEADERS)
     for r in rows[:8]:
         print('   ', r)

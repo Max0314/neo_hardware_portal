@@ -350,16 +350,27 @@ def auto_map_material_fields(schema_fields: List[Dict[str, Any]]) -> Dict[str, A
     }
     """
     by_label: Dict[str, str] = {}
+    by_norm_label: Dict[str, str] = {}
+
+    def norm_label(v: Any) -> str:
+        s = (str(v or '')).strip().lower()
+        s = ''.join(s.split())
+        return s.replace('（', '(').replace('）', ')')
+
     for f in schema_fields:
         lb = (f.get('label') or '').strip()
         if lb:
             by_label.setdefault(lb, f['field_id'])
+            by_norm_label.setdefault(norm_label(lb), f['field_id'])
 
     def find(target: str, suffix: str = '') -> Optional[str]:
         for lb in MATERIAL_TARGET_LABELS[target]:
             for cand in (f'{lb}{suffix}', f'{lb} {suffix}'.rstrip()):
                 if cand in by_label:
                     return by_label[cand]
+                hit = by_norm_label.get(norm_label(cand))
+                if hit:
+                    return hit
         return None
 
     # 探测编号槽位（物料代码1、物料代码2 ...），最多 20 个

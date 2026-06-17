@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import json
 import os
 
 # raw 表里的来源系统标识（区分不同来源/系统复用同一套同步器）
@@ -29,6 +30,69 @@ YIDA_CONFIG = {
 # 同步写入物料库时，新建库使用的默认访问密码（material_db 每个库要求有密码）。
 # 走环境变量，不写死；建议设置一个团队约定的物料库默认密码。
 LIBRARY_PASSWORD = (os.getenv('YIDA_LIBRARY_PASSWORD') or '').strip()
+
+# 特殊多物料替代表单：一条宜搭实例里有“物料代码1..N/物料描述1..N”，但替代组标签
+# 不是独立字段，而是由同一行的规格字段拼接而成。
+# 可通过环境变量手动追加 FORM ID，便于后续新增同类表单：
+#   YIDA_SPECIAL_MATERIAL_FORMS=FORM-AAA,FORM-BBB
+# 或 JSON：
+#   YIDA_SPECIAL_MATERIAL_FORMS=[
+#     {"form_uuid":"FORM-AAA","library_name":"容阻感优选表",
+#      "group_label_fields":["Value","Voltage Rating","Tolerance","Package"]}
+#   ]
+SPECIAL_GROUP_LABEL_FIELDS = [
+    'Value',
+    'Voltage Rating',
+    'Wattage/Amp',
+    'Tolerance',
+    'Temp Tolerance',
+    'Life Time',
+    'Material',
+    'Package',
+]
+
+
+def _parse_special_material_sources():
+    raw = (os.getenv('YIDA_SPECIAL_MATERIAL_FORMS') or '').strip()
+    if not raw:
+        return []
+
+    def normalize(item):
+        if isinstance(item, str):
+            form_uuid = item.strip()
+            if not form_uuid:
+                return None
+            return {
+                'form_uuid': form_uuid,
+                'source_name': form_uuid,
+                'library_name': form_uuid,
+                'projection': 'attribute_group_slots',
+                'group_label_fields': SPECIAL_GROUP_LABEL_FIELDS,
+            }
+        if not isinstance(item, dict):
+            return None
+        form_uuid = (item.get('form_uuid') or item.get('formUuid') or '').strip()
+        if not form_uuid:
+            return None
+        label_fields = item.get('group_label_fields') or item.get('groupLabelFields') or SPECIAL_GROUP_LABEL_FIELDS
+        return {
+            **item,
+            'form_uuid': form_uuid,
+            'source_name': item.get('source_name') or item.get('sourceName') or item.get('library_name') or form_uuid,
+            'library_name': item.get('library_name') or item.get('libraryName') or item.get('source_name') or form_uuid,
+            'projection': item.get('projection') or 'attribute_group_slots',
+            'group_label_fields': label_fields if isinstance(label_fields, list) else SPECIAL_GROUP_LABEL_FIELDS,
+        }
+
+    try:
+        parsed = json.loads(raw)
+        items = parsed if isinstance(parsed, list) else [parsed]
+    except json.JSONDecodeError:
+        items = [x.strip() for x in raw.replace(';', ',').split(',')]
+    return [x for x in (normalize(item) for item in items) if x]
+
+
+YIDA_SPECIAL_MATERIAL_SOURCES = _parse_special_material_sources()
 
 # 自动发现物料表单时，按标题包含以下任一关键词判定为“物料优选表”（过滤掉 PCB/领料/测试等无关表单）。
 MATERIAL_FORM_TITLE_KEYWORDS = ['物料优选', '(FB)', '(L)', '(R)', '(C)', '(ECA)',

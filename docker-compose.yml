@@ -67,6 +67,7 @@ services:
       # 宜搭(YiDa)表单同步：系统令牌 + 物料库默认密码；空值不影响其它功能，仅同步时校验
       YIDA_SYSTEM_TOKEN: ${YIDA_SYSTEM_TOKEN:-}
       YIDA_LIBRARY_PASSWORD: ${YIDA_LIBRARY_PASSWORD:-}
+      YIDA_SPECIAL_MATERIAL_FORMS: ${YIDA_SPECIAL_MATERIAL_FORMS:-}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
       PUBLIC_PATH_PREFIX: ${PUBLIC_PATH_PREFIX:-/neo_hardware}
       # 知识库 ID 勿在此写 ${VAR:-}：未在 .env 配置时会注入空字符串，覆盖 config.py 默认值导致钉钉 API 404
