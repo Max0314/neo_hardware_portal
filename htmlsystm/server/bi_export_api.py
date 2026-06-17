@@ -60,7 +60,7 @@ class BiExportApi:
         if not configured:
             self._fail(503, "export_not_configured")
             return False
-        provided = (self.h.headers.get("X-API-Key") or "").strip()
+        provided = self._header("X-API-Key").strip()
         if not provided or not hmac.compare_digest(provided, configured):
             self._fail(401, "unauthorized")
             return False
@@ -86,6 +86,24 @@ class BiExportApi:
     @staticmethod
     def _clean_key(value: Any) -> str:
         return str(value).strip() if value is not None else ""
+
+    def _header(self, name: str) -> str:
+        """Read a request header case-insensitively across HTTP and WSGI adapters."""
+        headers = getattr(self.h, "headers", None)
+        if not headers:
+            return ""
+        getter = getattr(headers, "get", None)
+        if callable(getter):
+            value = getter(name, None)
+            if value is not None:
+                return str(value)
+        target = name.lower()
+        items = getattr(headers, "items", None)
+        if callable(items):
+            for key, value in items():
+                if str(key).lower() == target:
+                    return str(value or "")
+        return ""
 
     @staticmethod
     def _int_param(params: Dict[str, List[str]], name: str, default: int) -> Optional[int]:
