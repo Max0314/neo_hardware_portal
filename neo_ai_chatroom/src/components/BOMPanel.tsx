@@ -156,6 +156,7 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
   const [mapNameIdx, setMapNameIdx] = useState<number>(-1);
   const [mapQtyIdx, setMapQtyIdx] = useState<number>(-1);
   const [mapDesIdx, setMapDesIdx] = useState<number>(-1);
+  const [mapSubstituteProjectGroupIdx, setMapSubstituteProjectGroupIdx] = useState<number>(-1);
   const [reachRequired, setReachRequired] = useState(false);
   const [rohsRequired, setRohsRequired] = useState(false);
   const [filterCode, setFilterCode] = useState('');
@@ -636,6 +637,7 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
     const nameIdx = mapNameIdx;
     const qtyIdx = mapQtyIdx;
     const desIdx = mapDesIdx;
+    const substituteProjectGroupIdx = mapSubstituteProjectGroupIdx;
     if (codeIdx < 0 || qtyIdx < 0 || desIdx < 0) {
       alert('请先在映射区域选择物料代码 / 数量 / 位号三列。');
       return;
@@ -648,12 +650,15 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
       const qtyRaw = (cols[qtyIdx] || '').trim();
       const qty = parseFloat(qtyRaw || '0');
       const desRaw = (cols[desIdx] || '').trim();
+      const substituteProjectGroup =
+        substituteProjectGroupIdx >= 0 ? (cols[substituteProjectGroupIdx] || '').trim() : '';
       const designators = splitDesignators(desRaw);
       const item: BOMItem = {
         code,
         name: name || undefined,
         quantity: Number.isFinite(qty) && qty > 0 ? qty : designators.length || 0,
         designators,
+        substituteProjectGroup: substituteProjectGroup || undefined,
       };
       item.groupKey = computeGroupKey(item.designators);
       items.push(item);
@@ -705,6 +710,7 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
     setMapNameIdx(-1);
     setMapQtyIdx(-1);
     setMapDesIdx(-1);
+    setMapSubstituteProjectGroupIdx(-1);
   };
 
   const parseBOMFromAOA = (aoa: any[][], _source: string) => {
@@ -720,6 +726,7 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
     setMapNameIdx(-1);
     setMapQtyIdx(-1);
     setMapDesIdx(-1);
+    setMapSubstituteProjectGroupIdx(-1);
   };
 
   const renderSummary = () => {
@@ -909,6 +916,24 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
                   </option>
                 ))}
               </select>
+            </div>
+            <div className="text-xs">
+              <div className="mb-1 text-gray-600">替代项目组列（可选）</div>
+              <select
+                className="w-full border rounded px-2 py-1 text-xs"
+                value={mapSubstituteProjectGroupIdx}
+                onChange={(e) => setMapSubstituteProjectGroupIdx(parseInt(e.target.value, 10))}
+              >
+                <option value={-1}>不使用</option>
+                {rawHeader.map((h, idx) => (
+                  <option key={idx} value={idx}>
+                    {idx + 1}. {h || `列${idx + 1}`}
+                  </option>
+                ))}
+              </select>
+              <div className="mt-1 text-[11px] text-gray-500">
+                下载 PLM 标准 BOM 时会保留已有编号，新生成编号会避开已使用编号。
+              </div>
             </div>
           </div>
           <div className="mt-2 space-y-1 text-xs">
@@ -2276,6 +2301,7 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
         quantity: number;
         designators: string[];
         groupLabel?: string;
+        substituteProjectGroup?: string;
         aiResult?: string;
         aiReason?: string;
         infoReason?: string;
@@ -2439,6 +2465,7 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
             quantity: item.quantity,
             designators: item.designators || [],
             groupLabel: groupLabelForRow,
+            substituteProjectGroup: item.substituteProjectGroup,
             aiResult: summary?.result,
             aiReason: summary?.reason,
             infoReason: infoReasonSummary[item.code],
@@ -2453,6 +2480,7 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
                 quantity: item.quantity,
                 designators: item.designators || [],
                 groupLabel: groupKey,
+                substituteProjectGroup: item.substituteProjectGroup,
                 aiResult: aiCheckSummary[m.code]?.result,
                 aiReason: aiCheckSummary[m.code]?.reason,
                 infoReason: infoReasonSummary[m.code],
@@ -2482,6 +2510,7 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
           '物料名称',
           '数量',
           '位号',
+          '替代项目组',
           '替代组标签',
           'INFO原因',
           'AI CHECK结果',
@@ -2492,6 +2521,7 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
           it.name || '',
           it.quantity,
           it.designators.join(', '),
+          it.substituteProjectGroup || '',
           it.groupLabel || '',
           it.infoReason || '',
           it.aiResult || '',
@@ -2533,6 +2563,7 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
             itemName: r.name || '',
             quantity: r.quantity,
             reference: formatDesignatorsForPlm(r.designators || []),
+            substituteProjectGroup: r.substituteProjectGroup,
           }));
           const converted = convertRowsToPlmFormat(plmSource, PLM_TEMPLATE_HEADERS, {
             parentCode: plmParentCode,

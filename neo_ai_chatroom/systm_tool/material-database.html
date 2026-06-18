@@ -872,7 +872,9 @@
                     clearTimeout(yidaPollTimer);
                     yidaPollTimer = setTimeout(() => pollYidaStatus(true), 3000);
                 } else if (loop && !wasRunning) {
-                    reloadLibraries();  // 刚跑完，刷新库列表
+                    await reloadLibraries();  // 刚跑完，刷新库列表
+                    renderLibGrid();
+                    if (selectedLibId) renderMaterialDetail();
                 }
             }
         } catch (e) { /* ignore */ }
@@ -1202,13 +1204,29 @@
             if (!selectedSet.size) return true;
             return selectedSet.has(card.id);
         });
+        let selectedCard = null;
+        if (selectedLibId && selectedLibId !== '__ALL__') {
+            selectedCard = libCards.find(card => card.id === selectedLibId) || null;
+        }
+        const selectedInFiltered = selectedCard && filteredLibCards.some(card => card.id === selectedCard.id);
+        if (selectedCard && !selectedInFiltered) {
+            filteredLibCards.unshift(selectedCard);
+        }
         const totalPages = Math.max(1, Math.ceil(filteredLibCards.length / LIBS_PER_PAGE));
         if (libCarouselPage >= totalPages) libCarouselPage = totalPages - 1;
         if (libCarouselPage < 0) libCarouselPage = 0;
+        if (selectedCard) {
+            const selectedIndex = filteredLibCards.findIndex(card => card.id === selectedCard.id);
+            if (selectedIndex >= 0) libCarouselPage = Math.floor(selectedIndex / LIBS_PER_PAGE);
+        }
         const start = libCarouselPage * LIBS_PER_PAGE;
         const pageCards = filteredLibCards.slice(start, start + LIBS_PER_PAGE);
-        libGrid.innerHTML = allCardHtml + (pageCards.map(c => c.html).join('') || '');
-        libPageInfo.textContent = `第 ${libCarouselPage + 1} / ${totalPages} 组（其余库共 ${filteredLibCards.length} 项）`;
+        const noNormalMatch = pageCards.length === 0;
+        const noMatchHtml = noNormalMatch
+            ? '<div class="lib-card" style="grid-column: span 5; color:#64748b; display:flex; align-items:center; justify-content:center;">没有匹配的物料库，请清空筛选或修改关键词。</div>'
+            : '';
+        libGrid.innerHTML = allCardHtml + (pageCards.map(c => c.html).join('') || noMatchHtml);
+        libPageInfo.textContent = `第 ${libCarouselPage + 1} / ${totalPages} 组（筛选后 ${filteredLibCards.length} 项）`;
         btnLibPrev.disabled = libCarouselPage === 0;
         btnLibNext.disabled = libCarouselPage >= totalPages - 1;
 

@@ -27,10 +27,50 @@ from server.yida_config import (
 
 # 物料库标准表头（与 material-database.html STANDARD_HEADERS 一致）
 STANDARD_HEADERS = ['物料代码', '物料描述', 'pads库物料描述', '成本单价', '替代组标签', '优选情况', '备注说明']
+LEGACY_LIBRARY_TYPE_SUFFIXES = ('(C)', '(R)', '(L)', '(FB)', '(ECA)')
 
 
 def _s(v: Any) -> str:
     return '' if v is None else str(v).strip()
+
+
+def _normalize_library_name(name: str) -> str:
+    return _s(name).replace('（', '(').replace('）', ')')
+
+
+def _legacy_library_aliases(library_name: str) -> List[str]:
+    """Return old material-library names that predate YiDa type suffixes.
+
+    YiDa discovery names forms as e.g. ``0201电容(C)`` while older material DB
+    libraries were named ``0201电容``.  If the old library already exists, sync
+    should update it too so users do not keep seeing stale May 2026 tables.
+    """
+    name = _normalize_library_name(library_name)
+    aliases: List[str] = []
+    for suffix in LEGACY_LIBRARY_TYPE_SUFFIXES:
+        if name.endswith(suffix):
+            alias = name[: -len(suffix)].strip()
+            if alias and alias != library_name:
+                aliases.append(alias)
+            break
+    return aliases
+
+
+def _sync_target_library_names(library_name: str) -> List[str]:
+    existing_names = {
+        _s(lib.get('name'))
+        for lib in mdb.list_libraries()
+        if _s(lib.get('name'))
+    }
+    aliases = [name for name in _legacy_library_aliases(library_name) if name in existing_names]
+    primary_exists = library_name in existing_names
+    targets: List[str] = []
+    if primary_exists or not aliases:
+        targets.append(library_name)
+    for alias in aliases:
+        if alias not in targets:
+            targets.append(alias)
+    return targets
 
 
 def _field_value(fd: Dict[str, Any], field_id: Optional[str]) -> Any:
@@ -244,8 +284,15 @@ def sync_form_to_library(source: Dict[str, Any], *,
         'updatedAt': now.strftime('%Y-%m-%dT%H:%M:%S'),
         'data': data,
     }
+    target_libraries = _sync_target_library_names(library_name)
+    import_items = []
+    for target_name in target_libraries:
+        target_table = dict(current_table)
+        target_table['fileName'] = f'Yida-sync-{target_name}.xlsx'
+        import_items.append({'name': target_name, 'currentTable': target_table})
+
     res = mdb.batch_import_libraries(
-        [{'name': library_name, 'currentTable': current_table}],
+        import_items,
         overwrite=True, default_prefix='', default_password=pwd,
         user_id=user_id, user_display=user_display,
     )
@@ -253,6 +300,7 @@ def sync_form_to_library(source: Dict[str, Any], *,
                 f"(multi={built['multi']}, slots={built['slot_count']}, {res})")
     return {
         'library': library_name, 'form_uuid': source['form_uuid'],
+        'target_libraries': target_libraries,
         'instances': built['instances'], 'rows': len(built['rows']),
         'multi': built['multi'], 'slot_count': built['slot_count'],
         'group_projection': built.get('group_projection'),

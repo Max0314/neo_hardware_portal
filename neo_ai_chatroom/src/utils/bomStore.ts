@@ -7,6 +7,8 @@ export interface BOMItem {
   designators: string[];
   /** 替代组标识：通常为位号集合的规范化字符串 */
   groupKey?: string;
+  /** BOM 源表中的 PLM 替代项目组编号；导出 PLM 时应原样保留 */
+  substituteProjectGroup?: string;
 }
 
 export interface BOMState {

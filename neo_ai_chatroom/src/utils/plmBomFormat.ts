@@ -47,6 +47,8 @@ export interface PlmSourceRow {
   quantity: string | number;
   /** 与 HTML 工具「位号」列一致：仅用英文逗号拼接，不含空格 */
   reference: string;
+  /** 源 BOM 已有的替代项目组编号；导出时原样保留 */
+  substituteProjectGroup?: string;
 }
 
 /** PLM 位号列：多个位号仅用英文逗号连接（无逗号后空格、无首尾空格） */
@@ -74,6 +76,22 @@ export interface PlmConvertOptions {
 
 type PlmRow = Record<string, string | number>;
 
+function normalizeSubstituteProjectGroup(value: unknown): string {
+  const raw = String(value ?? '').trim();
+  if (!raw || raw === '0' || raw === '无' || raw.toLowerCase() === 'none') return '';
+  return raw;
+}
+
+function allocateSubstituteGroupNumber(used: Set<string>, counter: { value: number }): string {
+  while (true) {
+    const candidate = formatSubstituteGroupNumber(counter.value++);
+    if (!used.has(candidate)) {
+      used.add(candidate);
+      return candidate;
+    }
+  }
+}
+
 /**
  * 将简化的 BOM 行转为 PLM 模板列（与 `bom-to-plm.html` 的 convertToPLMFormat 一致）
  */
@@ -96,15 +114,31 @@ export function convertRowsToPlmFormat(
     }
   }
 
-  const substituteGroupMap = new Map<string, number>();
-  let substituteGroupCounter = 1;
-  for (const [reference, count] of referenceCount) {
-    if (count > 1) {
-      substituteGroupMap.set(reference, substituteGroupCounter++);
+  const usedSubstituteGroups = new Set<string>();
+  const existingGroupByReference = new Map<string, string>();
+  for (const row of bomRows) {
+    const existingGroup = normalizeSubstituteProjectGroup(row.substituteProjectGroup);
+    if (!existingGroup) continue;
+    usedSubstituteGroups.add(existingGroup);
+    const reference = normalizePlmReferenceString(String(row.reference || ''));
+    if (reference && !existingGroupByReference.has(reference)) {
+      existingGroupByReference.set(reference, existingGroup);
     }
   }
 
-  const groupPrioritySet = new Map<number, boolean>();
+  const substituteGroupMap = new Map<string, string>();
+  const substituteGroupCounter = { value: 1 };
+  for (const [reference, count] of referenceCount) {
+    if (count > 1) {
+      substituteGroupMap.set(
+        reference,
+        existingGroupByReference.get(reference) ||
+          allocateSubstituteGroupNumber(usedSubstituteGroups, substituteGroupCounter)
+      );
+    }
+  }
+
+  const groupPrioritySet = new Map<string, boolean>();
   let sequenceNumber = 1;
   const convertedData: PlmRow[] = [];
 
@@ -113,18 +147,17 @@ export function convertRowsToPlmFormat(
     const itemName = row.itemName || '';
     const quantity = row.quantity ?? '';
     const reference = normalizePlmReferenceString(String(row.reference || ''));
+    const existingGroup = normalizeSubstituteProjectGroup(row.substituteProjectGroup);
 
     const hasSubstituteGroup = substituteGroupMap.has(reference);
-    const rawGroupNumber = hasSubstituteGroup ? substituteGroupMap.get(reference)! : null;
-    const substituteGroupFormatted = rawGroupNumber
-      ? formatSubstituteGroupNumber(rawGroupNumber)
-      : '';
+    const substituteGroupFormatted =
+      existingGroup || (hasSubstituteGroup ? substituteGroupMap.get(reference)! : '');
 
     let priority: number | string = '';
-    if (hasSubstituteGroup) {
-      if (!groupPrioritySet.has(rawGroupNumber!)) {
+    if (substituteGroupFormatted) {
+      if (!groupPrioritySet.has(substituteGroupFormatted)) {
         priority = 100;
-        groupPrioritySet.set(rawGroupNumber!, true);
+        groupPrioritySet.set(substituteGroupFormatted, true);
       } else {
         priority = 0;
       }
@@ -165,7 +198,7 @@ export function convertRowsToPlmFormat(
       } else if (nh.includes('替代项目组')) {
         value = substituteGroupFormatted;
       } else if (nh === '替代策略') {
-        value = hasSubstituteGroup ? '1' : '';
+        value = substituteGroupFormatted ? '1' : '';
       } else if (nh.includes('优先级')) {
         value = priority;
       } else {
