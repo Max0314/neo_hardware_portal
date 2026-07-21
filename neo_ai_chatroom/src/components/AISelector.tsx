@@ -154,7 +154,7 @@ export const AISelector: React.FC<AISelectorProps> = ({
                     {ai.description && (
                       <div className="text-xs text-gray-500">{ai.description}</div>
                     )}
-                    {/* 思考模式（DeepSeek / 百炼） */}
+                    {/* 思考模式（DeepSeek / AI Token Plan） */}
                     {(ai.baseAI === 'deepseek' ||
                       (ai.baseAI?.startsWith('bailian-') && ai.supportsReasoning)) && (
                       <label className="flex items-center space-x-1 mt-1 text-xs text-gray-600">

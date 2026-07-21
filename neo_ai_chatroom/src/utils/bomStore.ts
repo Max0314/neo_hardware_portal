@@ -9,6 +9,10 @@ export interface BOMItem {
   groupKey?: string;
   /** BOM 源表中的 PLM 替代项目组编号；导出 PLM 时应原样保留 */
   substituteProjectGroup?: string;
+  /** 原始数据行序号（不含表头），用于保证导出顺序稳定 */
+  sourceRowIndex?: number;
+  /** 物料代码为空但其它映射字段有值：保留导出，但不参与物料校验 */
+  preserveOnly?: boolean;
 }
 
 export interface BOMState {
@@ -102,6 +106,8 @@ export type BOMDesignatorTagConflictIssue = {
   kind: 'tag_conflict';
   designator: string;
   codes: string[];
+  codeLabels: Array<{ code: string; groupLabel: string }>;
+  signature: string;
   message: string;
 };
 
@@ -112,6 +118,88 @@ type DesignatorMaterialEntry = {
   libMatched: boolean;
   groupLabel: string | null;
 };
+
+export type BOMDesignatorTagConflictGroup = {
+  signature: string;
+  codes: string[];
+  codeLabels: Array<{ code: string; groupLabel: string }>;
+  designators: string[];
+  message: string;
+};
+
+export function isBomItemCheckable(item: BOMItem): boolean {
+  return !item.preserveOnly && (item.code || '').trim().length > 0;
+}
+
+export type BOMColumnMapping = {
+  codeIdx: number;
+  nameIdx: number;
+  qtyIdx: number;
+  designatorIdx: number;
+  substituteProjectGroupIdx: number;
+};
+
+/** 将已映射的源行转换为 BOM；空代码但有业务内容的行只保留、不参与检查。 */
+export function buildBomItemsFromMappedRows(
+  rows: string[][],
+  mapping: BOMColumnMapping,
+  splitDesignators: (raw: string) => string[]
+): BOMItem[] {
+  const items: BOMItem[] = [];
+  const cellText = (value: unknown) => (value == null ? '' : String(value)).trim();
+  rows.forEach((cols, rowIndex) => {
+    const code = cellText(cols[mapping.codeIdx]);
+    const name = mapping.nameIdx >= 0 ? cellText(cols[mapping.nameIdx]) : '';
+    const qtyRaw = cellText(cols[mapping.qtyIdx]);
+    const designatorRaw = cellText(cols[mapping.designatorIdx]);
+    const substituteProjectGroup =
+      mapping.substituteProjectGroupIdx >= 0
+        ? cellText(cols[mapping.substituteProjectGroupIdx])
+        : '';
+    if (!code && !name && !qtyRaw && !designatorRaw && !substituteProjectGroup) return;
+    const designators = splitDesignators(designatorRaw);
+    const qty = parseFloat(qtyRaw || '0');
+    items.push({
+      code,
+      name: name || undefined,
+      quantity: Number.isFinite(qty) && qty > 0 ? qty : designators.length || 0,
+      designators,
+      substituteProjectGroup: substituteProjectGroup || undefined,
+      sourceRowIndex: rowIndex,
+      preserveOnly: !code,
+      groupKey: code ? computeGroupKey(designators) : `__preserve_row_${rowIndex}`,
+    });
+  });
+  return items;
+}
+
+/** 将相同“物料 + 替代组标签”冲突的多个位号合并为一个待处置项。 */
+export function aggregateDesignatorTagConflicts(
+  issues: BOMDesignatorTagIssue[]
+): BOMDesignatorTagConflictGroup[] {
+  const grouped = new Map<string, BOMDesignatorTagConflictGroup>();
+  for (const issue of issues) {
+    if (issue.kind !== 'tag_conflict') continue;
+    const current = grouped.get(issue.signature);
+    if (current) {
+      if (!current.designators.includes(issue.designator)) {
+        current.designators.push(issue.designator);
+      }
+      continue;
+    }
+    grouped.set(issue.signature, {
+      signature: issue.signature,
+      codes: [...issue.codes],
+      codeLabels: issue.codeLabels.map((entry) => ({ ...entry })),
+      designators: [issue.designator],
+      message: issue.message,
+    });
+  }
+  return Array.from(grouped.values()).map((group) => ({
+    ...group,
+    designators: group.designators.sort((a, b) => a.localeCompare(b)),
+  }));
+}
 
 function resolveMaterialSubstituteTag(
   code: string,
@@ -137,6 +225,7 @@ export function collectDesignatorSubstituteTagIssues(
   const byDesignator = new Map<string, DesignatorMaterialEntry[]>();
 
   for (const item of items) {
+    if (!isBomItemCheckable(item)) continue;
     const designators = (item.designators || []).map((d) => d.trim()).filter(Boolean);
     if (!designators.length) continue;
     const resolved = resolveMaterialSubstituteTag(item.code, codeToRows);
@@ -176,11 +265,25 @@ export function collectDesignatorSubstituteTagIssues(
       (withValidTag.length > 0 && libMatchedEmptyTag.length > 0);
 
     if (hasConflict) {
-      const codes = libMatchedEntries.map((e) => e.code);
+      const codeLabels = Array.from(
+        new Map(
+          libMatchedEntries.map((entry) => {
+            const normalized = { code: entry.code, groupLabel: entry.groupLabel || '（空）' };
+            return [`${normalized.code}::${normalized.groupLabel}`, normalized] as const;
+          })
+        ).values()
+      )
+        .sort((a, b) => a.code.localeCompare(b.code) || a.groupLabel.localeCompare(b.groupLabel));
+      const codes = codeLabels.map((entry) => entry.code);
+      const signature = codeLabels
+        .map((entry) => `${entry.code}::${entry.groupLabel}`)
+        .join('|');
       issues.push({
         kind: 'tag_conflict',
         designator,
         codes,
+        codeLabels,
+        signature,
         message: `这${codes.length}种物料替代组标签不一致`,
       });
     }

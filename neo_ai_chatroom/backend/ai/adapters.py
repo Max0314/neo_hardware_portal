@@ -145,19 +145,19 @@ class DeepSeekAdapter(AIAdapter):
 
 
 class BailianAdapter(AIAdapter):
-    """阿里云百炼（DashScope OpenAI 兼容 Chat API）。"""
+    """AI Token Plan OpenAI 兼容 Chat API（内部沿用 bailian id 兼容历史配置）。"""
 
     def __init__(self):
         self.base_url = (
             (
-                os.getenv("DASHSCOPE_BASE_URL")
-                or "https://dashscope.aliyuncs.com/compatible-mode/v1"
+                os.getenv("TOKENPLAN_BASE_URL")
+                or "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
             )
             .strip()
             .rstrip("/")
         )
         self.reasoning_effort = (
-            os.getenv("DASHSCOPE_REASONING_EFFORT") or "high"
+            os.getenv("TOKENPLAN_REASONING_EFFORT") or "high"
         ).strip() or "high"
         self.default_max_tokens = int(os.getenv("BAILIAN_MAX_OUTPUT_TOKENS", "8192"))
 
@@ -190,13 +190,13 @@ class BailianAdapter(AIAdapter):
     ) -> str:
         spec = get_bailian_model(ai_id)
         if not spec:
-            raise ValueError(f"未知百炼模型: {ai_id}")
+            raise ValueError(f"未知 AI Token Plan 模型: {ai_id}")
 
         api_key = (await get_secret_async("bailian") or "").strip()
         if not api_key:
             raise ValueError(
-                "百炼 API Key 未配置。请在「API 密钥」中保存百炼密钥，"
-                "或设置环境变量 DASHSCOPE_API_KEY。"
+                "AI Token Plan API Key 未配置。请在「API 密钥」中保存密钥，"
+                "或设置环境变量 TOKENPLAN_API_KEY。"
             )
 
         try:
@@ -239,7 +239,7 @@ class BailianAdapter(AIAdapter):
                 )
             return content
         except Exception as e:
-            raise Exception(f"百炼 API错误: {str(e)}") from e
+            raise Exception(f"AI Token Plan API错误: {str(e)}") from e
 
 
 class DoubaoArkAdapter(AIAdapter):

@@ -808,28 +808,28 @@ async def stream_bailian_response(
     enable_reasoning: bool,
     max_tokens: int = None,
 ) -> str:
-    """百炼 DashScope OpenAI 兼容流式输出。"""
+    """AI Token Plan OpenAI 兼容流式输出。"""
     spec = get_bailian_model(ai_id)
     if not spec:
-        raise ValueError(f"未知百炼模型: {ai_id}")
+        raise ValueError(f"未知 AI Token Plan 模型: {ai_id}")
 
     api_key = (await get_secret_async("bailian") or "").strip()
     if not api_key:
         raise ValueError(
-            "百炼 API Key 未配置。请在「API 密钥」中保存百炼密钥，"
-            "或设置环境变量 DASHSCOPE_API_KEY。"
+            "AI Token Plan API Key 未配置。请在「API 密钥」中保存密钥，"
+            "或设置环境变量 TOKENPLAN_API_KEY。"
         )
 
     base_url = (
-        (os.getenv("DASHSCOPE_BASE_URL") or "https://dashscope.aliyuncs.com/compatible-mode/v1")
+        (os.getenv("TOKENPLAN_BASE_URL") or "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1")
         .strip()
         .rstrip("/")
     )
-    reasoning_effort = (os.getenv("DASHSCOPE_REASONING_EFFORT") or "high").strip() or "high"
+    reasoning_effort = (os.getenv("TOKENPLAN_REASONING_EFFORT") or "high").strip() or "high"
     cap = int(os.getenv("BAILIAN_MAX_OUTPUT_TOKENS", str(spec.max_tokens)))
     safe_max = max_tokens if isinstance(max_tokens, int) and max_tokens > 0 else cap
     if safe_max > cap:
-        print(f"[百炼流式] max_tokens={safe_max} 超出上限 {cap}，已截断")
+        print(f"[Token Plan流式] max_tokens={safe_max} 超出上限 {cap}，已截断")
         safe_max = cap
 
     use_reasoning = enable_reasoning
@@ -866,14 +866,14 @@ async def stream_bailian_response(
     if not (spec.supports_reasoning and use_reasoning):
         request_params["temperature"] = spec.default_temperature
 
-    print(f"[百炼流式] ai_id={ai_id} model={api_model} message_id={message_id}")
+    print(f"[Token Plan流式] ai_id={ai_id} model={api_model} message_id={message_id}")
 
     try:
         stream = await client.chat.completions.create(**request_params)
     except Exception as e:
         err = str(e).strip() or repr(e)
-        print(f"[百炼流式] API 请求失败: {err}")
-        raise ValueError(f"百炼 API 不可用: {err}") from e
+        print(f"[Token Plan流式] API 请求失败: {err}")
+        raise ValueError(f"AI Token Plan API 不可用: {err}") from e
 
     thinking_text = ""
     answer_text = ""

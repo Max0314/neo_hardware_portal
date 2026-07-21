@@ -53,7 +53,7 @@ class MaterialDbApi:
 
         # GET /api/material-db/libraries
         if method == 'GET' and path == '/api/material-db/libraries':
-            libs = mdb.list_libraries()
+            libs = mdb.list_libraries(include_history_data=False)
             from server.dingtalk_url_util import build_material_db_dingtalk_url
             base = ''
             if hasattr(self.h, '_build_public_base_url'):
@@ -147,13 +147,29 @@ class MaterialDbApi:
                 self.h.send_json_response({'success': ok})
                 return
 
+        if method == 'POST' and path == '/api/material-db/change-password':
+            new_password = body.get('newPassword') or body.get('new_password') or ''
+            if not self._can_change_password_without_old_password(user):
+                old_password = body.get('oldPassword') or body.get('old_password') or ''
+                if not mdb.verify_material_password(old_password):
+                    self.h.send_json_response({'success': False, 'error': '原密码错误'}, status=403)
+                    return
+            try:
+                mdb.change_material_password(new_password, user_id, user_display)
+                self.h.send_json_response({'success': True})
+                award_neo_points(user, 'material_db_edit')
+            except ValueError as e:
+                self.h.send_json_response({'success': False, 'error': str(e)}, status=400)
+            return
+
+        # 兼容旧客户端：单库改密入口也会修改全部物料库的共用密码。
         m_change_password = re.match(r'^/api/material-db/libraries/([^/]+)/change-password$', path)
         if m_change_password and method == 'POST':
             lib_id = m_change_password.group(1)
             new_password = body.get('newPassword') or body.get('new_password') or ''
             if not self._can_change_password_without_old_password(user):
                 old_password = body.get('oldPassword') or body.get('old_password') or ''
-                if not mdb.verify_library_password(lib_id, old_password):
+                if not mdb.verify_material_password(old_password):
                     self.h.send_json_response({'success': False, 'error': '原密码错误'}, status=403)
                     return
             try:
@@ -164,6 +180,19 @@ class MaterialDbApi:
                 self.h.send_json_response({'success': False, 'error': str(e)}, status=400)
             return
 
+        if method == 'POST' and path == '/api/material-db/unlock':
+            password = body.get('password') or ''
+            if not mdb.verify_material_password(password):
+                self.h.send_json_response({'success': False, 'error': '密码错误'}, status=403)
+                return
+            token, expires_at = mdb.create_material_unlock_token(user_id)
+            self.h.send_json_response({
+                'success': True,
+                'unlockToken': token,
+                'expiresAt': expires_at,
+            })
+            return
+
         m_unlock = re.match(r'^/api/material-db/libraries/([^/]+)/unlock$', path)
         if m_unlock and method == 'POST':
             lib_id = m_unlock.group(1)
@@ -171,7 +200,7 @@ class MaterialDbApi:
             if not mdb.verify_library_password(lib_id, password):
                 self.h.send_json_response({'success': False, 'error': '密码错误'}, status=403)
                 return
-            token, expires_at = mdb.create_unlock_token(user_id, lib_id)
+            token, expires_at = mdb.create_material_unlock_token(user_id)
             self.h.send_json_response({
                 'success': True,
                 'unlockToken': token,
@@ -194,14 +223,15 @@ class MaterialDbApi:
             return
 
         if method == 'POST' and path == '/api/material-db/libraries':
+            if not self._require_unlock(mdb.MATERIAL_LIBRARY_MODULE_ID, user_id, body):
+                return
             try:
                 lib_id = str(uuid.uuid4())
-                pwd = body.get('password') or ''
                 lib = mdb.create_library(
                     lib_id,
                     (body.get('name') or '').strip(),
                     body.get('prefix') or '',
-                    pwd,
+                    '',
                     body.get('currentTable'),
                     user_id,
                     user_display,
@@ -213,13 +243,12 @@ class MaterialDbApi:
             return
 
         if method == 'POST' and path == '/api/material-db/batch-import':
+            if not self._require_unlock(mdb.MATERIAL_LIBRARY_MODULE_ID, user_id, body):
+                return
             try:
                 items = body.get('items') or []
                 overwrite = bool(body.get('overwrite', True))
-                unlock_tokens = body.get('unlockTokens') or {}
-                if not (body.get('defaultPassword') or '').strip():
-                    self.h.send_json_response({'success': False, 'error': '请设置新建库的默认访问密码'}, status=400)
-                    return
+                unlock_token = self._unlock_token_from(body)
                 if overwrite:
                     by_name = {(l.get('name') or '').strip(): l for l in mdb.list_libraries()}
                     for it in items:
@@ -227,11 +256,10 @@ class MaterialDbApi:
                         existing = by_name.get(name)
                         if not existing:
                             continue
-                        tok = unlock_tokens.get(existing['id'])
-                        if not mdb.verify_unlock_token(tok, user_id, existing['id']):
+                        if not mdb.verify_unlock_token(unlock_token, user_id, existing['id']):
                             self.h.send_json_response({
                                 'success': False,
-                                'error': f'更新「{name}」须先验证该库密码',
+                                'error': f'更新「{name}」须先验证物料库共用密码',
                                 'needPassword': True,
                                 'libraryId': existing['id'],
                             }, status=403)
@@ -240,7 +268,7 @@ class MaterialDbApi:
                     body.get('items') or [],
                     bool(body.get('overwrite', True)),
                     body.get('defaultPrefix') or '',
-                    body.get('defaultPassword') or '',
+                    '',
                     user_id,
                     user_display,
                 )

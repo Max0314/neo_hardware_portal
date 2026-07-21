@@ -149,7 +149,7 @@ export const AIKeysSettingsModal: React.FC<AIKeysSettingsModalProps> = ({
           <KeyRound className="text-indigo-600" size={22} />
           <div>
             <h2 className="text-lg font-semibold text-gray-900">AI API 密钥</h2>
-            <p className="text-xs text-gray-500">DeepSeek、百炼 (DashScope)、豆包、OpenAI 等</p>
+            <p className="text-xs text-gray-500">DeepSeek、AI Token Plan、豆包、OpenAI 等</p>
           </div>
         </div>
         <button
