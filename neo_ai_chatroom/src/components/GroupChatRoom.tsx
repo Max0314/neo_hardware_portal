@@ -382,13 +382,30 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
         });
       }
 
+      const conflictGroupBySignature = new Map(
+        designatorConflictGroups.map((group) => [group.signature, group])
+      );
       for (const group of newGroups) {
         const addedIssues = new Set<string>();
+        const addedConflictSignatures = new Set<string>();
         let hasTagConflict = false;
         for (const row of group.rows) {
           for (const conflict of conflictByCode.get(row.code) || []) {
             hasTagConflict = true;
-            const msg = `位号 ${conflict.designator}：${conflict.message}`;
+            if (addedConflictSignatures.has(conflict.signature)) continue;
+            addedConflictSignatures.add(conflict.signature);
+
+            const summary = conflictGroupBySignature.get(conflict.signature);
+            const codeLabels = summary?.codeLabels || conflict.codeLabels;
+            const designators = summary?.designators || [conflict.designator];
+            const maxShown = 6;
+            const shown = designators.slice(0, maxShown);
+            const rest = Math.max(designators.length - shown.length, 0);
+            const msg =
+              `替代组标签不一致：${codeLabels
+                .map((entry) => `${entry.code}=${entry.groupLabel}`)
+                .join(' / ')}；影响 ${designators.length} 个位号：${shown.join(', ')}` +
+              (rest > 0 ? `，等 ${rest} 个已折叠` : '');
             if (!addedIssues.has(msg)) {
               group.issues.push(msg);
               addedIssues.add(msg);
