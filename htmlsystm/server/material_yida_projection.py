@@ -42,8 +42,8 @@ def _legacy_library_aliases(library_name: str) -> List[str]:
     """Return old material-library names that predate YiDa type suffixes.
 
     YiDa discovery names forms as e.g. ``0201电容(C)`` while older material DB
-    libraries were named ``0201电容``.  If the old library already exists, sync
-    should update it too so users do not keep seeing stale May 2026 tables.
+    libraries were named ``0201电容``.  The alias is used only as a single-target
+    compatibility fallback when the YiDa-title library does not exist.
     """
     name = _normalize_library_name(library_name)
     aliases: List[str] = []
@@ -56,21 +56,50 @@ def _legacy_library_aliases(library_name: str) -> List[str]:
     return aliases
 
 
-def _sync_target_library_names(library_name: str) -> List[str]:
+def _sync_target_library_names(library_name: str, form_uuid: Optional[str] = None) -> List[str]:
+    """Resolve exactly one material library for a YiDa form.
+
+    The YiDa form UUID is the durable identity and wins over names.  This keeps a
+    renamed form attached to its existing library instead of creating a second
+    library.  For libraries created before source metadata was recorded, prefer
+    the exact YiDa title, then fall back to the old suffix-less alias.
+    """
+    source_title = _s(library_name)
+    source_form_uuid = _s(form_uuid)
+    libraries = mdb.list_libraries()
+
+    if source_form_uuid:
+        uuid_matches = []
+        for lib in libraries:
+            current_table = lib.get('currentTable')
+            if not isinstance(current_table, dict):
+                continue
+            if _s(current_table.get('sourceFormUuid')) == source_form_uuid:
+                uuid_matches.append(lib)
+        if uuid_matches:
+            exact_match = next(
+                (lib for lib in uuid_matches if _s(lib.get('name')) == source_title),
+                None,
+            )
+            selected = exact_match or sorted(
+                uuid_matches,
+                key=lambda lib: (_s(lib.get('name')), _s(lib.get('id'))),
+            )[0]
+            return [_s(selected.get('name'))]
+
     existing_names = {
         _s(lib.get('name'))
-        for lib in mdb.list_libraries()
+        for lib in libraries
         if _s(lib.get('name'))
     }
-    aliases = [name for name in _legacy_library_aliases(library_name) if name in existing_names]
-    primary_exists = library_name in existing_names
-    targets: List[str] = []
-    if primary_exists or not aliases:
-        targets.append(library_name)
-    for alias in aliases:
-        if alias not in targets:
-            targets.append(alias)
-    return targets
+    if source_title in existing_names:
+        return [source_title]
+
+    alias = next(
+        (name for name in _legacy_library_aliases(source_title) if name in existing_names),
+        None,
+    )
+    return [alias or source_title]
 
 
 def _field_value(fd: Dict[str, Any], field_id: Optional[str]) -> Any:
@@ -266,7 +295,12 @@ def sync_form_to_library(source: Dict[str, Any], *,
     pwd = (password or LIBRARY_PASSWORD or '').strip()
     if not pwd:
         raise ValueError('未配置物料库默认密码（环境变量 YIDA_LIBRARY_PASSWORD）')
-    library_name = source.get('library_name') or source.get('source_name') or source['form_uuid']
+    library_name = (
+        source.get('library_name')
+        or source.get('source_name')
+        or source['form_uuid']
+    )
+    source_title = source.get('source_name') or library_name
     now = datetime.now()
     create_to_gmt = create_to_gmt or (now + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')
     create_from_gmt = create_from_gmt or '2015-01-01 00:00:00'
@@ -282,9 +316,11 @@ def sync_form_to_library(source: Dict[str, Any], *,
     current_table = {
         'fileName': f'宜搭同步-{library_name}.xlsx',
         'updatedAt': now.strftime('%Y-%m-%dT%H:%M:%S'),
+        'sourceFormUuid': source['form_uuid'],
+        'sourceTitle': source_title,
         'data': data,
     }
-    target_libraries = _sync_target_library_names(library_name)
+    target_libraries = _sync_target_library_names(library_name, source['form_uuid'])
     import_items = []
     for target_name in target_libraries:
         target_table = dict(current_table)
@@ -295,8 +331,9 @@ def sync_form_to_library(source: Dict[str, Any], *,
         import_items,
         overwrite=True, default_prefix='', default_password=pwd,
         user_id=user_id, user_display=user_display,
+        skip_unchanged_history=True,
     )
-    logger.info(f"✅ 宜搭同步 {library_name}: 实例 {built['instances']} 条 → 物料 {len(built['rows'])} 行 "
+    logger.info(f"✅ 宜搭同步 {source_title}: 实例 {built['instances']} 条 → 物料 {len(built['rows'])} 行 "
                 f"(multi={built['multi']}, slots={built['slot_count']}, {res})")
     return {
         'library': library_name, 'form_uuid': source['form_uuid'],
@@ -306,6 +343,7 @@ def sync_form_to_library(source: Dict[str, Any], *,
         'group_projection': built.get('group_projection'),
         'group_label_fields': built.get('group_label_fields') or [],
         'created': res.get('created', 0), 'updated': res.get('updated', 0),
+        'unchanged': res.get('unchanged', 0),
     }
 
 

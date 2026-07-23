@@ -424,6 +424,18 @@ def update_remark(
     return True
 
 
+def _same_table_data(
+    current_table: Optional[Dict[str, Any]],
+    incoming_table: Optional[Dict[str, Any]],
+) -> bool:
+    """Return whether two table payloads contain exactly the same row data."""
+    if not isinstance(current_table, dict) or not isinstance(incoming_table, dict):
+        return False
+    if 'data' not in current_table or 'data' not in incoming_table:
+        return False
+    return current_table.get('data') == incoming_table.get('data')
+
+
 def batch_import_libraries(
     items: List[Dict[str, Any]],
     overwrite: bool,
@@ -431,13 +443,14 @@ def batch_import_libraries(
     default_password: str,
     user_id: Optional[int],
     user_display: str,
+    skip_unchanged_history: bool = False,
 ) -> Dict[str, int]:
     import uuid as _uuid
 
     ensure_material_password_hash(default_password)
     lib_list = list_libraries()
     by_name = {(l.get('name') or '').strip(): l for l in lib_list}
-    created = updated = skipped = 0
+    created = updated = skipped = unchanged = 0
     now = _now_str()
 
     for it in items:
@@ -455,7 +468,8 @@ def batch_import_libraries(
                 continue
             hist = existing.get('historyTables') or []
             cur = existing.get('currentTable')
-            if cur:
+            data_unchanged = skip_unchanged_history and _same_table_data(cur, table)
+            if cur and not data_unchanged:
                 hist = [{
                     'fileName': cur.get('fileName'),
                     'updatedAt': cur.get('updatedAt'),
@@ -477,8 +491,18 @@ def batch_import_libraries(
                         existing['id'],
                     ),
                 )
-            log_audit(user_id, user_display, 'upload_table', existing['id'], name, {'source': 'batch'})
-            updated += 1
+            log_audit(
+                user_id,
+                user_display,
+                'upload_table',
+                existing['id'],
+                name,
+                {'source': 'batch', 'unchanged': data_unchanged},
+            )
+            if data_unchanged:
+                unchanged += 1
+            else:
+                updated += 1
         else:
             lib_id = str(_uuid.uuid4())
             pwd = default_password
@@ -490,8 +514,14 @@ def batch_import_libraries(
         'created': created,
         'updated': updated,
         'skipped': skipped,
+        'unchanged': unchanged,
     })
-    return {'created': created, 'updated': updated, 'skipped': skipped}
+    return {
+        'created': created,
+        'updated': updated,
+        'skipped': skipped,
+        'unchanged': unchanged,
+    }
 
 
 def migrate_from_client(
