@@ -6,6 +6,23 @@ deploy_wait_init() {
   PROJECT="${COMPOSE_PROJECT_NAME:-docker}"
   VOLUME_DATA="${PROJECT}_htmlsystm_data"
   PORT="${GATEWAY_PUBLISH_PORT:-8000}"
+  deploy_resolve_log
+}
+
+# 解析部署日志路径。/var/log 下的默认位置只有 root 可写；以普通用户部署时，重定向本身
+# 就会失败，命令根本没执行，调用处却报出与真实原因无关的错误。不可写时回退到项目内。
+deploy_resolve_log() {
+  if [[ -n "${DEPLOY_LOG:-}" ]]; then
+    return 0
+  fi
+  DEPLOY_LOG=/var/log/docker-stack-deploy.log
+  if ( : >>"$DEPLOY_LOG" ) 2>/dev/null; then
+    return 0
+  fi
+  DEPLOY_LOG="${ROOT:-$PWD}/log/deploy.log"
+  if ! mkdir -p "$(dirname "$DEPLOY_LOG")" 2>/dev/null || ! ( : >>"$DEPLOY_LOG" ) 2>/dev/null; then
+    DEPLOY_LOG=/tmp/docker-stack-deploy.log
+  fi
 }
 
 volume_write_lock() {
@@ -128,9 +145,9 @@ ensure_mysql_password_synced() {
     return 0
   fi
   _log "MySQL 卷内密码与 .env 不一致，自动执行 reset-mysql-password.sh（不删数据）..."
-  if bash "${root}/migration/reset-mysql-password.sh" >>/var/log/docker-stack-deploy.log 2>&1; then
+  if bash "${root}/migration/reset-mysql-password.sh" >>"${DEPLOY_LOG}" 2>&1; then
     _log "MySQL 密码已与 .env 对齐"
-    docker compose restart htmlsystm backend >>/var/log/docker-stack-deploy.log 2>&1 || true
+    docker compose restart htmlsystm backend >>"${DEPLOY_LOG}" 2>&1 || true
     wait_container_healthy stack-mysql 45 || return 1
     wait_container_healthy stack-htmlsystm 90 || true
     wait_container_healthy stack-neo-backend 90 || true
