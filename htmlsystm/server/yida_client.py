@@ -38,6 +38,17 @@ def _retry_delay(retry_base_sec: float, attempt: int) -> float:
     return retry_base_sec * (2 ** attempt) + random.uniform(0, 0.5)
 
 
+def _first_not_none(*values: Any) -> Any:
+    """取第一个非 None 的值。
+
+    不能用 `a or b` 串联：总数为 0 是合法结果，会被 `or` 当成缺失继续向后取。
+    """
+    for value in values:
+        if value is not None:
+            return value
+    return None
+
+
 def _post_json(url: str, body: Dict[str, Any], headers: Dict[str, str],
                timeout: int = 30, max_retries: int = 3, retry_base_sec: float = 2.0) -> Dict[str, Any]:
     """POST JSON，对超时/5xx 做有限重试。返回解析后的 dict；非 2xx 或解析失败抛异常。"""
@@ -144,10 +155,11 @@ def search_form_instances(
     )
     if isinstance(data, dict):
         data = data.get('data') or data.get('list') or []
-    total = (
-        result.get('totalCount')
-        or result.get('total')
-        or (result.get('result') or {}).get('totalCount') if isinstance(result.get('result'), dict) else None
+    nested = result.get('result')
+    total = _first_not_none(
+        result.get('totalCount'),
+        result.get('total'),
+        nested.get('totalCount') if isinstance(nested, dict) else None,
     )
     if total is None:
         total = len(data)
@@ -185,9 +197,15 @@ def iter_form_instances(
             yield inst
         seen += len(instances)
         logger.info(f'宜搭拉取 {form_uuid}: 第 {page} 页 {len(instances)} 条，累计 {seen}/{total}')
-        if seen >= total or len(instances) < page_size:
+        # 只按「本页未满」判定结束。此处曾用 seen >= total 提前跳出，而 total 解析失败时
+        # 会回退成本页长度，于是每张表都只同步了第一页。
+        if len(instances) < page_size:
             break
         page += 1
+    else:
+        logger.warning(
+            f'宜搭拉取 {form_uuid}: 已达最大页数 {max_pages}（累计 {seen} 条），可能仍有未同步数据'
+        )
 
 
 def extract_instance_meta(inst: Dict[str, Any]) -> Dict[str, Any]:

@@ -39,8 +39,11 @@ YIDA_CONFIG = {
     'app_type': (os.getenv('YIDA_APP_TYPE') or 'APP_MRBK7RVLFEMKQ1B36GIF').strip(),
     # 宜搭系统令牌（系统配置→应用秘钥里的 systemToken，必填，走环境变量）
     'system_token': (os.getenv('YIDA_SYSTEM_TOKEN') or '').strip(),
-    # 查询人钉钉 userId
-    'query_user_id': (os.getenv('YIDA_QUERY_USER_ID') or '01115324500438248944').strip(),
+    # 查询人钉钉 userId（必填，走环境变量）。
+    # 宜搭按这个人的数据权限返回表单实例，因此它决定同步能取到哪些数据。此处曾写死某位
+    # 员工的 userId：该员工调离硬件研发部后，42 张表单返回「没有权限」、30 张返回 0 条实例，
+    # 同步在无人察觉的情况下把物料库覆盖成了空表。不要再放默认值，缺失时应显式报错。
+    'query_user_id': (os.getenv('YIDA_QUERY_USER_ID') or '').strip(),
 }
 
 
@@ -148,7 +151,10 @@ def check_yida_config():
     if not YIDA_CONFIG.get('app_type'):
         return False, '未配置 YIDA_APP_TYPE（宜搭应用编码）'
     if not YIDA_CONFIG.get('query_user_id'):
-        return False, '未配置 YIDA_QUERY_USER_ID（查询人钉钉 userId）'
+        return False, (
+            '未配置 YIDA_QUERY_USER_ID（查询人钉钉 userId）。宜搭按该账号的数据权限返回'
+            '表单实例，请使用对全部物料表单有数据权限的账号，并优先使用专用服务账号。'
+        )
     return True, None
 
 

@@ -123,12 +123,24 @@ def _validate_projection_before_overwrite(
     form_uuid: str,
     target_libraries: List[str],
     incoming_rows: int,
+    instance_count: int = 0,
 ) -> None:
     """在任何写库操作前执行不可绕过的行数安全校验。"""
     if incoming_rows <= 0:
+        # 「一条实例都没读到」和「读到了实例但物料代码全空」的处理方式完全不同：前者多为
+        # 查询人没有该表单的数据权限，后者是源表这一列没填。混成一句会把排查引向错误方向。
+        if instance_count <= 0:
+            reason = (
+                '未读到任何实例。常见原因是查询人（YIDA_QUERY_USER_ID）对该表单没有数据权限，'
+                '或源表确实没有数据。'
+            )
+        else:
+            reason = (
+                f'读到 {instance_count} 条实例，但物料代码字段全部为空。'
+                '请检查源表的物料代码列是否已填写，以及字段映射是否正确。'
+            )
         raise YidaSyncSafetyError(
-            f'安全阻断：宜搭表单 {source_title} ({form_uuid}) 提取到 0 条有效物料代码，'
-            '未覆盖任何物料库。请检查源数据、字段映射和时间范围。'
+            f'安全阻断：宜搭表单 {source_title} ({form_uuid}) {reason}未覆盖任何物料库。'
         )
 
     existing_by_name = {
@@ -362,7 +374,8 @@ def sync_form_to_library(source: Dict[str, Any], *,
     )
     target_libraries = _sync_target_library_names(library_name, source['form_uuid'])
     _validate_projection_before_overwrite(
-        source_title, source['form_uuid'], target_libraries, len(built['rows'])
+        source_title, source['form_uuid'], target_libraries, len(built['rows']),
+        instance_count=built.get('instances', 0),
     )
 
     data = [list(STANDARD_HEADERS)] + built['rows']

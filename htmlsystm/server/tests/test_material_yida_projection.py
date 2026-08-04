@@ -168,6 +168,45 @@ class TestSyncFormToLibrary(unittest.TestCase):
             }, password='test-password')
 
         self.assertIn('未覆盖任何物料库', str(ctx.exception))
+        # 读到了实例、只是物料代码为空 —— 要指向源表填写，而不是权限
+        self.assertIn('2 条实例', str(ctx.exception))
+        self.assertIn('物料代码字段全部为空', str(ctx.exception))
+
+    @patch('server.material_db_manager.batch_import_libraries')
+    @patch('server.material_db_manager.list_libraries')
+    @patch('server.material_yida_projection.build_rows_for_form')
+    def test_zero_instances_reports_permission_not_empty_codes(
+        self,
+        build_rows_for_form,
+        list_libraries,
+        batch_import_libraries,
+    ):
+        """一条实例都没读到，最常见的原因是查询人没有该表单的数据权限。
+
+        这两种空结果必须给出不同的排查方向：混成一句会把权限问题误导成源表没填数据，
+        2026-08-01 的事故正是这样被延误的。
+        """
+        build_rows_for_form.return_value = {
+            'rows': [], 'instances': 0, 'multi': False, 'slot_count': 1,
+            'group_projection': 'field', 'group_label_fields': [],
+        }
+        list_libraries.return_value = [{
+            'id': 'library-id', 'name': '0402电容(C)',
+            'currentTable': {'data': [['物料代码'], ['OLD-001']]},
+        }]
+
+        with self.assertRaises(projection.YidaSyncSafetyError) as ctx:
+            projection.sync_form_to_library({
+                'form_uuid': 'FORM-CAP-0402',
+                'source_name': '0402电容(C)',
+                'library_name': '0402电容(C)',
+            }, password='test-password')
+
+        message = str(ctx.exception)
+        self.assertIn('未读到任何实例', message)
+        self.assertIn('YIDA_QUERY_USER_ID', message)
+        self.assertNotIn('物料代码字段全部为空', message)
+        batch_import_libraries.assert_not_called()
         batch_import_libraries.assert_not_called()
 
     @patch.object(projection.mdb, 'batch_import_libraries')
