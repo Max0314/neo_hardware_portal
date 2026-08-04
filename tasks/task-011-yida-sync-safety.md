@@ -40,28 +40,58 @@
 - [x] 单元测试：`cd htmlsystm && python -m pytest server/tests -q` → 30 passed
       （含空投影不覆盖、异常减量不覆盖、白名单校验、TLS 与退避抖动用例）
 - [x] 前端内联脚本语法检查
-- [ ] Docker/服务器部署验证：待 SSH 接入后执行
+- [x] Docker/服务器部署验证：2026-08-04 09:25 部署完成，5 个容器 healthy，
+      `/api/health?db=1` 返回 `db: true`
 
 ## Git
 
 - 分支：`fix/task-011-yida-sync-safety`（基于 `fix/task-010-material-library-dedupe`）
 - 提交：见分支历史
-- GitHub 同步状态：待推送
+- GitHub 同步状态：已推送
 
 ## Deploy
 
-- 服务器/路径：待确认（硬件门户尚未部署到 NeoFlow，需旧服务部署目录）
-- 服务/容器：`stack-htmlsystm`、`stack-neo-web`
-- 部署动作：拉取分支 → `bash migration/deploy.sh` → 确认 `.env` 已配置
-  `YIDA_MATERIAL_FORMS` 白名单
-- 运行状态和日志检查：`/api/health`、`/api/material-db/yida-sync-status`
+- 服务器/路径：`52.76.165.169:39999`（ubuntu）→ `/home/AI/CPL/neo_hardware_portal/neo_hardware_portal`
+- 服务/容器：`stack-htmlsystm`、`stack-neo-web`、`stack-neo-backend`、`stack-gateway`
+- 部署动作：本地改代码 → push → 服务器 `git fetch` + `checkout` → `bash migration/deploy.sh`
+  （服务器上不改代码）
+- 运行状态和日志检查：容器日志出现 `宜搭每日定时同步未启用（YIDA_SYNC_SCHEDULER_ENABLED=0）`
+  即表示定时同步已停；手动同步返回 400 并说明未配置白名单
+
+### 部署前置修复
+
+首次部署失败于 `migration/deploy.sh` 把日志重定向到只有 root 可写的
+`/var/log/docker-stack-deploy.log`，重定向失败导致 compose 未执行却报出
+「docker compose up -d --build 失败」。已改为不可写时回退到 `${ROOT}/log/deploy.log`。
+
+### 事故根因（服务器日志证实）
+
+42 个失败全部是 `宜搭接口 500: {"code":"innerError","message":"异常:没有权限"}`；30 个
+「成功」的日志是 `实例 0 条 → 物料 0 行`，即宜搭返回空结果集。两者是同一根因：**宜搭侧
+授权在 2026-08-01 前后失效**，部分表单直接拒绝，部分表单静默返回空。不是表单类型问题。
+
+`YIDA_QUERY_USER_ID` 未在 `.env` 配置，走 `yida_config.py` 里硬编码的默认 userId。宜搭按
+该查询人的权限取数，因此这个账号的权限变动会造成上述现象，是首要排查方向。
+
+### 数据损失盘点（2026-08-04 只读核对）
+
+- 72 个库中 32 个当前表为 0 行；其余约 40 个数据完好，停留在 7/31 那次成功同步。
+- 30 个可从 `history[0]`（`2026-07-31T03:04`）恢复，合计约 1,942 行。
+- `CPU&WIFI芯片`、`线材物料优选库` 的 `history[0]` 也是 0 行（7/23），需往更深历史翻。
+- `0805电阻(R)` 只有 1 个历史版本（112 行），是唯一副本。
+- 清空发生在 8/01 凌晨定时同步；之后几次因 task-010 的去重判定为 `unchanged`，未继续污染历史。
 
 ## Notes
 
 - 部署风险：`.env` 未配置 `YIDA_MATERIAL_FORMS` 时，同步按钮会返回 400 并说明原因。这是刻意的
   安全默认值，不是回归。
 - 回滚方式：回退到本分支之前的提交即可恢复旧行为；但旧行为会重新引入空表覆盖风险。
+- 备份：`/home/AI/CPL/backups/material-db-20260804-092010/material_db_libraries.sql.gz`
+  （部署前所做，SHA256 已记录）。
 - 未完成项：
-  1. **30 个被清空的物料库尚未恢复**，需逐库确认最近一个非空历史版本后再恢复，禁止一键全量恢复。
-  2. 42 个宜搭 500 的根因未定论，需拿到失败表单的 formUuid、formType 和 requestId 后再判定。
+  1. **32 个被清空的物料库尚未恢复**，用 `scripts/material_restore_from_history.py` 先只读出
+     计划，逐库核对后再加 `--apply --confirm-restore`。
+  2. 宜搭授权需业务侧恢复；恢复后要先用只读预检确认 72 个表单，再配置白名单。
   3. 同步结果仍保存在进程内存，重启即丢失；后续应持久化每张表的同步结果。
+  4. **`migration/deploy.sh` 的验收环节会明文打印 `MYSQL_PASSWORD` 到终端和 `log/deploy.log`**，
+     该凭据已落盘，需轮换并改掉打印行为。
