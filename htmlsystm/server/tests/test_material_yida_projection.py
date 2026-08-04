@@ -113,8 +113,8 @@ class TestSyncFormToLibrary(unittest.TestCase):
         batch_import_libraries,
     ):
         build_rows_for_form.return_value = {
-            'rows': [],
-            'instances': 0,
+            'rows': [['M001', '自定义物料', '', '', '', '', '']],
+            'instances': 1,
             'multi': False,
             'slot_count': 1,
             'group_projection': 'field',
@@ -141,6 +141,63 @@ class TestSyncFormToLibrary(unittest.TestCase):
         self.assertEqual('门户配置库名', items[0]['name'])
         self.assertEqual('宜搭源表标题', items[0]['currentTable']['sourceTitle'])
         self.assertEqual('门户配置库名', result['library'])
+
+    @patch.object(projection.mdb, 'batch_import_libraries')
+    @patch.object(projection.mdb, 'list_libraries')
+    @patch.object(projection, 'build_rows_for_form')
+    def test_empty_projection_never_overwrites_existing_library(
+        self,
+        build_rows_for_form,
+        list_libraries,
+        batch_import_libraries,
+    ):
+        build_rows_for_form.return_value = {
+            'rows': [], 'instances': 2, 'multi': False, 'slot_count': 1,
+            'group_projection': 'field', 'group_label_fields': [],
+        }
+        list_libraries.return_value = [{
+            'id': 'library-id', 'name': '0402电容(C)',
+            'currentTable': {'data': [['物料代码'], ['OLD-001']]},
+        }]
+
+        with self.assertRaises(projection.YidaSyncSafetyError) as ctx:
+            projection.sync_form_to_library({
+                'form_uuid': 'FORM-CAP-0402',
+                'source_name': '0402电容(C)',
+                'library_name': '0402电容(C)',
+            }, password='test-password')
+
+        self.assertIn('未覆盖任何物料库', str(ctx.exception))
+        batch_import_libraries.assert_not_called()
+
+    @patch.object(projection.mdb, 'batch_import_libraries')
+    @patch.object(projection.mdb, 'list_libraries')
+    @patch.object(projection, 'build_rows_for_form')
+    def test_large_row_drop_never_overwrites_existing_library(
+        self,
+        build_rows_for_form,
+        list_libraries,
+        batch_import_libraries,
+    ):
+        build_rows_for_form.return_value = {
+            'rows': [['NEW-001', '', '', '', '', '', '']], 'instances': 1,
+            'multi': False, 'slot_count': 1, 'group_projection': 'field',
+            'group_label_fields': [],
+        }
+        list_libraries.return_value = [{
+            'id': 'library-id', 'name': '0402电容(C)',
+            'currentTable': {'data': [['物料代码']] + [[f'OLD-{i}'] for i in range(20)]},
+        }]
+
+        with self.assertRaises(projection.YidaSyncSafetyError) as ctx:
+            projection.sync_form_to_library({
+                'form_uuid': 'FORM-CAP-0402',
+                'source_name': '0402电容(C)',
+                'library_name': '0402电容(C)',
+            }, password='test-password')
+
+        self.assertIn('行数异常下降', str(ctx.exception))
+        batch_import_libraries.assert_not_called()
 
     @staticmethod
     def _library(name):

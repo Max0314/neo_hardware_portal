@@ -87,8 +87,14 @@ class MaterialDbApi:
                     or self.h._has_role(user, 'management')):
                 self.h.send_json_response({'success': False, 'error': '仅管理员可触发宜搭同步'}, status=403)
                 return
-            from server.yida_config import check_yida_config, LIBRARY_PASSWORD
+            from server.yida_config import (
+                check_yida_config, check_material_sync_config, LIBRARY_PASSWORD,
+            )
             ok, err = check_yida_config()
+            if not ok:
+                self.h.send_json_response({'success': False, 'error': err}, status=400)
+                return
+            ok, err = check_material_sync_config()
             if not ok:
                 self.h.send_json_response({'success': False, 'error': err}, status=400)
                 return

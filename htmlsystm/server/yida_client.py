@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import json
+import random
 import ssl
 import time
 import urllib.error
@@ -28,10 +29,13 @@ _token_cache: Dict[str, Any] = {'token': None, 'expire_at': 0.0}
 
 
 def _ssl_context() -> ssl.SSLContext:
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    return ctx
+    """使用系统受信任 CA 校验钉钉 API 的 TLS 证书。"""
+    return ssl.create_default_context()
+
+
+def _retry_delay(retry_base_sec: float, attempt: int) -> float:
+    """指数退避加少量抖动，避免多个表单失败时同时重试上游。"""
+    return retry_base_sec * (2 ** attempt) + random.uniform(0, 0.5)
 
 
 def _post_json(url: str, body: Dict[str, Any], headers: Dict[str, str],
@@ -60,7 +64,7 @@ def _post_json(url: str, body: Dict[str, Any], headers: Dict[str, str],
         except json.JSONDecodeError as e:
             last_err = RuntimeError(f'宜搭接口返回非 JSON: {e}')
         if attempt < max_retries - 1:
-            time.sleep(retry_base_sec * (2 ** attempt))
+            time.sleep(_retry_delay(retry_base_sec, attempt))
     raise last_err if last_err else RuntimeError('宜搭接口调用失败')
 
 
@@ -242,7 +246,7 @@ def _get_json(url: str, headers: Dict[str, str], timeout: int = 30,
         except json.JSONDecodeError as e:
             last_err = RuntimeError(f'返回非 JSON: {e}')
         if attempt < max_retries - 1:
-            time.sleep(retry_base_sec * (2 ** attempt))
+            time.sleep(_retry_delay(retry_base_sec, attempt))
     raise last_err if last_err else RuntimeError('GET 调用失败')
 
 
