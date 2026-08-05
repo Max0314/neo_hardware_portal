@@ -118,10 +118,10 @@ else
 fi
 sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "构建并启动 Docker 服务"
 
-next_step "等待 MySQL 就绪"
-wait_container_healthy stack-mysql 45 || fail "MySQL 未就绪"
-ensure_mysql_password_synced "$ROOT" || progress_log "警告: MySQL 凭据仍不一致，后续建表/探活可能失败"
-sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "等待 MySQL 就绪"
+next_step "检查外部数据库连通"
+# 数据库由 NeoFlowData 提供，本机没有 stack-mysql 容器可等；改为直接测连通性。
+wait_external_mysql "$ROOT" 45 || fail "外部数据库不可达，请检查 .env 的 MYSQL_HOST/PORT/USER/PASSWORD"
+sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "检查外部数据库连通"
 
 next_step "更新数据库结构"
 export AUTO_FIX_NEO_TABLES=1

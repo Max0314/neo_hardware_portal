@@ -20,7 +20,7 @@ docker compose ps
 
 echo ""
 echo "========== 1b. 健康检查（Health）=========="
-for c in stack-mysql stack-htmlsystm stack-neo-backend stack-neo-web stack-gateway stack-autoheal; do
+for c in stack-htmlsystm stack-neo-backend stack-neo-web stack-gateway stack-autoheal; do
   if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx "$c"; then
   hs="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}n/a{{end}}' "$c" 2>/dev/null || echo '?')"
   echo "  ${c}: ${hs}"
@@ -102,9 +102,21 @@ fi
 
 echo ""
 echo "========== 6. NEO 积分表（MySQL）=========="
+# 数据库可能在本栈内（旧单机部署）也可能在 NeoFlowData（现行部署），两种都要能查
 if docker ps --format '{{.Names}}' | grep -q '^stack-mysql$'; then
   NEO_TBL="$(docker exec stack-mysql mysql -u"${MYSQL_USER:-htmlsystm_user}" -p"${MYSQL_PASSWORD}" -N -e \
-    "USE \`${MYSQL_DATABASE:-htmlsystm}\`; SHOW TABLES LIKE 'neo_point_events';" 2>&1 || true)"
+    "USE \`${MYSQL_DATABASE}\`; SHOW TABLES LIKE 'neo_point_events';" 2>&1 || true)"
+  _db_reachable=1
+elif [ -n "${MYSQL_HOST:-}" ] && command -v mysql >/dev/null 2>&1; then
+  NEO_TBL="$(MYSQL_PWD="${MYSQL_PASSWORD}" mysql -h "${MYSQL_HOST}" -P "${MYSQL_PORT:-3306}" \
+    -u "${MYSQL_USER}" -D "${MYSQL_DATABASE}" -N -e \
+    "SHOW TABLES LIKE 'neo_point_events';" 2>/dev/null || true)"
+  _db_reachable=1
+else
+  _db_reachable=0
+fi
+
+if [ "${_db_reachable}" = "1" ]; then
   if echo "$NEO_TBL" | grep -q '^neo_point_events$'; then
     echo "OK: neo_point_events 存在"
   else
@@ -117,8 +129,9 @@ if docker ps --format '{{.Names}}' | grep -q '^stack-mysql$'; then
     fi
   fi
 else
-  echo "跳过: stack-mysql 未运行"
+  echo "跳过: 未找到可用的数据库（既无 stack-mysql 容器，.env 也未配置 MYSQL_HOST）"
 fi
+unset _db_reachable
 
 echo ""
 echo "========== 7. 登录会话（MySQL sessions）=========="

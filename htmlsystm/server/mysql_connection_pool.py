@@ -5,6 +5,7 @@ MySQL连接池管理（支持多进程）
 替代SQLite连接池，提供更好的并发性能
 """
 import threading
+import time
 from contextlib import contextmanager
 from typing import Optional
 import os
@@ -86,9 +87,43 @@ class MySQLConnectionPool:
         # 初始化连接池
         self._init_pool()
         self._initialized = True
-        
+
+        # 数据库在本 compose 栈之外，没有 depends_on 能保证它先就绪，先等它可达
+        self._wait_for_database()
+
         # 确保数据库模式存在
         self._ensure_schema()
+
+    def _wait_for_database(self, max_wait_sec: float = 60.0) -> None:
+        """启动时有限等待数据库可达。
+
+        数据库不在本栈内，容器启动时它可能正在重启或网络尚未通。`_ensure_schema`
+        吞掉所有异常，若不先确认连通就直接跳过，应用会带着未建的表启动，然后在第一个
+        请求上失败——那时故障点已经离根因很远。这里等不到就明确抛错，由 Docker 重启
+        策略重试，故障停留在启动阶段而不是业务阶段。
+        """
+        deadline = time.monotonic() + max_wait_sec
+        delay = 1.0
+        last_err: Optional[Exception] = None
+        target = f"{self.config['host']}:{self.config['port']}"
+
+        while True:
+            try:
+                with self.get_cursor() as cursor:
+                    cursor.execute('SELECT 1')
+                return
+            except Exception as e:
+                last_err = e
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                print(f"等待数据库 {target} 可用…（{e}）")
+                time.sleep(min(delay, remaining))
+                delay = min(delay * 2, 8.0)
+
+        raise RuntimeError(
+            f"数据库 {target} 在 {max_wait_sec:.0f} 秒内不可达，放弃启动: {last_err}"
+        )
     
     def _init_pool(self):
         """初始化连接池"""
