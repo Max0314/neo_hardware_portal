@@ -130,7 +130,19 @@ fi
 
 echo ""
 echo "========== 8. .env 关键项 =========="
-grep -E '^(COMPOSE_PROJECT_NAME|GATEWAY_PUBLISH_PORT|PUBLIC_BASE_URL|MYSQL_PASSWORD)=' .env 2>/dev/null || true
+# 非敏感项照常显示：排障时要靠它们判断端口和外部地址是否配对。
+grep -E '^(COMPOSE_PROJECT_NAME|GATEWAY_PUBLISH_PORT|PUBLIC_BASE_URL|MYSQL_HOST|MYSQL_DATABASE|MYSQL_USER)=' .env 2>/dev/null || true
+# 密钥只报告"是否已配置"。本节曾直接 grep 出 MYSQL_PASSWORD=，而 deploy.sh 会把整个
+# 验收输出 tee 进日志文件，等于每次部署都把明文密码写盘一次。
+for _k in MYSQL_PASSWORD MYSQL_ROOT_PASSWORD NEO_INTERNAL_SECRET AUTH_SESSION_SECRET \
+          BI_EXPORT_API_KEY DINGTALK_CLIENT_SECRET YIDA_SYSTEM_TOKEN YIDA_LIBRARY_PASSWORD; do
+  if grep -qE "^${_k}=.+" .env 2>/dev/null; then
+    echo "${_k}=<已配置>"
+  else
+    echo "${_k}=<未配置>"
+  fi
+done
+unset _k
 if grep -q 'PUBLIC_BASE_URL=HTTPS://' .env 2>/dev/null; then
   echo "警告: PUBLIC_BASE_URL 须为小写 https:// 不是 HTTPS://"
 fi
