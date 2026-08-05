@@ -397,7 +397,7 @@ NeoFlow 平台文档亦要求数据库密码不写入共享文档。
 | --- | --- |
 | SSH 私钥（新服务器） | 本机 `D:\id_ed25519_max` |
 | SSH 私钥（旧服务器） | 本机 `D:\amazon-2024.pem` |
-| 数据库密码、各类 API Key | 本机 `D:\code_CPL\neo_hardware_portal-secrets\credentials.md` |
+| 数据库密码、各类 API Key | 本机 `D:\code_CPL\neo_hardware_portal-secrets\部署与运维完整手册.md` |
 | 运行时实际取值 | 服务器 `~/apps/neo_hardware_portal/.env`（权限 600） |
 
 私钥权限应尽量收紧，且不得提交到任何仓库。
