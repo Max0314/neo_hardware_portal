@@ -1,6 +1,6 @@
 # 迁移现状与待办清单
 
-更新时间：2026-08-05
+更新时间：2026-08-05（迁移已执行完成，见文末「执行结果」）
 
 硬件门户从 AWS 旧服务器迁往阿里云 NeoFlow。本文只记录事实与决策，不含任何凭据。
 "已验证"表示有实际命令输出佐证；"待确定"表示需要人拍板，我不能自行假设。
@@ -137,3 +137,62 @@
 7. 改 bi_center 的 `HARDWARE_BI_BASE_URL`，验证 BI 拉数正常
 8. 旧服务器 nginx 换成 301 重定向 → `nginx -t` → `reload`
 9. 旧服务与旧数据保留为只读回滚点
+
+---
+
+## 执行结果（2026-08-05 19:10–19:35）
+
+迁移已完成。旧服务停机约 25 分钟（19:10 停止应用 → 19:35 新服务对外可用）。
+
+### 验收数据
+
+| 校验项 | 源库 AWS 8.0.46 | 新库 阿里云 8.4.10 |
+| --- | --- | --- |
+| 表数 | 19 | 19 |
+| JSON 字节总长度 | 15,122,772 | 15,122,772 |
+| 当前表 JSON MD5 | `66653d74…` | 相同 |
+| 历史表 JSON MD5 | `c3181aab…` | 相同 |
+| `users` 全表 MD5 | `4297e41d…` | 相同 |
+| `material_db_audit` MD5 | `be4e02c3…` | 相同 |
+
+数据卷：`htmlsystm_data` 300 文件、`htmlsystm_uploads` 0 文件、`ai_chatroom_data` 357 文件，
+与源端一致。传输全程三段 SHA-256 比对无差异。
+
+### 线上状态
+
+| 项 | 结果 |
+| --- | --- |
+| 新地址 | `https://neoflow-cn.neo-net.com/neo_hardware/` → 302（跳登录），`/login` 200 |
+| 健康检查 | `/api/health` 200，`/api/health?db=1` 返回 `db: true` |
+| NEO 聊天室 | `/neo_hardware/neo/` 200 |
+| 容器 | gateway / htmlsystm / neo-backend / neo-web 四个 running & healthy |
+| 网关 | `127.0.0.1:39020->80`，明文 HTTP，TLS 由平台 Nginx 终止 |
+| 数据库 | `172.16.0.244` 库 `neo_hardware`，应用账号 `neo_hardware` |
+| 旧地址 | `/neo_hardware/*` → 301 到新域名，路径与查询串完整保留 |
+| 同机其他服务 | AWS 与阿里云两侧均未受影响 |
+
+### ⚠️ 跨境 SNI 阻断（迁移中发现的新问题）
+
+从 AWS 访问 `https://neoflow-cn.neo-net.com` 的 TLS 握手在 Client Hello 后被 RST 重置，
+实测 5/5 全部失败；而**按 IP 直连并显式设置 Host 头则返回 200**。TCP 443 本身可达，
+因此是 SNI 触发的网络层阻断，服务器侧无法解决。
+
+影响：`bi_center` 部署在 AWS，无法直接访问新域名。
+
+**已采取的过渡措施**：旧服务器 Nginx 保留 `location ^~ /neo_hardware/api/export/`，
+按 IP 反代到新服务器（nginx 默认不发送 SNI，正好绕开阻断），其余路径照常 301。
+BI 侧无需任何改动，实测两个导出接口均返回 200，无密钥仍 401。
+
+**这是临时方案，随旧服务器一周后退役而失效。** 后续须择一：
+
+1. `bi_center` 一并迁到阿里云（最彻底）
+2. 由网络/安全侧解除该域名的跨境阻断
+3. 在阿里云侧为 BI 提供一个不受 SNI 阻断影响的入口
+
+### 回滚点
+
+- 旧服务器 `stack-mysql` 仍在运行，应用容器已停，数据完整保留
+- 完整备份：旧服务器 `/home/AI/CPL/backups/migration-20260805-191511/`（含数据库与三个卷，SHA-256 已记录）
+- 旧 Nginx 配置备份：`/etc/nginx/sites-available/neoflow.neo-net.com.conf.bak-redirect-20260805-192601`
+  与本机 `D:\code_CPL\nginx-backup\`
+- 保留期：**一周（至 2026-08-12）**
