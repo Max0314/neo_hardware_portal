@@ -28,7 +28,7 @@ docker compose ps
 echo ""
 echo "=== HTTPS 自检 (127.0.0.1:${PORT}，-k 忽略自签) ==="
 for path in "/login" "/neo/"; do
-  code="$(curl -sk -o /dev/null -w '%{http_code}' "https://127.0.0.1:${PORT}${path}" 2>/dev/null || echo "000")"
+  code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${PORT}${path}" 2>/dev/null || echo "000")"
   echo "  ${path} -> HTTPS ${code}"
 done
 

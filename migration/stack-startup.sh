@@ -137,7 +137,7 @@ sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "等待统一网关就绪"
 # 9 HTTPS 自检
 next_step "HTTPS 服务自检"
 wait_https_health 15 || progress_log "警告: /api/health 探活未通过"
-curl -sk "https://127.0.0.1:${PORT}/api/startup/status" >/dev/null 2>&1 || true
+curl -s "http://127.0.0.1:${PORT}/api/startup/status" >/dev/null 2>&1 || true
 sync_lock_to_container 95 "HTTPS 服务自检"
 
 # 10 开放登录

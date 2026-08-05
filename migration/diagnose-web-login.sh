@@ -37,12 +37,12 @@ fi
 
 echo ""
 echo "========== HTTPS 探测 =========="
-if curl -skI "https://127.0.0.1:${PORT}/gateway-health" 2>/dev/null | head -1 | grep -q 200; then
+if curl -sI "http://127.0.0.1:${PORT}/gateway-health" 2>/dev/null | head -1 | grep -q 200; then
   echo "OK: gateway-health"
 else
   echo "失败: gateway 未响应，执行: docker compose up -d gateway"
 fi
-if curl -skI "https://127.0.0.1:${PORT}/login" 2>/dev/null | head -1 | grep -qE '200|405'; then
+if curl -sI "http://127.0.0.1:${PORT}/login" 2>/dev/null | head -1 | grep -qE '200|405'; then
   echo "OK: /login 可达（405 为 HEAD 请求正常）"
 else
   echo "失败: /login 不可达，须使用 https:// 而非 http://"
@@ -68,7 +68,7 @@ fi
 
 echo ""
 echo "========== 浏览器访问 =========="
-echo "  虚拟机内: https://127.0.0.1:${PORT}/login"
+echo "  虚拟机内: http://127.0.0.1:${PORT}/login"
 if [[ -n "${LAN_IP}" ]]; then
   echo "  局域网:   https://${LAN_IP}:${PORT}/login"
 fi

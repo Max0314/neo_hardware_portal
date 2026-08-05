@@ -108,8 +108,8 @@ fi
 echo ""
 echo "HTTPS 探测:"
 if docker ps --format '{{.Names}}' | grep -q '^stack-gateway$'; then
-  curl -sk -o /dev/null -w "  /api/health -> %{http_code}\n" "https://127.0.0.1:${PORT}/api/health" 2>/dev/null || true
-  curl -sk -o /dev/null -w "  /login -> %{http_code}\n" "https://127.0.0.1:${PORT}/login" 2>/dev/null || true
+  curl -s -o /dev/null -w "  /api/health -> %{http_code}\n" "http://127.0.0.1:${PORT}/api/health" 2>/dev/null || true
+  curl -s -o /dev/null -w "  /login -> %{http_code}\n" "http://127.0.0.1:${PORT}/login" 2>/dev/null || true
 else
   echo "  stack-gateway 未运行，请执行:"
   echo "    docker compose -f docker-compose.yml -f docker-compose.emergency.yml up -d gateway"

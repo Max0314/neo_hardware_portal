@@ -69,7 +69,7 @@ print(c['password'] if c else '', end='')
 " 2>/dev/null || true)"
 fi
 
-curl -sk "https://127.0.0.1:${PORT}/api/auth/check" | head -1 || true
+curl -s "http://127.0.0.1:${PORT}/api/auth/check" | head -1 || true
 echo ""
 
 if [[ -z "$ADMIN_PASS" ]]; then
@@ -81,11 +81,11 @@ fi
 
 CJ="$(mktemp)"
 trap 'rm -f "$CJ"' EXIT
-LOGIN_BODY="$(curl -sk -c "$CJ" -b "$CJ" -X POST "https://127.0.0.1:${PORT}/api/auth/login" \
+LOGIN_BODY="$(curl -s -c "$CJ" -b "$CJ" -X POST "http://127.0.0.1:${PORT}/api/auth/login" \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d "username=${ADMIN_USER}&password=${ADMIN_PASS}" 2>&1 || true)"
 echo "POST /api/auth/login: $(echo "$LOGIN_BODY" | head -c 200)"
-CHECK_BODY="$(curl -sk -b "$CJ" "https://127.0.0.1:${PORT}/api/auth/check" 2>&1 || true)"
+CHECK_BODY="$(curl -s -b "$CJ" "http://127.0.0.1:${PORT}/api/auth/check" 2>&1 || true)"
 echo "GET /api/auth/check: $CHECK_BODY"
 
 if echo "$CHECK_BODY" | grep -q '"authenticated"[[:space:]]*:[[:space:]]*true'; then

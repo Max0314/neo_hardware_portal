@@ -99,14 +99,15 @@ progress_log "========== 硬件研发部系统部署流水线 =========="
 volume_write_lock 0 "正在部署，请稍候"
 sync_lock_to_container 0 "正在部署，请稍候"
 
-next_step "检查环境与证书"
+next_step "检查环境"
 if [[ ! -f docker-compose.yml ]]; then
   fail "缺少 docker-compose.yml"
 fi
-if [[ ! -f gateway/certs/server.crt || ! -f gateway/certs/server.key ]]; then
-  fail "缺少 gateway/certs 证书，请先 bash migration/gen-gateway-cert.sh"
+if [[ ! -f .env ]]; then
+  fail "缺少 .env，请先 cp .env.example .env 并填写"
 fi
-sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "检查环境与证书"
+# 网关已改为明文 HTTP（TLS 由平台 Nginx 终止），不再需要自签证书
+sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "检查环境"
 
 next_step "构建并启动 Docker 服务"
 if [[ "$DO_BUILD" -eq 1 ]]; then
@@ -161,7 +162,7 @@ if ! wait_https_db_health 10; then
   sleep 5
   wait_https_db_health 15 || progress_log "警告: /api/health?db=1 仍未通过，请 bash migration/reset-mysql-password.sh"
 fi
-curl -sk "https://127.0.0.1:${PORT}/api/startup/status" >/dev/null 2>&1 || true
+curl -s "http://127.0.0.1:${PORT}/api/startup/status" >/dev/null 2>&1 || true
 sync_lock_to_container 95 "HTTPS 与数据库探活"
 
 next_step "数据库配置与栈验收"

@@ -32,7 +32,7 @@ done
 if ! docker compose ps --status running 2>/dev/null | grep -q stack-gateway; then
   echo ""
   echo "!!! 未检测到运行中的 stack-gateway（统一 HTTPS 入口）"
-  echo "    浏览器访问 https://127.0.0.1:${PORT} 会「无法连接」。"
+  echo "    浏览器访问 http://127.0.0.1:${PORT} 会「无法连接」。"
   echo "    请执行: docker compose up -d gateway"
   echo "    若启动失败: docker compose logs gateway --tail 50"
   if [[ "${ROOT}" == /media/* ]]; then
@@ -50,30 +50,23 @@ echo "========== 2. 网关日志（末 15 行）=========="
 docker logs stack-gateway --tail 15 2>&1 || true
 
 echo ""
-echo "========== 3. TLS 证书文件 =========="
-if [ -f gateway/certs/server.crt ] && [ -f gateway/certs/server.key ]; then
-  echo "OK: gateway/certs/server.crt 与 server.key 存在"
-else
-  echo "缺失证书！执行："
-  echo "  mkdir -p gateway/certs"
-  echo "  openssl req -x509 -nodes -days 825 -newkey rsa:2048 \\"
-  echo "    -keyout gateway/certs/server.key -out gateway/certs/server.crt \\"
-  echo "    -subj '/CN=localhost'"
-fi
+echo "========== 3. 网关监听方式 =========="
+echo "网关为明文 HTTP，只绑定 127.0.0.1:${PORT}；TLS 由平台 Nginx 在 443 终止。"
+echo "对外地址: ${PUBLIC_BASE_URL:-（未配置 PUBLIC_BASE_URL）}"
 
 echo ""
-echo "========== 4. 网关存活 + HTTPS 登录页（127.0.0.1:${PORT}）=========="
-curl -skI "https://127.0.0.1:${PORT}/gateway-health" 2>&1 | head -5 || echo "gateway-health 失败：stack-gateway 未运行或未监听 ${PORT}"
+echo "========== 4. 网关存活 + 登录页（127.0.0.1:${PORT}）=========="
+curl -sI "http://127.0.0.1:${PORT}/gateway-health" 2>&1 | head -5 || echo "gateway-health 失败：stack-gateway 未运行或未监听 ${PORT}"
 echo "---"
-curl -skI "https://127.0.0.1:${PORT}/login" 2>&1 | head -8 || echo "连接失败：gateway 未监听 ${PORT} 或 SSL 配置错误"
+curl -sI "http://127.0.0.1:${PORT}/login" 2>&1 | head -8 || echo "连接失败：gateway 未监听 ${PORT} 或 SSL 配置错误"
 
 echo ""
 echo "========== 5. auth/check API =========="
-curl -sk "https://127.0.0.1:${PORT}/api/auth/check" 2>&1 | head -3 || true
+curl -s "http://127.0.0.1:${PORT}/api/auth/check" 2>&1 | head -3 || true
 
 echo ""
 echo "========== 5a. 轻量存活 /api/health（经 gateway）=========="
-HEALTH_BODY="$(curl -sk "https://127.0.0.1:${PORT}/api/health" 2>&1 || true)"
+HEALTH_BODY="$(curl -s "http://127.0.0.1:${PORT}/api/health" 2>&1 || true)"
 echo "$HEALTH_BODY" | head -1
 if echo "$HEALTH_BODY" | grep -q '"ok"[[:space:]]*:[[:space:]]*true'; then
   echo "OK: htmlsystm /api/health"
@@ -82,11 +75,11 @@ else
 fi
 echo "---"
 echo "深度巡检（含 MySQL）:"
-curl -sk "https://127.0.0.1:${PORT}/api/health?db=1" 2>&1 | head -1 || true
+curl -s "http://127.0.0.1:${PORT}/api/health?db=1" 2>&1 | head -1 || true
 
 echo ""
 echo "========== 5b. 登录 API 路由（须走 htmlsystm，勿进 NEO）=========="
-LOGIN_PROBE="$(curl -sk -X POST "https://127.0.0.1:${PORT}/api/auth/login" \
+LOGIN_PROBE="$(curl -s -X POST "http://127.0.0.1:${PORT}/api/auth/login" \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d 'username=__route_probe__&password=__route_probe__' 2>&1 || true)"
 echo "$LOGIN_PROBE" | head -3
@@ -164,4 +157,4 @@ if grep -q '^GATEWAY_HTTPS_PORT=' .env 2>/dev/null; then
 fi
 
 echo ""
-echo "浏览器请访问: https://<虚拟机IP>:${PORT}/login （须 https://，自签证书需点「继续访问」）"
+echo "浏览器请访问: ${PUBLIC_BASE_URL:-http://127.0.0.1:${PORT}}/login"

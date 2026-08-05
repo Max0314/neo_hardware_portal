@@ -98,14 +98,14 @@ wait_container_healthy() {
 
 _curl_health_ok() {
   local url="$1"
-  curl -sk "$url" 2>/dev/null | grep -qF '"ok"'
+  curl -s "$url" 2>/dev/null | grep -qF '"ok"'
 }
 
 wait_https_health() {
   local max="${1:-15}"
   local i
   for i in $(seq 1 "$max"); do
-    if _curl_health_ok "https://127.0.0.1:${PORT}/api/health"; then
+    if _curl_health_ok "http://127.0.0.1:${PORT}/api/health"; then
       return 0
     fi
     sleep 2
@@ -117,7 +117,7 @@ wait_https_db_health() {
   local max="${1:-10}"
   local i
   for i in $(seq 1 "$max"); do
-    if _curl_health_ok "https://127.0.0.1:${PORT}/api/health?db=1"; then
+    if _curl_health_ok "http://127.0.0.1:${PORT}/api/health?db=1"; then
       return 0
     fi
     sleep 2
@@ -131,6 +131,14 @@ wait_external_mysql() {
   local root="$1"
   local timeout="${2:-45}"
   local deadline=$(( SECONDS + timeout ))
+
+  # _log 原本只定义在 ensure_mysql_password_synced 内部，此处直接用会是未定义命令
+  local _log
+  if declare -f progress_log >/dev/null 2>&1; then
+    _log() { progress_log "$@"; }
+  else
+    _log() { echo "$@"; }
+  fi
 
   local host port user pass db
   host="$(grep -E '^MYSQL_HOST=' "${root}/.env" 2>/dev/null | tail -n1 | cut -d= -f2-)"

@@ -62,9 +62,9 @@ mkdir -p "$OUT_DIR"
   echo ""
 
   echo "--- HTTPS 探活 ---"
-  curl -sk "https://127.0.0.1:${PORT}/api/health" 2>&1 | head -1 || echo "(health 失败)"
+  curl -s "http://127.0.0.1:${PORT}/api/health" 2>&1 | head -1 || echo "(health 失败)"
   echo ""
-  curl -sk "https://127.0.0.1:${PORT}/api/startup/status" 2>&1 | head -1 || echo "(startup/status 失败)"
+  curl -s "http://127.0.0.1:${PORT}/api/startup/status" 2>&1 | head -1 || echo "(startup/status 失败)"
   echo ""
 
   for c in stack-mysql stack-htmlsystm stack-neo-backend stack-neo-web stack-gateway; do
