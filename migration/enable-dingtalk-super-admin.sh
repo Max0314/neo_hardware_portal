@@ -7,18 +7,17 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-MYSQL_CONTAINER="${MYSQL_CONTAINER:-stack-mysql}"
 TARGET_USERNAME="${DINGTALK_SUPER_ADMIN_USERNAME:-20461992}"
 
-if ! docker ps --format '{{.Names}}' | grep -qx "$MYSQL_CONTAINER"; then
-  echo "MySQL 容器未运行: $MYSQL_CONTAINER" >&2
+# shellcheck source=_common.sh
+source "${ROOT}/migration/_common.sh"
+if ! mysql_reachable; then
+  echo "外部数据库不可达（核对 .env 的 MYSQL_*）" >&2
   exit 1
 fi
 
 mysql_exec() {
-  docker exec -e MYSQL_SQL="$MYSQL_SQL" "$MYSQL_CONTAINER" sh -c \
-    'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -N -B -e "$MYSQL_SQL"' \
-    2>/dev/null
+  mysql_cli -N -B -e "$MYSQL_SQL" 2>/dev/null
 }
 
 echo "========== 1. 检查目标钉钉管理员 =========="

@@ -6,7 +6,45 @@ MIGRATION_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${MIGRATION_DIR}/.." && pwd)"
 cd "${ROOT}"
 
-DATA_VOLUMES=(mysql_data htmlsystm_data htmlsystm_uploads ai_chatroom_data)
+# 数据库在 NeoFlowData（外部），mysql_data 卷已随迁移退役
+DATA_VOLUMES=(htmlsystm_data htmlsystm_uploads ai_chatroom_data)
+
+# ---------- 外部 MySQL（NeoFlowData）----------
+# 数据库不在本栈内，统一用宿主机 mysql 客户端 + .env 凭据访问。
+# 密码经 MYSQL_PWD 环境变量传递，不进入 ps 输出与 shell 历史。
+
+_env_value() {
+  local root="${ROOT:-$(pwd)}"
+  grep -E "^$1=" "${root}/.env" 2>/dev/null | tail -n1 | cut -d= -f2-
+}
+
+mysql_cli() {
+  local host port user pass db
+  host="$(_env_value MYSQL_HOST)"
+  port="$(_env_value MYSQL_PORT)"; port="${port:-3306}"
+  user="$(_env_value MYSQL_USER)"
+  pass="$(_env_value MYSQL_PASSWORD)"
+  db="$(_env_value MYSQL_DATABASE)"
+  if [[ -z "$host" || -z "$user" || -z "$pass" || -z "$db" ]]; then
+    echo "错误: .env 缺少 MYSQL_HOST/USER/PASSWORD/DATABASE" >&2
+    return 1
+  fi
+  MYSQL_PWD="$pass" mysql --default-character-set=utf8mb4     -h "$host" -P "$port" -u "$user" "$db" "$@"
+}
+
+mysql_dump_cli() {
+  local host port user pass db
+  host="$(_env_value MYSQL_HOST)"
+  port="$(_env_value MYSQL_PORT)"; port="${port:-3306}"
+  user="$(_env_value MYSQL_USER)"
+  pass="$(_env_value MYSQL_PASSWORD)"
+  db="$(_env_value MYSQL_DATABASE)"
+  MYSQL_PWD="$pass" mysqldump --default-character-set=utf8mb4     --single-transaction --no-tablespaces --set-gtid-purged=OFF     -h "$host" -P "$port" -u "$user" "$db" "$@"
+}
+
+mysql_reachable() {
+  mysql_cli -N -e "SELECT 1" >/dev/null 2>&1
+}
 
 require_docker() {
   if ! command -v docker >/dev/null 2>&1; then

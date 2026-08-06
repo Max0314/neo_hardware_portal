@@ -60,11 +60,7 @@ fi
 
 echo ""
 echo "========== 会话与用户（MySQL）=========="
-if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^stack-mysql$'; then
-  bash "$ROOT/migration/verify-login-sessions.sh" 2>/dev/null || echo "verify-login-sessions.sh 执行失败"
-else
-  echo "stack-mysql 未运行，跳过"
-fi
+bash "$ROOT/migration/verify-login-sessions.sh" 2>/dev/null || echo "verify-login-sessions.sh 执行失败"
 
 echo ""
 echo "========== 浏览器访问 =========="

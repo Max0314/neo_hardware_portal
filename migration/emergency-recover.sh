@@ -34,7 +34,7 @@ for arg in "$@"; do
   esac
 done
 
-echo "========== 1/5 最小登录栈（mysql + htmlsystm + gateway）=========="
+echo "========== 1/5 最小登录栈（htmlsystm + gateway；数据库在 NeoFlowData）=========="
 echo "（网关不等待 NEO backend healthy，/login 可走管理系统）"
 compose_up_minimal_login
 bash "${ROOT}/migration/clear-startup-lock.sh" || true
@@ -45,7 +45,7 @@ compose_up_neo_optional || true
 
 echo ""
 echo "========== 3/5 等待健康检查 =========="
-for name in stack-mysql stack-htmlsystm stack-gateway stack-neo-backend stack-neo-web; do
+for name in stack-htmlsystm stack-gateway stack-neo-backend stack-neo-web; do
   for i in $(seq 1 45); do
     if ! docker ps --format '{{.Names}}' | grep -qx "$name"; then
       if [ "$name" = "stack-gateway" ] && [ "$i" -gt 5 ]; then

@@ -13,18 +13,21 @@ USERNAME="${1:-20461992}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# shellcheck source=_common.sh
+source "${ROOT}/migration/_common.sh"
+
 echo "========== 用户 $USERNAME =========="
-if docker ps --format '{{.Names}}' | grep -q '^stack-mysql$'; then
-  docker exec stack-mysql sh -c "mysql -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" \"\$MYSQL_DATABASE\" -e \"
+if mysql_reachable; then
+  mysql_cli -e "
 SELECT id, username, status, LEFT(password,4) AS pwd_prefix,
        CHAR_LENGTH(COALESCE(dingtalk_data,'')) AS dingtalk_chars,
        updated_time
 FROM users WHERE username = '${USERNAME}' LIMIT 1;
 SELECT COUNT(*) AS session_rows, MAX(FROM_UNIXTIME(last_access)) AS last_sess
 FROM sessions s JOIN users u ON s.user_id = u.id WHERE u.username = '${USERNAME}';
-\""
+"
 else
-  echo "stack-mysql 未运行"
+  echo "外部数据库不可达（核对 .env 的 MYSQL_*）"
 fi
 
 echo ""

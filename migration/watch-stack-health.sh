@@ -31,7 +31,7 @@ if ! docker info >/dev/null 2>&1; then
   exit 0
 fi
 
-SERVICES=(stack-mysql stack-htmlsystm stack-neo-backend stack-neo-web stack-gateway)
+SERVICES=(stack-htmlsystm stack-neo-backend stack-neo-web stack-gateway)
 
 health_status() {
   docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$1" 2>/dev/null || echo "missing"
@@ -61,7 +61,6 @@ restart_service() {
   local cname="$1"
   local svc=""
   case "$cname" in
-    stack-mysql) svc="mysql" ;;
     stack-htmlsystm) svc="htmlsystm" ;;
     stack-neo-backend) svc="backend" ;;
     stack-neo-web) svc="web" ;;

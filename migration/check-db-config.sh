@@ -33,13 +33,9 @@ if [[ -n "${MYSQL_PASSWORD:-}" && -n "${SUPER_ADMIN_PASSWORD:-}" && "${MYSQL_PAS
 fi
 
 echo ""
-echo "========== 2. stack-mysql 容器环境变量 =========="
-if docker ps --format '{{.Names}}' | grep -q '^stack-mysql$'; then
-  docker exec stack-mysql printenv MYSQL_USER MYSQL_DATABASE 2>/dev/null || true
-  echo "(MYSQL_PASSWORD 不打印，避免泄露)"
-else
-  echo "stack-mysql 未运行"
-fi
+echo "========== 2. 外部数据库目标（NeoFlowData）=========="
+grep -E '^MYSQL_(HOST|PORT|USER|DATABASE)=' .env 2>/dev/null || echo ".env 缺少 MYSQL_* 配置"
+echo "(MYSQL_PASSWORD 不打印，避免泄露)"
 
 echo ""
 echo "========== 3. stack-htmlsystm 容器 MySQL 连接变量 =========="
@@ -50,15 +46,13 @@ else
 fi
 
 echo ""
-echo "========== 4. MySQL 连接测试（容器内凭据）=========="
-if docker ps --format '{{.Names}}' | grep -q '^stack-mysql$'; then
-  if docker exec stack-mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SELECT 1 AS ok"' 2>/dev/null | grep -q ok; then
-    echo "OK: stack-mysql 内 MYSQL_USER/MYSQL_PASSWORD 可连接"
-  else
-    echo "失败: 卷内密码与容器环境变量不一致 → bash migration/reset-mysql-password.sh"
-  fi
+echo "========== 4. MySQL 连接测试（.env 凭据直连 NeoFlowData）=========="
+# shellcheck source=_common.sh
+source "${ROOT}/migration/_common.sh"
+if mysql_reachable; then
+  echo "OK: .env 的 MYSQL_* 可连接外部数据库"
 else
-  echo "跳过"
+  echo "失败: 外部数据库不可达，核对 .env 的 MYSQL_HOST/PORT/USER/PASSWORD 与内网连通性"
 fi
 
 echo ""
@@ -73,9 +67,7 @@ fi
 
 echo ""
 echo "========== 6. users 表 zzw 行（仅状态与哈希前缀）=========="
-if docker ps --format '{{.Names}}' | grep -q '^stack-mysql$'; then
-  docker exec stack-mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "
+mysql_cli -e '
 SELECT id, username, status, LEFT(password,7) AS pwd_prefix, CHAR_LENGTH(password) AS pwd_len
-FROM users WHERE username=\"zzw\" OR roles LIKE \"%super_admin%\" LIMIT 5;
-"' 2>/dev/null || echo "查询失败"
-fi
+FROM users WHERE username="zzw" OR roles LIKE "%super_admin%" LIMIT 5;
+' 2>/dev/null || echo "查询失败"

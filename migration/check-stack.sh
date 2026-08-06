@@ -95,12 +95,8 @@ fi
 
 echo ""
 echo "========== 6. NEO 积分表（MySQL）=========="
-# 数据库可能在本栈内（旧单机部署）也可能在 NeoFlowData（现行部署），两种都要能查
-if docker ps --format '{{.Names}}' | grep -q '^stack-mysql$'; then
-  NEO_TBL="$(docker exec stack-mysql mysql -u"${MYSQL_USER:-htmlsystm_user}" -p"${MYSQL_PASSWORD}" -N -e \
-    "USE \`${MYSQL_DATABASE}\`; SHOW TABLES LIKE 'neo_point_events';" 2>&1 || true)"
-  _db_reachable=1
-elif [ -n "${MYSQL_HOST:-}" ] && command -v mysql >/dev/null 2>&1; then
+# 数据库在 NeoFlowData（外部），用 .env 凭据直连
+if [ -n "${MYSQL_HOST:-}" ] && command -v mysql >/dev/null 2>&1; then
   NEO_TBL="$(MYSQL_PWD="${MYSQL_PASSWORD}" mysql -h "${MYSQL_HOST}" -P "${MYSQL_PORT:-3306}" \
     -u "${MYSQL_USER}" -D "${MYSQL_DATABASE}" -N -e \
     "SHOW TABLES LIKE 'neo_point_events';" 2>/dev/null || true)"
@@ -122,17 +118,13 @@ if [ "${_db_reachable}" = "1" ]; then
     fi
   fi
 else
-  echo "跳过: 未找到可用的数据库（既无 stack-mysql 容器，.env 也未配置 MYSQL_HOST）"
+  echo "跳过: .env 未配置 MYSQL_HOST 或本机无 mysql 客户端"
 fi
 unset _db_reachable
 
 echo ""
 echo "========== 7. 登录会话（MySQL sessions）=========="
-if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^stack-mysql$'; then
-  bash "$ROOT/migration/verify-login-sessions.sh" 2>/dev/null || echo "verify-login-sessions 失败"
-else
-  echo "跳过: stack-mysql 未运行"
-fi
+bash "$ROOT/migration/verify-login-sessions.sh" 2>/dev/null || echo "verify-login-sessions 失败"
 
 echo ""
 echo "========== 8. .env 关键项 =========="
@@ -140,7 +132,7 @@ echo "========== 8. .env 关键项 =========="
 grep -E '^(COMPOSE_PROJECT_NAME|GATEWAY_PUBLISH_PORT|PUBLIC_BASE_URL|MYSQL_HOST|MYSQL_DATABASE|MYSQL_USER)=' .env 2>/dev/null || true
 # 密钥只报告"是否已配置"。本节曾直接 grep 出 MYSQL_PASSWORD=，而 deploy.sh 会把整个
 # 验收输出 tee 进日志文件，等于每次部署都把明文密码写盘一次。
-for _k in MYSQL_PASSWORD MYSQL_ROOT_PASSWORD NEO_INTERNAL_SECRET AUTH_SESSION_SECRET \
+for _k in MYSQL_PASSWORD NEO_INTERNAL_SECRET AUTH_SESSION_SECRET \
           BI_EXPORT_API_KEY DINGTALK_CLIENT_SECRET YIDA_SYSTEM_TOKEN YIDA_LIBRARY_PASSWORD; do
   if grep -qE "^${_k}=.+" .env 2>/dev/null; then
     echo "${_k}=<已配置>"

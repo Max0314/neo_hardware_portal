@@ -156,20 +156,17 @@ sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "等待统一网关就绪"
 next_step "HTTPS 与数据库探活"
 wait_https_health 15 || fail "经网关 /api/health 探活失败"
 if ! wait_https_db_health 10; then
-  progress_log "警告: /api/health?db=1 未通过，尝试再次对齐 MySQL 密码..."
-  ensure_mysql_password_synced "$ROOT" || true
+  progress_log "警告: /api/health?db=1 未通过，重启应用后重试..."
   docker compose restart gateway htmlsystm >>"${DEPLOY_LOG}" 2>&1 || true
   sleep 5
-  wait_https_db_health 15 || progress_log "警告: /api/health?db=1 仍未通过，请 bash migration/reset-mysql-password.sh"
+  wait_https_db_health 15 || progress_log "警告: /api/health?db=1 仍未通过，请核对 .env 的 MYSQL_* 与 NeoFlowData 连通性"
 fi
 curl -s "http://127.0.0.1:${PORT}/api/startup/status" >/dev/null 2>&1 || true
 sync_lock_to_container 95 "HTTPS 与数据库探活"
 
 next_step "数据库配置与栈验收"
 if ! bash "${ROOT}/migration/check-db-config.sh" >>"${DEPLOY_LOG}" 2>&1; then
-  progress_log "警告: check-db-config 未完全通过"
-  echo "  若 MySQL 密码不一致: bash migration/reset-mysql-password.sh" >&2
-  echo "  或: bash migration/fix-mysql-and-admin.sh 'YourPass'" >&2
+  progress_log "警告: check-db-config 未完全通过（核对 .env 的 MYSQL_* 配置）"
 fi
 bash "${ROOT}/migration/check-stack.sh" | tee -a "${DEPLOY_LOG}" || true
 

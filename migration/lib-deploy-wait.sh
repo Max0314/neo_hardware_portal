@@ -167,39 +167,6 @@ wait_external_mysql() {
   return 1
 }
 
-# 使用 stack-mysql 容器环境变量测试应用账号能否连库（旧的单机栈用，保留兼容）
-mysql_app_can_connect() {
-  docker ps --format '{{.Names}}' 2>/dev/null | grep -qx stack-mysql || return 1
-  docker exec stack-mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SELECT 1 AS ok" 2>/dev/null' \
-    | grep -q ok
-}
-
-# .env 改密后数据卷仍为旧密码时，自动对齐（不删卷）
-ensure_mysql_password_synced() {
-  local root="${1:-.}"
-  local _log
-  if declare -f progress_log >/dev/null 2>&1; then
-    _log() { progress_log "$@"; }
-  else
-    _log() { echo "$@"; }
-  fi
-  if mysql_app_can_connect; then
-    return 0
-  fi
-  _log "MySQL 卷内密码与 .env 不一致，自动执行 reset-mysql-password.sh（不删数据）..."
-  if bash "${root}/migration/reset-mysql-password.sh" >>"${DEPLOY_LOG}" 2>&1; then
-    _log "MySQL 密码已与 .env 对齐"
-    docker compose restart htmlsystm backend >>"${DEPLOY_LOG}" 2>&1 || true
-    wait_container_healthy stack-mysql 45 || return 1
-    wait_container_healthy stack-htmlsystm 90 || true
-    wait_container_healthy stack-neo-backend 90 || true
-    mysql_app_can_connect
-    return $?
-  fi
-  _log "警告: MySQL 密码自动对齐失败，请手动 bash migration/reset-mysql-password.sh"
-  return 1
-}
-
 deploy_on_exit_clear_lock() {
   clear_startup_lock_all
 }

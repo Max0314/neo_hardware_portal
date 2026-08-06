@@ -24,14 +24,15 @@ MYSQL_USER="${MYSQL_USER:-htmlsystm_user}"
 MYSQL_DATABASE="${MYSQL_DATABASE:-htmlsystm}"
 MYSQL_PASSWORD="${MYSQL_PASSWORD:?请在 .env 中设置 MYSQL_PASSWORD}"
 
-if ! docker ps --format '{{.Names}}' | grep -q '^stack-mysql$'; then
-  echo "错误: stack-mysql 未运行，请先 docker compose up -d" >&2
+# shellcheck source=_common.sh
+source "${ROOT}/migration/_common.sh"
+if ! mysql_reachable; then
+  echo "错误: 外部数据库不可达（核对 .env 的 MYSQL_*）" >&2
   exit 1
 fi
 
 neo_table_exists() {
-  docker exec stack-mysql mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -N -e \
-    "USE \`${MYSQL_DATABASE}\`; SHOW TABLES LIKE 'neo_point_events';" 2>/dev/null \
+  mysql_cli -N -e "SHOW TABLES LIKE 'neo_point_events';" 2>/dev/null \
     | grep -q '^neo_point_events$'
 }
 
@@ -47,8 +48,8 @@ print('OK')
 " 2>/dev/null; then
     echo "已通过 stack-htmlsystm 创建/确认 NEO 表"
   else
-    echo "htmlsystm Python 建表失败，改用 stack-mysql 直接执行 SQL..."
-    docker exec -i stack-mysql mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" <<'EOSQL'
+    echo "htmlsystm Python 建表失败，改为直连外部库执行 SQL..."
+    mysql_cli <<'EOSQL'
 CREATE TABLE IF NOT EXISTS neo_point_events (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     event_type VARCHAR(64) NOT NULL,
@@ -85,10 +86,10 @@ CREATE TABLE IF NOT EXISTS neo_bom_info_snapshots (
     INDEX idx_neo_bom_info_user (user_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 EOSQL
-    echo "已通过 stack-mysql 创建/确认 NEO 表"
+    echo "已直连外部库创建/确认 NEO 表"
   fi
 else
-  docker exec -i stack-mysql mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" <<'EOSQL'
+  mysql_cli <<'EOSQL'
 CREATE TABLE IF NOT EXISTS neo_point_events (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     event_type VARCHAR(64) NOT NULL,
@@ -122,7 +123,7 @@ CREATE TABLE IF NOT EXISTS neo_bom_info_snapshots (
     INDEX idx_neo_bom_info_user (user_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 EOSQL
-  echo "已通过 stack-mysql 创建/确认 NEO 表"
+  echo "已直连外部库创建/确认 NEO 表"
 fi
 
 if neo_table_exists; then
