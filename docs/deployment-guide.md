@@ -385,8 +385,11 @@ BI 中心（部署在 AWS 旧服务器，不迁移）通过以下接口取数：
 - 数据源：`neo_feature_uses`、`neo_point_events`、`neo_bom_info_snapshots`、
   `neo_user_point_balances`，并关联 `users` 表回填姓名／部门／工号
 - **迁移时 `users` 表必须与 `neo_*` 一起迁**，否则 BI 侧这三个字段全空
-- 迁移后需把 bi_center 的 `HARDWARE_BI_BASE_URL` 改为新地址。**不要依赖 301 重定向**：
-  跨域名跳转时部分 HTTP 客户端会丢弃 `X-API-Key` 这类自定义头
+- **BI 取数链路（长期方案，经确认）**：bi_center 配置保持旧地址不变，由 AWS 旧服务器
+  Nginx 将 `/neo_hardware/api/export/` 按 IP 反代到新服务器（绕开跨境 SNI 阻断）。
+  该转发块随 AWS 机器常驻，仅当 bi_center 迁往阿里云时移除；新服务器公网 IP 变更时
+  须同步修改。**不要改成 301 或直接换新域名**：跨境域名访问会被重置，且跳转会丢
+  `X-API-Key` 头
 - 当前实现只接受**单个** API Key，无法平滑轮换；换密钥时两侧须同时更新
 
 ---
