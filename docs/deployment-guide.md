@@ -15,7 +15,7 @@
 | --- | --- | --- |
 | 1 | **禁止在服务器上编辑代码** | 本地改 → `git push` → 服务器 `git fetch` + `checkout` → `deploy.sh` |
 | 2 | **禁止在主应用服务器上跑数据库** | Compose 中不含任何数据库服务，统一连 NeoFlowData |
-| 3 | **禁止用本地文件存储业务数据** | 文件存储需接入阿里云 OSS（当前为过渡期，见 [OSS](#五文件存储与-oss)） |
+| 3 | **禁止用本地文件存储业务数据** | ✅ 已接入 OSS 写通镜像，本地卷仅作缓存（见 [OSS](#五文件存储与-oss已上线2026-08-07)） |
 | 4 | **只能使用分配给自己的端口段** | 本项目端口段 **39020-39029**，网关占用 **39020** |
 | 5 | **只能通过 `~/.nginx/*.conf` 配置反代** | 只写 `location` 等下层指令，禁止 `server{}`／`http{}`／`events{}` |
 | 6 | **数据库端口不得暴露公网** | 数据库仅内网 `172.16.0.244`，无公网入口 |
@@ -66,7 +66,7 @@
                  └──────────────────────────────────────────────────────┘
 
                  ┌──────────────────────────────────────────────────────┐
-                 │  阿里云 OSS（待申请，找陈龙）                          │
+                 │  阿里云 OSS  neoflow-neo-hardware（北京，私有）        │
                  │    公告正文 / 上传文件 / 聊天附件 / 知识库             │
                  └──────────────────────────────────────────────────────┘
 
@@ -199,28 +199,31 @@ gunzip -c backup-xxx.sql.gz | MYSQL_PWD='<密码>' mysql --default-character-set
 
 ---
 
-## 五、文件存储与 OSS
+## 五、文件存储与 OSS（已上线，2026-08-07）
 
-平台要求文件存储型服务必须接 OSS。当前状态与过渡方案：
+文件持久化在阿里云 OSS：桶 `neoflow-neo-hardware`（北京，私有），`STORAGE_BACKEND=oss`。
+持久化模型是**写通镜像**：本地卷降级为工作缓存（速度、目录扫描、锁语义不变），OSS 是
+持久层——卷丢失后容器启动时自动整树恢复，启动对账自愈漏传。
 
-| 阶段 | 状态 |
-| --- | --- |
-| 现状 | 应用仍用本地 Docker 卷；**全仓没有任何代码读取 `STORAGE_BACKEND`**，存储抽象层尚未实现 |
-| 过渡 | 第一阶段迁移仍带卷上线，`STORAGE_BACKEND=local` |
-| 目标 | 向陈龙申请 OSS → 实现存储抽象层 → `STORAGE_BACKEND=oss` → 迁移对象 → 退役本地卷 |
-
-涉及的三个卷：
-
-| 卷 | 内容 | 去向 |
+| 前缀 | 内容 | 写通方式 |
 | --- | --- | --- |
-| `htmlsystm_data` | 公告正文、元数据、历史版本 | OSS |
-| `htmlsystm_uploads` | 上传文件 | OSS |
-| `ai_chatroom_data` | 聊天附件、知识库 | OSS |
+| `prod/announcements/` | 公告正文、附件、历史版本 | 四个公告变更方法出口同步子树（`tree_mirror.py`） |
+| `prod/netlist-results/` | 网表分析结果 JSON | 保存/删除直接写通，读走本地缓存、miss 回源 |
+| `prod/knowledge/` | 知识库 JSON | 保存后整树同步（chroma 向量文件不镜像） |
+| `prod/knowledge-recycle/` | 知识库回收站 | 移动/删除后同步 |
 
-⚠️ `ai_chatroom_data` 内的 `chatroom.db`、`dashboard_metrics.db` 是 **SQLite 状态库，不是文件**，
-必须迁入 MySQL，**不能上传到 OSS**。
+要点：
 
-OSS 接入的详细关卡见 [oss-migration-plan.md](./oss-migration-plan.md)。
+- 桶在北京、服务器在成都，走公网 endpoint（单次操作约 250ms）；列表/页面渲染一律走本地
+  缓存，不依赖 OSS LIST
+- 锁文件（`*.lock`、`locks/`）与临时文件永不镜像——它们是进程协调工件，OSS 无锁语义
+- 同步失败只记日志不阻塞业务，由 6 小时一次的后台对账与启动对账补齐
+- OSS 客户端为纯标准库实现（签名 V1，中文 key 已验证），`htmlsystm/server/` 与
+  `neo_ai_chatroom/backend/` 各持一份**必须同步修改**的副本
+- 初次灌数用 `scripts/oss_bulk_upload.py`（预演 → `--upload --verify --write-mirror-state`）
+- 回滚：`.env` 改回 `STORAGE_BACKEND=local` 并重建容器，本地缓存即完整数据
+
+⚠️ `ai_chatroom_data` 内的 `chatroom.db` 等 SQLite 已迁入 MySQL（NeoFlowData），与 OSS 无关。
 
 ---
 
@@ -336,7 +339,7 @@ bash migration/deploy.sh              # 加 --no-build 可跳过重建镜像
 | `YIDA_MATERIAL_FORMS` | 物料表单白名单 JSON（72 条） |
 | `MATERIAL_DB_GLOBAL_PASSWORD` | 物料库全局密码 |
 | `ARK_API_KEY` / `TOKENPLAN_API_KEY` / `TOKENPLAN_BASE_URL` | AI 能力配置 |
-| `STORAGE_BACKEND` | 过渡期为 `local`，OSS 就绪后改 `oss` |
+| `STORAGE_BACKEND` | 生产为 `oss`；改回 `local` 即回滚到纯本地卷 |
 
 安全默认值（保持关闭直到明确需要）：
 

@@ -118,7 +118,7 @@
 | 1 | **MySQL 8.0 → 8.4 试导入验证** | 唯一可能爆意外的环节，应最先做 |
 | 2 | **知识库相对路径修复** | `main.py:1585/1588/1789/1790` 与 `knowledge_base.py:183` 绕开 `CHATROOM_DATA_DIR`，迁移前必修的数据完整性问题 |
 | 3 | **Compose 改造** | 移除 `mysql` 服务与 `depends_on`；`MYSQL_HOST` 从 `.env` 读；gateway 改 HTTP；端口改 39020；应用侧加连接重试 |
-| 4 | **存储抽象层** | 目前**零代码**，全仓无任何应用代码读 `STORAGE_BACKEND`。要覆盖上传/下载/移动/删除/知识库/回收站，支持 local 与 oss 双后端 |
+| 4 | ~~存储抽象层~~ | ✅ **2026-08-07 已上线**：写通镜像（`object_store.py`+`tree_mirror.py`），公告/网表/知识库入 OSS，544 对象逐一回读校验，生产桶探针通过，见 deployment-guide 第五节 |
 | 5 | **SQLite → MySQL** | `chatroom.db`、`dashboard_metrics.db` 需按模型写专用迁移，不能当文件搬 |
 | 6 | 备份脚本去掉 `.env` 明文快照 | `scripts/backup-all.sh:70` |
 | 7 | 运维脚本去写死项 | **20 个脚本**写死 `stack-mysql`／本地卷／`docker compose exec mysql` |
