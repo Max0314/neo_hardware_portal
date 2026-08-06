@@ -30,7 +30,11 @@ from backend.models.message import MessageStore
 from backend.utils.role_prompt_builder import RolePromptBuilder
 from backend.utils.context_optimizer import ContextOptimizer
 from backend.utils.response_cache import ResponseCache
-from backend.models.knowledge_base import create_knowledge_base
+from backend.models.knowledge_base import (
+    create_knowledge_base,
+    sync_knowledge_dir as kb_sync_knowledge_dir,
+    sync_recycle_dir as kb_sync_recycle_dir,
+)
 from backend.utils.babata_processor import BabataProcessor, TaskAction
 from backend.utils.netlist_parser import PadsNetlistParser, NetlistComparator
 from backend.utils.netlist_analyzer import NetlistAnalyzer
@@ -77,6 +81,7 @@ CHATROOM_DB_PATH = str(_chatroom_data / "chatroom.db")
 NETLIST_RESULTS_DIR = str(_chatroom_data / "netlist_results")
 DASHBOARD_METRICS_DB_PATH = str(_chatroom_data / "dashboard_metrics.db")
 KNOWLEDGE_BASES_DIR = str(_chatroom_data / "knowledge_bases")
+KNOWLEDGE_RECYCLE_BIN_DIR = str(_chatroom_data / "knowledge_recycle_bin")
 
 
 def _make_knowledge_base(role_id: str, use_vector: bool):
@@ -1592,10 +1597,10 @@ async def delete_custom_ai(role_id: str):
     _remove_role_knowledge_base(full_role_id)
     
     # 将知识库移动到回收站
-    recycle_bin_dir = Path("./knowledge_recycle_bin")
-    recycle_bin_dir.mkdir(exist_ok=True)
-    
-    knowledge_base_dir = Path("./knowledge_bases")
+    recycle_bin_dir = Path(KNOWLEDGE_RECYCLE_BIN_DIR)
+    recycle_bin_dir.mkdir(parents=True, exist_ok=True)
+
+    knowledge_base_dir = Path(KNOWLEDGE_BASES_DIR)
     full_role_id_for_path = full_role_id
     
     # 检查并移动简单知识库文件
@@ -1627,7 +1632,11 @@ async def delete_custom_ai(role_id: str):
             knowledge_type="vector",
             knowledge_path=str(recycle_path)
         )
-    
+
+    # 移动改变了两个目录，双侧同步镜像
+    kb_sync_knowledge_dir(KNOWLEDGE_BASES_DIR)
+    kb_sync_recycle_dir(KNOWLEDGE_RECYCLE_BIN_DIR)
+
     return {"success": True}
 
 
@@ -1796,9 +1805,9 @@ async def restore_knowledge(request: Request, knowledge_id: str):
         )
     
     # 移动知识库文件到目标角色
-    recycle_bin_dir = Path("./knowledge_recycle_bin")
-    knowledge_base_dir = Path("./knowledge_bases")
-    knowledge_base_dir.mkdir(exist_ok=True)
+    recycle_bin_dir = Path(KNOWLEDGE_RECYCLE_BIN_DIR)
+    knowledge_base_dir = Path(KNOWLEDGE_BASES_DIR)
+    knowledge_base_dir.mkdir(parents=True, exist_ok=True)
     target_full_role_id = f"custom-{target_role_id}"
     
     recycle_path = Path(knowledge_item['knowledge_path'])
@@ -1829,7 +1838,10 @@ async def restore_knowledge(request: Request, knowledge_id: str):
     
     # 清除缓存，强制重新加载
     _remove_role_knowledge_base(target_full_role_id)
-    
+
+    kb_sync_knowledge_dir(KNOWLEDGE_BASES_DIR)
+    kb_sync_recycle_dir(KNOWLEDGE_RECYCLE_BIN_DIR)
+
     return {"success": True}
 
 
@@ -1849,7 +1861,8 @@ async def permanently_delete_knowledge(knowledge_id: str):
                 path.unlink()
             elif path.is_dir():
                 shutil.rmtree(path)
-    
+        kb_sync_recycle_dir(KNOWLEDGE_RECYCLE_BIN_DIR)
+
     return {"success": True}
 
 

@@ -3,18 +3,76 @@
 支持角色专属知识库和智能检索
 支持图片存储（Base64或文件路径）
 """
+import logging
 import os
+import threading
 from typing import List, Dict, Optional, Tuple
 import json
 from backend.models import db_compat
 import uuid
 from datetime import datetime
 
+from backend.object_store import build_store_from_env
+from backend.tree_mirror import TreeMirror
+
+logger = logging.getLogger(__name__)
+
+
+def default_knowledge_dir() -> str:
+    """知识库默认目录：跟随 CHATROOM_DATA_DIR，杜绝相对路径落在容器工作目录。
+
+    历史默认值 "./knowledge_bases" 相对 WORKDIR(/app)，而数据卷挂在 /data——
+    写进 /app 的数据在容器重建时直接丢失。曾有 3 个知识文件因此孤立在卷外。
+    """
+    base = (os.getenv("CHATROOM_DATA_DIR") or "").strip() or "."
+    return os.path.join(base, "knowledge_bases")
+
+
+def default_recycle_dir() -> str:
+    base = (os.getenv("CHATROOM_DATA_DIR") or "").strip() or "."
+    return os.path.join(base, "knowledge_recycle_bin")
+
+
+# 知识目录 → 对象存储 的写通镜像（进程内按目录单例）。
+# chroma 向量文件是本地索引产物、无法有意义地按对象镜像，排除在外。
+_KB_EXCLUDE_SUFFIXES = ('.sqlite3', '.bin', '.pickle', '.parquet', '.db')
+_MIRRORS: Dict[str, TreeMirror] = {}
+_MIRRORS_LOCK = threading.Lock()
+
+
+def _mirror_for(root: str, purpose: str) -> TreeMirror:
+    key = os.path.abspath(root)
+    with _MIRRORS_LOCK:
+        mirror = _MIRRORS.get(key)
+        if mirror is None:
+            store = build_store_from_env(purpose)
+            mirror = TreeMirror(root, store, exclude_suffixes=_KB_EXCLUDE_SUFFIXES)
+            _MIRRORS[key] = mirror
+            if store is not None:
+                try:
+                    restored = mirror.restore_all()
+                    if restored:
+                        logger.info("知识目录 %s 已从对象存储恢复 %d 个文件", root, restored)
+                    mirror.reconcile()  # 目录很小，启动时同步对账即可
+                except Exception as e:  # noqa: BLE001
+                    logger.warning("知识镜像初始化对账失败 %s: %s", root, e)
+        return mirror
+
+
+def sync_knowledge_dir(root: Optional[str] = None) -> None:
+    """把知识库目录整树差量同步到对象存储。目录仅含少量 JSON，代价可忽略。"""
+    _mirror_for(root or default_knowledge_dir(), 'knowledge').sync_subtree('')
+
+
+def sync_recycle_dir(root: Optional[str] = None) -> None:
+    _mirror_for(root or default_recycle_dir(), 'knowledge-recycle').sync_subtree('')
+
 
 class KnowledgeBase:
     """角色知识库基类"""
     
-    def __init__(self, role_id: str, persist_directory: str = "./knowledge_bases"):
+    def __init__(self, role_id: str, persist_directory: Optional[str] = None):
+        persist_directory = persist_directory or default_knowledge_dir()
         self.role_id = role_id
         self.persist_directory = persist_directory
         os.makedirs(persist_directory, exist_ok=True)
@@ -31,7 +89,7 @@ class KnowledgeBase:
 class ChromaKnowledgeBase(KnowledgeBase):
     """基于ChromaDB的知识库实现"""
     
-    def __init__(self, role_id: str, persist_directory: str = "./knowledge_bases"):
+    def __init__(self, role_id: str, persist_directory: Optional[str] = None):
         super().__init__(role_id, persist_directory)
         self._init_chromadb()
         self._init_encoder()
@@ -180,7 +238,7 @@ class ChromaKnowledgeBase(KnowledgeBase):
 class SimpleKnowledgeBase(KnowledgeBase):
     """简单内存知识库（无向量数据库依赖）- 支持问答对格式和图片"""
     
-    def __init__(self, role_id: str, persist_directory: str = "./knowledge_bases", db_path: str = "chatroom.db"):
+    def __init__(self, role_id: str, persist_directory: Optional[str] = None, db_path: str = "chatroom.db"):
         super().__init__(role_id, persist_directory)
         self.db_path = db_path
         self.knowledge_chunks: List[Dict] = []
@@ -349,6 +407,7 @@ class SimpleKnowledgeBase(KnowledgeBase):
             with open(knowledge_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             print(f"[知识库] 保存成功: {knowledge_file}")
+            sync_knowledge_dir(self.persist_directory)
         except Exception as e:
             print(f"保存知识库失败: {e}")
     
@@ -653,7 +712,7 @@ def create_knowledge_base(
     role_id: str,
     use_vector: bool = True,
     db_path: str = "chatroom.db",
-    persist_directory: str = "./knowledge_bases",
+    persist_directory: Optional[str] = None,
 ) -> KnowledgeBase:
     """创建知识库实例"""
     if use_vector:
