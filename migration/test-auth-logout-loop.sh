@@ -40,7 +40,7 @@ if [[ -z "${AUTH_TEST_PASSWORD:-}" && -z "${AUTH_TEST_PASS:-}" ]]; then
 fi
 
 echo "========== 前置检查 =========="
-if ! curl -sk --connect-timeout 5 "https://127.0.0.1:${GATEWAY_PUBLISH_PORT:-8000}/api/health" | grep -q '"ok"'; then
+if ! curl -s --connect-timeout 5 "http://127.0.0.1:${GATEWAY_PUBLISH_PORT:-8000}/api/health" | grep -q '"ok"'; then
   echo "警告: 网关 /api/health 未就绪，测试可能超时"
 fi
 
@@ -82,6 +82,6 @@ if [[ "$USE_CONTAINER" -eq 1 ]]; then
       --insecure \
       "${PY_ARGS[@]}"
 else
-  echo "模式: 本机经网关 https://127.0.0.1:${GATEWAY_PUBLISH_PORT:-8000}"
+  echo "模式: 本机经网关 http://127.0.0.1:${GATEWAY_PUBLISH_PORT:-8000}"
   python3 "$ROOT/migration/test-auth-logout-loop.py" "${PY_ARGS[@]}"
 fi

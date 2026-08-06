@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Any, Dict, Tuple
 
 from server.logger import logger
+from server.yida_config import YIDA_SYNC_SCHEDULER_ENABLED
 
 # 每天定时同步的小时（0-23），可用环境变量覆盖
 import os
@@ -121,6 +122,9 @@ def _acquire_scheduler_process_lock() -> bool:
 def start_daily_scheduler() -> None:
     """启动每日定时同步线程（应用启动时调用，幂等）。"""
     global _scheduler_thread
+    if not YIDA_SYNC_SCHEDULER_ENABLED:
+        logger.info('宜搭每日定时同步未启用（YIDA_SYNC_SCHEDULER_ENABLED=0）')
+        return
     if _scheduler_thread and _scheduler_thread.is_alive():
         return
     if not _acquire_scheduler_process_lock():

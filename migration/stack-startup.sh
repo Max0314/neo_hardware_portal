@@ -101,9 +101,9 @@ compose_up_core >>/var/log/docker-stack-startup.log 2>&1 || fail "docker compose
 sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "启动 Docker 服务"
 
 # 3 MySQL
-next_step "等待 MySQL 就绪"
-wait_container_healthy stack-mysql 45 || fail "MySQL 未就绪"
-sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "等待 MySQL 就绪"
+next_step "检查外部数据库连通"
+wait_external_mysql "$ROOT" 45 || fail "外部数据库不可达，请检查 .env 的 MYSQL_*"
+sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "检查外部数据库连通"
 
 # 4 NEO 表 / 库结构
 next_step "更新数据库结构"
@@ -137,7 +137,7 @@ sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "等待统一网关就绪"
 # 9 HTTPS 自检
 next_step "HTTPS 服务自检"
 wait_https_health 15 || progress_log "警告: /api/health 探活未通过"
-curl -sk "https://127.0.0.1:${PORT}/api/startup/status" >/dev/null 2>&1 || true
+curl -s "http://127.0.0.1:${PORT}/api/startup/status" >/dev/null 2>&1 || true
 sync_lock_to_container 95 "HTTPS 服务自检"
 
 # 10 开放登录

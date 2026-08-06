@@ -99,33 +99,34 @@ progress_log "========== 硬件研发部系统部署流水线 =========="
 volume_write_lock 0 "正在部署，请稍候"
 sync_lock_to_container 0 "正在部署，请稍候"
 
-next_step "检查环境与证书"
+next_step "检查环境"
 if [[ ! -f docker-compose.yml ]]; then
   fail "缺少 docker-compose.yml"
 fi
-if [[ ! -f gateway/certs/server.crt || ! -f gateway/certs/server.key ]]; then
-  fail "缺少 gateway/certs 证书，请先 bash migration/gen-gateway-cert.sh"
+if [[ ! -f .env ]]; then
+  fail "缺少 .env，请先 cp .env.example .env 并填写"
 fi
-sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "检查环境与证书"
+# 网关已改为明文 HTTP（TLS 由平台 Nginx 终止），不再需要自签证书
+sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "检查环境"
 
 next_step "构建并启动 Docker 服务"
 if [[ "$DO_BUILD" -eq 1 ]]; then
-  compose_up_core --build --remove-orphans >>/var/log/docker-stack-deploy.log 2>&1 \
+  compose_up_core --build --remove-orphans >>"${DEPLOY_LOG}" 2>&1 \
     || fail "docker compose up -d --build 失败"
 else
-  compose_up_core --remove-orphans >>/var/log/docker-stack-deploy.log 2>&1 \
+  compose_up_core --remove-orphans >>"${DEPLOY_LOG}" 2>&1 \
     || fail "docker compose up -d 失败"
 fi
 sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "构建并启动 Docker 服务"
 
-next_step "等待 MySQL 就绪"
-wait_container_healthy stack-mysql 45 || fail "MySQL 未就绪"
-ensure_mysql_password_synced "$ROOT" || progress_log "警告: MySQL 凭据仍不一致，后续建表/探活可能失败"
-sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "等待 MySQL 就绪"
+next_step "检查外部数据库连通"
+# 数据库由 NeoFlowData 提供，本机没有 stack-mysql 容器可等；改为直接测连通性。
+wait_external_mysql "$ROOT" 45 || fail "外部数据库不可达，请检查 .env 的 MYSQL_HOST/PORT/USER/PASSWORD"
+sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "检查外部数据库连通"
 
 next_step "更新数据库结构"
 export AUTO_FIX_NEO_TABLES=1
-bash "${ROOT}/migration/ensure-neo-mysql-tables.sh" >>/var/log/docker-stack-deploy.log 2>&1 \
+bash "${ROOT}/migration/ensure-neo-mysql-tables.sh" >>"${DEPLOY_LOG}" 2>&1 \
   || progress_log "警告: ensure-neo-mysql-tables 未完全成功"
 sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "更新数据库结构"
 
@@ -143,34 +144,31 @@ sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "等待 NEO 前端就绪"
 
 next_step "等待统一网关就绪"
 # NEO 重建后容器 IP 变化，gateway 内 nginx 会缓存旧 upstream IP，须重启以免 /neo/、/api/leaderboard 502
-docker compose restart gateway >>/var/log/docker-stack-deploy.log 2>&1 || true
+docker compose restart gateway >>"${DEPLOY_LOG}" 2>&1 || true
 sleep 3
 if [[ -x /usr/local/lib/docker-stack/boot-stack.sh ]]; then
-  /usr/local/lib/docker-stack/boot-stack.sh ensure-gateway >>/var/log/docker-stack-deploy.log 2>&1 || true
+  /usr/local/lib/docker-stack/boot-stack.sh ensure-gateway >>"${DEPLOY_LOG}" 2>&1 || true
 fi
 wait_container_healthy stack-gateway 30 \
-  || docker compose up -d gateway >>/var/log/docker-stack-deploy.log 2>&1
+  || docker compose up -d gateway >>"${DEPLOY_LOG}" 2>&1
 sync_lock_to_container $((STEP * 100 / TOTAL_STEPS)) "等待统一网关就绪"
 
 next_step "HTTPS 与数据库探活"
 wait_https_health 15 || fail "经网关 /api/health 探活失败"
 if ! wait_https_db_health 10; then
-  progress_log "警告: /api/health?db=1 未通过，尝试再次对齐 MySQL 密码..."
-  ensure_mysql_password_synced "$ROOT" || true
-  docker compose restart gateway htmlsystm >>/var/log/docker-stack-deploy.log 2>&1 || true
+  progress_log "警告: /api/health?db=1 未通过，重启应用后重试..."
+  docker compose restart gateway htmlsystm >>"${DEPLOY_LOG}" 2>&1 || true
   sleep 5
-  wait_https_db_health 15 || progress_log "警告: /api/health?db=1 仍未通过，请 bash migration/reset-mysql-password.sh"
+  wait_https_db_health 15 || progress_log "警告: /api/health?db=1 仍未通过，请核对 .env 的 MYSQL_* 与 NeoFlowData 连通性"
 fi
-curl -sk "https://127.0.0.1:${PORT}/api/startup/status" >/dev/null 2>&1 || true
+curl -s "http://127.0.0.1:${PORT}/api/startup/status" >/dev/null 2>&1 || true
 sync_lock_to_container 95 "HTTPS 与数据库探活"
 
 next_step "数据库配置与栈验收"
-if ! bash "${ROOT}/migration/check-db-config.sh" >>/var/log/docker-stack-deploy.log 2>&1; then
-  progress_log "警告: check-db-config 未完全通过"
-  echo "  若 MySQL 密码不一致: bash migration/reset-mysql-password.sh" >&2
-  echo "  或: bash migration/fix-mysql-and-admin.sh 'YourPass'" >&2
+if ! bash "${ROOT}/migration/check-db-config.sh" >>"${DEPLOY_LOG}" 2>&1; then
+  progress_log "警告: check-db-config 未完全通过（核对 .env 的 MYSQL_* 配置）"
 fi
-bash "${ROOT}/migration/check-stack.sh" | tee -a /var/log/docker-stack-deploy.log || true
+bash "${ROOT}/migration/check-stack.sh" | tee -a "${DEPLOY_LOG}" || true
 
 clear_startup_lock_all
 trap - EXIT
@@ -179,11 +177,11 @@ progress_draw "$TOTAL_STEPS" "$TOTAL_STEPS" "部署完成"
 progress_finish "系统已就绪，可以登录 https://<本机IP>:${PORT}/login"
 
 progress_log "容器状态:"
-docker compose ps 2>/dev/null | tee -a /var/log/docker-stack-deploy.log || true
+docker compose ps 2>/dev/null | tee -a "${DEPLOY_LOG}" || true
 
 mkdir -p "${ROOT}/log"
-bash "${ROOT}/migration/collect-stack-logs.sh" >>/var/log/docker-stack-deploy.log 2>&1 || true
+bash "${ROOT}/migration/collect-stack-logs.sh" >>"${DEPLOY_LOG}" 2>&1 || true
 if ! [[ -f "${ROOT}/log/collector.pid" ]] || ! kill -0 "$(cat "${ROOT}/log/collector.pid" 2>/dev/null)" 2>/dev/null; then
-  bash "${ROOT}/migration/start-log-collector.sh" --daemon >>/var/log/docker-stack-deploy.log 2>&1 || true
+  bash "${ROOT}/migration/start-log-collector.sh" --daemon >>"${DEPLOY_LOG}" 2>&1 || true
 fi
 progress_log "日志采集: ${ROOT}/log/ （每分钟一份快照）"

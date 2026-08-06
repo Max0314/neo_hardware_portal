@@ -534,13 +534,14 @@
         <h1><i class="fas fa-database"></i> 物料数据库</h1>
         <div class="subtitle">
             <i class="fas fa-circle-info" style="margin-right: 8px;"></i>
-            将物料库分为多个部分管理。每个物料库可单独设置<strong>访问密码</strong>（服务端仅存哈希，不明文保存）；<strong>上传、删除、下载、批量导入、修改备注</strong>等操作须先验证密码。所有变更写入<strong>操作记录</strong>（格式：某某用户某某了某某物料库）。表头标准：物料代码、物料描述、pads库物料描述、成本单价、替代组标签、优选情况、备注说明。
+            将物料库分为多个部分管理。所有物料库共用<strong>一个访问密码</strong>（服务端仅存哈希，不明文保存）；一次验证后即可上传、删除、下载、批量导入或修改备注。所有变更写入<strong>操作记录</strong>。表头标准：物料代码、物料描述、pads库物料描述、成本单价、替代组标签、优选情况、备注说明。
         </div>
         <div class="toolbar">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                 <button type="button" id="btnAddLib" class="btn-add"><i class="fas fa-plus"></i> 新增物料库</button>
                 <button type="button" id="btnBatchImport" class="btn-batch"><i class="fas fa-file-import"></i> 批量导入</button>
                 <button type="button" id="btnExportAll" class="btn-add" style="background:#4f46e5;"><i class="fas fa-file-excel"></i> 导出全部物料库 Excel</button>
+                <button type="button" id="btnChangePassword" class="btn-add" style="background:#64748b;"><i class="fas fa-key"></i> 修改共用密码</button>
                 <button type="button" id="btnAuditLog" class="btn-audit"><i class="fas fa-clipboard-list"></i> 修改记录</button>
                 <button type="button" id="btnYidaSync" class="btn-add" style="background:#0CA3B0;"><i class="fas fa-rotate"></i> 从宜搭同步</button>
                 <span id="yidaSyncStatus" style="margin-left:8px;font-size:0.85rem;color:#3C6478;"></span>
@@ -603,7 +604,7 @@
                 <label>物料库前缀（可空）</label>
                 <input type="text" id="libPrefix" placeholder="例如：PADS-；留空则不加前缀">
             </div>
-            <div class="form-group" id="libPasswordGroup">
+            <div class="form-group" id="libPasswordGroup" style="display:none;">
                 <label id="libPasswordLabel">访问密码 <span class="badge-required">必填</span></label>
                 <input type="password" id="libPassword" autocomplete="new-password" placeholder="上传/删除/下载前须验证此密码">
                 <input type="password" id="libPasswordConfirm" autocomplete="new-password" placeholder="再次输入密码" style="margin-top:8px;">
@@ -675,8 +676,7 @@
             <div class="form-group">
                 <label>默认物料库前缀（可空，应用于本批全部新建库）</label>
                 <input type="text" id="batchDefaultPrefix" placeholder="例如：PADS-">
-                <label style="margin-top:12px;display:block;">新建库的默认访问密码 <span class="badge-required">必填</span></label>
-                <input type="password" id="batchDefaultPassword" autocomplete="new-password" placeholder="批量新建库时使用；更新已有库须单独验证原库密码" style="width:100%;margin-top:6px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;">
+                <input type="password" id="batchDefaultPassword" style="display:none;">
             </div>
             <div class="form-group">
                 <label style="display:flex;align-items:center;gap:8px;font-weight:normal;cursor:pointer;">
@@ -728,12 +728,12 @@
 <div id="modalPassword" class="modal-overlay">
     <div class="modal" style="max-width:420px;">
         <div class="modal-header">
-            <h2 id="modalPasswordTitle">验证物料库密码</h2>
+            <h2 id="modalPasswordTitle">验证物料库共用密码</h2>
             <button type="button" class="modal-close" id="modalPasswordClose">&times;</button>
         </div>
         <div class="modal-body">
             <p id="modalPasswordHint" class="pwd-hint" style="margin-bottom:12px;"></p>
-            <input type="password" id="modalPasswordInput" autocomplete="current-password" placeholder="请输入该物料库的访问密码" style="width:100%;padding:12px 14px;border:1px solid #cbd5e1;border-radius:12px;">
+            <input type="password" id="modalPasswordInput" autocomplete="current-password" placeholder="请输入物料库共用密码" style="width:100%;padding:12px 14px;border:1px solid #cbd5e1;border-radius:12px;">
         </div>
         <div class="modal-footer">
             <button type="button" class="btn-cancel" id="modalPasswordCancel">取消</button>
@@ -742,11 +742,11 @@
     </div>
 </div>
 
-<!-- 修改物料库密码 -->
+<!-- 修改物料库共用密码 -->
 <div id="modalChangePassword" class="modal-overlay">
     <div class="modal" style="max-width:440px;">
         <div class="modal-header">
-            <h2 id="modalChangePasswordTitle">修改物料库密码</h2>
+            <h2 id="modalChangePasswordTitle">修改物料库共用密码</h2>
             <button type="button" class="modal-close" id="modalChangePasswordClose">&times;</button>
         </div>
         <div class="modal-body">
@@ -810,6 +810,7 @@
     const STANDARD_HEADERS = ['物料代码', '物料描述', 'pads库物料描述', '成本单价', '替代组标签', '优选情况', '备注说明'];
     let currentUser = null;
     const unlockCache = {};
+    const GLOBAL_UNLOCK_KEY = '__all_material_libraries__';
 
     async function apiFetch(path, options) {
         const opts = options || {};
@@ -843,17 +844,20 @@
             } else if (st.summary) {
                 const s = st.summary;
                 let txt = `上次同步：成功 ${s.ok}/${s.total}，失败 ${s.failed}，共 ${s.total_rows || 0} 行`;
-                if (s.empty) txt += `，其中 ${s.empty} 张为空(源无物料代码)`;
+                if (s.blocked) txt += `，其中 ${s.blocked} 张被安全阻断`;
+                if (s.empty) txt += `，其中 ${s.empty} 张为空（未写入）`;
                 txt += `（${st.finished_at || ''}）`;
-                if (s.failed && Array.isArray(s.results)) {
-                    const firstErr = s.results.find(r => r && r.error);
-                    if (firstErr) {
-                        let msg = String(firstErr.error);
-                        if (msg.length > 90) msg = msg.slice(0, 90) + '…';
-                        txt += ` ｜ 失败原因(首个): ${msg}`;
-                    }
+                const errors = Array.isArray(s.results) ? s.results.filter(r => r && r.error) : [];
+                if (errors.length) {
+                    const rows = errors.map(r => {
+                        const label = r.library || r.source_name || r.form_uuid || '未知表单';
+                        const kind = r.blocked ? '安全阻断' : '同步失败';
+                        return `<li><strong>${escapeHtml(kind)}：${escapeHtml(label)}</strong><br>${escapeHtml(String(r.error))}</li>`;
+                    }).join('');
+                    el.innerHTML = `<span>${escapeHtml(txt)}</span><details style="display:inline-block;margin-left:6px"><summary>查看 ${errors.length} 个完整错误</summary><ol style="max-width:720px;white-space:normal;margin:6px 0 0;padding-left:22px">${rows}</ol></details>`;
+                } else {
+                    el.textContent = txt;
                 }
-                el.textContent = txt;
                 el.style.color = (s.failed ? '#c0392b' : (s.empty ? '#e67e22' : '#27ae60'));
             } else {
                 el.textContent = '';
@@ -917,10 +921,10 @@
     }
 
     function getUnlockToken(libId) {
-        const c = unlockCache[libId];
+        const c = unlockCache[GLOBAL_UNLOCK_KEY];
         if (!c) return null;
         if (Date.now() / 1000 >= c.expiresAt) {
-            delete unlockCache[libId];
+            delete unlockCache[GLOBAL_UNLOCK_KEY];
             return null;
         }
         return c.token;
@@ -935,8 +939,8 @@
             const btnOk = document.getElementById('modalPasswordConfirm');
             const btnCancel = document.getElementById('modalPasswordCancel');
             const btnClose = document.getElementById('modalPasswordClose');
-            title.textContent = '验证物料库密码';
-            hint.textContent = (lib ? '「' + lib.name + '」' : '') + (purpose || '继续操作') + '需要输入该物料库的访问密码。';
+            title.textContent = '验证物料库共用密码';
+            hint.textContent = (purpose || '继续操作') + '需要输入一次物料库共用密码。验证后 30 分钟内适用于全部物料库。';
             input.value = '';
             modal.classList.add('show');
             input.focus();
@@ -964,7 +968,7 @@
         if (cached) return cached;
         const lib = libList.find(function(l) { return l.id === libId; });
         const pwd = await promptLibraryPassword(lib, purpose);
-        const { ok, data } = await apiFetch(API_BASE + '/libraries/' + encodeURIComponent(libId) + '/unlock', {
+        const { ok, data } = await apiFetch(API_BASE + '/unlock', {
             method: 'POST',
             body: JSON.stringify({ password: pwd })
         });
@@ -972,7 +976,7 @@
             alert((data && data.error) || '密码错误');
             throw new Error('bad password');
         }
-        unlockCache[libId] = { token: data.unlockToken, expiresAt: data.expiresAt };
+        unlockCache[GLOBAL_UNLOCK_KEY] = { token: data.unlockToken, expiresAt: data.expiresAt };
         return data.unlockToken;
     }
 
@@ -1189,7 +1193,6 @@
                         <button type="button" class="btn-sm primary btn-view-current" data-id="${lib.id}"><i class="fas fa-eye"></i> 查看当前表</button>
                         <button type="button" class="btn-sm btn-history" data-id="${lib.id}"><i class="fas fa-history"></i> 历史</button>
                         <button type="button" class="btn-sm btn-edit" data-id="${lib.id}"><i class="fas fa-edit"></i> 编辑</button>
-                        <button type="button" class="btn-sm btn-change-password" data-id="${lib.id}"><i class="fas fa-key"></i> 修改密码</button>
                         <button type="button" class="btn-sm danger btn-delete" data-id="${lib.id}"><i class="fas fa-trash"></i> 删除</button>
                     </div>
                 </div>
@@ -1253,7 +1256,6 @@
         libGrid.querySelectorAll('.btn-view-current').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); openPreview(el.dataset.id, false); }));
         libGrid.querySelectorAll('.btn-history').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); openHistory(el.dataset.id); }));
         libGrid.querySelectorAll('.btn-edit').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); openEdit(el.dataset.id); }));
-        libGrid.querySelectorAll('.btn-change-password').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); openChangePassword(el.dataset.id); }));
         libGrid.querySelectorAll('.btn-delete').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); deleteLib(el.dataset.id); }));
         libGrid.querySelectorAll('.lib-card').forEach(card => {
             card.addEventListener('click', function(e) {
@@ -1515,11 +1517,7 @@
     function openAdd() {
         editingId = null;
         modalLibTitle.textContent = '新增物料库';
-        libPasswordGroup.style.display = '';
-        libPasswordLabel.innerHTML = '访问密码 <span class="badge-required">必填</span>';
-        libPasswordHint.textContent = '密码仅用于校验，服务器保存哈希值，不会以明文存储或返回。';
-        libPassword.style.display = '';
-        libPasswordConfirm.style.display = '';
+        libPasswordGroup.style.display = 'none';
         libPassword.value = '';
         libPasswordConfirm.value = '';
         libName.value = '';
@@ -1652,9 +1650,6 @@
             newTableData = applyPadsDescRuleToTable(newTableData, prefix).data;
         }
         const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
-        const pwd = libPassword.value;
-        const pwd2 = libPasswordConfirm.value;
-
         try {
             if (editingId) {
                 await ensureUnlocked(editingId, '编辑物料库');
@@ -1674,12 +1669,11 @@
                     return;
                 }
             } else {
-                if (!pwd) { alert('请设置物料库访问密码'); return; }
-                if (pwd !== pwd2) { alert('两次输入的密码不一致'); return; }
+                const token = await ensureUnlocked('', '新增物料库');
                 const body = {
                     name: name,
                     prefix: prefix,
-                    password: pwd,
+                    unlockToken: token,
                     currentTable: newTableData ? { fileName: tempFileName, updatedAt: now, data: newTableData } : null
                 };
                 const { ok, data } = await apiFetch(API_BASE + '/libraries', {
@@ -1703,15 +1697,13 @@
     modalLibCancel.addEventListener('click', () => modalLib.classList.remove('show'));
     btnAddLib.addEventListener('click', openAdd);
 
-    function openChangePassword(id) {
-        const lib = libList.find(l => l.id === id);
-        if (!lib) return;
-        changePasswordLibId = id;
+    function openChangePassword() {
+        changePasswordLibId = '__global__';
         const isAdmin = isCurrentUserMaterialAdmin();
-        modalChangePasswordTitle.textContent = `修改密码 · ${lib.name || '物料库'}`;
+        modalChangePasswordTitle.textContent = '修改全部物料库的共用密码';
         modalChangePasswordHint.textContent = isAdmin
-            ? '管理员可直接设置新访问密码。保存后，该库已有解锁状态会立即失效。'
-            : '普通用户需输入原访问密码。保存后，该库已有解锁状态会立即失效。';
+            ? '管理员可直接设置新密码。保存后，全部物料库已有解锁状态会立即失效。'
+            : '普通用户需输入原共用密码。保存后，全部物料库已有解锁状态会立即失效。';
         changePasswordOldGroup.style.display = isAdmin ? 'none' : '';
         changePasswordOld.value = '';
         changePasswordNew.value = '';
@@ -1748,7 +1740,7 @@
 
         const body = { newPassword: newPassword };
         if (!isAdmin) body.oldPassword = oldPassword;
-        const { ok, data } = await apiFetch(API_BASE + '/libraries/' + encodeURIComponent(changePasswordLibId) + '/change-password', {
+        const { ok, data } = await apiFetch(API_BASE + '/change-password', {
             method: 'POST',
             body: JSON.stringify(body)
         });
@@ -1756,12 +1748,14 @@
             alert((data && data.error) || '修改密码失败');
             return;
         }
-        delete unlockCache[changePasswordLibId];
+        delete unlockCache[GLOBAL_UNLOCK_KEY];
         await reloadLibraries();
         closeChangePasswordModal();
         renderLibGrid();
-        alert('密码已修改');
+        alert('全部物料库的共用密码已修改');
     });
+
+    document.getElementById('btnChangePassword').addEventListener('click', openChangePassword);
 
     const btnBatchImport = document.getElementById('btnBatchImport');
     const modalBatchImport = document.getElementById('modalBatchImport');
@@ -2026,16 +2020,17 @@
             alert('没有可导入的文件');
             return;
         }
-        const defaultPwd = (document.getElementById('batchDefaultPassword').value || '').trim();
-        if (!defaultPwd) {
-            alert('请填写新建库的默认访问密码');
-            return;
-        }
         const overwrite = batchOverwriteExisting.checked;
         const defaultPrefix = normalizePrefix(batchDefaultPrefix.value);
         const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
-        const unlockTokens = {};
+        let unlockToken = null;
         const items = [];
+
+        try {
+            unlockToken = await ensureUnlocked('', '批量导入物料库');
+        } catch (e) {
+            return;
+        }
 
         for (const it of readyItems) {
             const name = (it.libName || libNameFromFileName(it.fileName)).trim();
@@ -2045,14 +2040,6 @@
                 tableData = applyPadsDescRuleToTable(tableData, defaultPrefix).data;
             }
             const existing = findLibraryByImportName(name);
-            if (existing && overwrite) {
-                try {
-                    const token = await ensureUnlocked(existing.id, '批量更新「' + (existing.name || name) + '」');
-                    unlockTokens[existing.id] = token;
-                } catch (e) {
-                    continue;
-                }
-            }
             items.push({
                 name: existing && overwrite ? (existing.name || name) : name,
                 prefix: existing && overwrite ? (existing.prefix || defaultPrefix) : defaultPrefix,
@@ -2060,7 +2047,7 @@
             });
         }
         if (!items.length) {
-            alert('没有可提交的项目（更新已有库需验证密码）');
+            alert('没有可提交的项目');
             return;
         }
         const { ok, data } = await apiFetch(API_BASE + '/batch-import', {
@@ -2069,8 +2056,7 @@
                 items: items,
                 overwrite: overwrite,
                 defaultPrefix: defaultPrefix,
-                defaultPassword: defaultPwd,
-                unlockTokens: unlockTokens
+                unlockToken: unlockToken
             })
         });
         if (!ok || !data.success) {
@@ -2137,9 +2123,20 @@
 
     modalPreviewClose.addEventListener('click', () => modalPreview.classList.remove('show'));
 
-    function openHistory(libId) {
-        const lib = libList.find(l => l.id === libId);
+    async function openHistory(libId) {
+        let lib = libList.find(l => l.id === libId);
         if (!lib) return;
+        const loaded = (lib.historyTables || []).every(h => Array.isArray(h.data));
+        if (!loaded && (lib.historyTables || []).length) {
+            const response = await apiFetch(API_BASE + '/libraries/' + encodeURIComponent(libId));
+            if (!response.ok || !response.data.success || !response.data.library) {
+                alert((response.data && response.data.error) || '加载历史表失败');
+                return;
+            }
+            lib = response.data.library;
+            const index = libList.findIndex(item => item.id === libId);
+            if (index >= 0) libList[index] = lib;
+        }
         modalHistoryTitle.textContent = `历史表 · ${escapeHtml(lib.name)}`;
         const list = lib.historyTables || [];
         if (list.length === 0) {
@@ -2150,7 +2147,7 @@
             historyList.innerHTML = list.map((h, i) => `
                 <li>
                     <span class="hist-name">${escapeHtml(h.fileName)}</span>
-                    <span class="hist-date">${h.updatedAt.slice(0, 10)} · ${(h.data.length - 1)} 条</span>
+                    <span class="hist-date">${(h.updatedAt || '').slice(0, 10)} · ${h.rowCount != null ? h.rowCount : Math.max((h.data || []).length - 1, 0)} 条</span>
                     <div class="hist-actions">
                         <button type="button" class="btn-sm btn-view-hist" data-id="${libId}" data-idx="${i}">查看</button>
                         <button type="button" class="btn-sm btn-download-hist" data-id="${libId}" data-idx="${i}">下载</button>
@@ -2215,20 +2212,12 @@
             alert('物料库中未找到可导出的当前表数据。');
             return;
         }
-        const exported = [];
-        for (const lib of withData) {
-            try {
-                if (!getUnlockToken(lib.id)) await ensureUnlocked(lib.id, '导出「' + lib.name + '」');
-                exported.push(lib);
-            } catch (e) { /* skip */ }
-        }
-        if (!exported.length) {
-            alert('未验证任何物料库密码，已取消导出。');
+        try {
+            await ensureUnlocked(withData[0].id, '导出全部物料库');
+        } catch (e) {
             return;
         }
-        if (exported.length < withData.length) {
-            if (!confirm('仅已验证密码的 ' + exported.length + ' / ' + withData.length + ' 个物料库将被导出，是否继续？')) return;
-        }
+        const exported = withData;
         try {
             await apiFetch(API_BASE + '/audit-export-all', {
                 method: 'POST',

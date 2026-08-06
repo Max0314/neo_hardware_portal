@@ -51,7 +51,7 @@ mkdir -p "$OUT_DIR"
   echo ""
 
   echo "--- 容器 Health ---"
-  for c in stack-mysql stack-htmlsystm stack-neo-backend stack-neo-web stack-gateway; do
+  for c in stack-htmlsystm stack-neo-backend stack-neo-web stack-gateway; do
     if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx "$c"; then
       hs="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}n/a{{end}}' "$c" 2>/dev/null || echo '?')"
       echo "  ${c}: ${hs}"
@@ -62,12 +62,12 @@ mkdir -p "$OUT_DIR"
   echo ""
 
   echo "--- HTTPS 探活 ---"
-  curl -sk "https://127.0.0.1:${PORT}/api/health" 2>&1 | head -1 || echo "(health 失败)"
+  curl -s "http://127.0.0.1:${PORT}/api/health" 2>&1 | head -1 || echo "(health 失败)"
   echo ""
-  curl -sk "https://127.0.0.1:${PORT}/api/startup/status" 2>&1 | head -1 || echo "(startup/status 失败)"
+  curl -s "http://127.0.0.1:${PORT}/api/startup/status" 2>&1 | head -1 || echo "(startup/status 失败)"
   echo ""
 
-  for c in stack-mysql stack-htmlsystm stack-neo-backend stack-neo-web stack-gateway; do
+  for c in stack-htmlsystm stack-neo-backend stack-neo-web stack-gateway; do
     if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$c"; then
       echo "--- ${c} logs (tail ${TAIL_LINES}) ---"
       docker logs "$c" --tail "$TAIL_LINES" 2>&1 || true

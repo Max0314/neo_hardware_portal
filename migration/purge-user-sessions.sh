@@ -20,25 +20,27 @@ if [[ -z "$TARGET" ]]; then
   exit 1
 fi
 
-if ! docker ps --format '{{.Names}}' | grep -q '^stack-mysql$'; then
-  echo "stack-mysql 未运行"
+# shellcheck source=_common.sh
+source "${ROOT}/migration/_common.sh"
+if ! mysql_reachable; then
+  echo "外部数据库不可达（核对 .env 的 MYSQL_*）"
   exit 1
 fi
 
 if [[ "$TARGET" == "--all-stale" ]]; then
-  docker exec stack-mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "
+  mysql_cli -e '
 DELETE FROM sessions WHERE expires_at < UNIX_TIMESTAMP();
 SELECT ROW_COUNT() AS removed_expired;
-"'
+'
   echo "已删除过期会话"
   exit 0
 fi
 
-docker exec stack-mysql sh -c "mysql -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" \"\$MYSQL_DATABASE\" -e \"
+mysql_cli -e "
 SELECT id, username, status FROM users WHERE username = '${TARGET}' OR id = '${TARGET}' LIMIT 5;
 DELETE s FROM sessions s
 INNER JOIN users u ON s.user_id = u.id
 WHERE u.username = '${TARGET}' OR u.id = '${TARGET}';
 SELECT ROW_COUNT() AS sessions_removed;
-\""
+"
 echo "完成。建议: docker compose restart htmlsystm"

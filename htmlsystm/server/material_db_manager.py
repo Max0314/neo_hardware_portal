@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """多物料库（Excel）存储、密码校验与操作审计。"""
 import json
+import os
 import secrets
 import time
 from datetime import datetime
@@ -13,6 +14,8 @@ from server.security import PasswordHasher
 
 UNLOCK_TTL_SECONDS = 30 * 60
 REPLACEMENT_MODULE_ID = '__replacement_pairs__'
+MATERIAL_LIBRARY_MODULE_ID = '__material_libraries__'
+MATERIAL_PASSWORD_SETTING_KEY = 'material_db_global_password_hash'
 _unlock_tokens: Dict[str, Dict[str, Any]] = {}
 
 ACTION_LABELS = {
@@ -118,7 +121,7 @@ def verify_unlock_token(token: Optional[str], user_id: int, library_id: str) -> 
         return False
     if entry.get('user_id') != user_id:
         return False
-    if entry.get('library_id') != library_id:
+    if entry.get('library_id') not in (library_id, MATERIAL_LIBRARY_MODULE_ID):
         return False
     if entry.get('expires_at', 0) <= time.time():
         _unlock_tokens.pop(token, None)
@@ -130,6 +133,16 @@ def clear_unlock_tokens_for_library(library_id: str) -> None:
     for token, entry in list(_unlock_tokens.items()):
         if entry.get('library_id') == library_id:
             _unlock_tokens.pop(token, None)
+
+
+def clear_material_unlock_tokens() -> None:
+    for token, entry in list(_unlock_tokens.items()):
+        if entry.get('library_id') != REPLACEMENT_MODULE_ID:
+            _unlock_tokens.pop(token, None)
+
+
+def create_material_unlock_token(user_id: int) -> Tuple[str, int]:
+    return create_unlock_token(user_id, MATERIAL_LIBRARY_MODULE_ID)
 
 
 def log_audit(
@@ -174,7 +187,7 @@ def format_audit_message(row: Dict[str, Any]) -> str:
     return f'{user} {verb}「{lib_name}」物料库'
 
 
-def list_libraries() -> List[Dict[str, Any]]:
+def list_libraries(include_history_data: bool = True) -> List[Dict[str, Any]]:
     ensure_tables()
     pool = get_connection_pool()
     with pool.get_cursor() as cursor:
@@ -189,7 +202,7 @@ def list_libraries() -> List[Dict[str, Any]]:
         rows = cursor.fetchall() or []
     result = []
     for row in rows:
-        result.append(_row_to_public_lib(row))
+        result.append(_row_to_public_lib(row, include_history_data=include_history_data))
     return result
 
 
@@ -211,7 +224,9 @@ def get_library(lib_id: str) -> Optional[Dict[str, Any]]:
     return _row_to_public_lib(row)
 
 
-def _row_to_public_lib(row: Dict[str, Any]) -> Dict[str, Any]:
+def _row_to_public_lib(
+    row: Dict[str, Any], include_history_data: bool = True
+) -> Dict[str, Any]:
     created = row.get('created_at')
     updated = row.get('updated_at')
     if hasattr(created, 'strftime'):
@@ -219,23 +234,33 @@ def _row_to_public_lib(row: Dict[str, Any]) -> Dict[str, Any]:
     if hasattr(updated, 'strftime'):
         updated = updated.strftime('%Y-%m-%d %H:%M:%S')
     pwd_hash = row.get('password_hash') or ''
+    history = _parse_json(row.get('history_tables_json'), [])
+    if not include_history_data:
+        history = [
+            {
+                'fileName': item.get('fileName'),
+                'updatedAt': item.get('updatedAt'),
+                'rowCount': max(len(item.get('data') or []) - 1, 0),
+            }
+            for item in history
+            if isinstance(item, dict)
+        ]
     return {
         'id': row['id'],
         'name': row.get('name') or '',
         'prefix': row.get('prefix') or '',
         'hasPassword': bool(pwd_hash),
         'currentTable': _parse_json(row.get('current_table_json'), None),
-        'historyTables': _parse_json(row.get('history_tables_json'), []),
+        'historyTables': history,
         'createdAt': created or _now_str(),
         'updatedAt': updated or _now_str(),
     }
 
 
 def verify_library_password(lib_id: str, password: str) -> bool:
-    lib = _get_library_row(lib_id)
-    if not lib:
+    if not _get_library_row(lib_id):
         return False
-    return PasswordHasher.verify_password(password or '', lib.get('password_hash') or '')
+    return verify_material_password(password)
 
 
 def _get_library_row(lib_id: str) -> Optional[Dict[str, Any]]:
@@ -255,11 +280,9 @@ def create_library(
     user_id: Optional[int],
     user_display: str,
 ) -> Dict[str, Any]:
-    if not (password or '').strip():
-        raise ValueError('请设置物料库访问密码')
     ensure_tables()
     now = _now_str()
-    pwd_hash = PasswordHasher.hash_password(password.strip())
+    pwd_hash = ensure_material_password_hash(password)
     pool = get_connection_pool()
     with pool.get_cursor() as cursor:
         cursor.execute(
@@ -311,11 +334,7 @@ def update_library(
         current = new_table
         log_audit(user_id, user_display, 'upload_table', lib_id, lib_name, {'fileName': new_table.get('fileName')})
 
-    pwd_hash = row.get('password_hash')
-    if new_password and new_password.strip():
-        pwd_hash = PasswordHasher.hash_password(new_password.strip())
-        log_audit(user_id, user_display, 'change_password', lib_id, lib_name)
-        clear_unlock_tokens_for_library(lib_id)
+    pwd_hash = ensure_material_password_hash()
 
     now = _now_str()
     pool = get_connection_pool()
@@ -347,25 +366,7 @@ def change_library_password(
     user_id: Optional[int],
     user_display: str,
 ) -> Dict[str, Any]:
-    row = _get_library_row(lib_id)
-    if not row:
-        raise ValueError('物料库不存在')
-    if not (new_password or '').strip():
-        raise ValueError('请设置新的物料库访问密码')
-
-    pwd_hash = PasswordHasher.hash_password(new_password.strip())
-    pool = get_connection_pool()
-    with pool.get_cursor() as cursor:
-        cursor.execute(
-            '''
-            UPDATE material_db_libraries
-            SET password_hash=%s, updated_at=%s
-            WHERE id=%s
-            ''',
-            (pwd_hash, _now_str(), lib_id),
-        )
-    clear_unlock_tokens_for_library(lib_id)
-    log_audit(user_id, user_display, 'change_password', lib_id, row.get('name'))
+    change_material_password(new_password, user_id, user_display)
     return get_library(lib_id)
 
 
@@ -423,6 +424,18 @@ def update_remark(
     return True
 
 
+def _same_table_data(
+    current_table: Optional[Dict[str, Any]],
+    incoming_table: Optional[Dict[str, Any]],
+) -> bool:
+    """Return whether two table payloads contain exactly the same row data."""
+    if not isinstance(current_table, dict) or not isinstance(incoming_table, dict):
+        return False
+    if 'data' not in current_table or 'data' not in incoming_table:
+        return False
+    return current_table.get('data') == incoming_table.get('data')
+
+
 def batch_import_libraries(
     items: List[Dict[str, Any]],
     overwrite: bool,
@@ -430,14 +443,14 @@ def batch_import_libraries(
     default_password: str,
     user_id: Optional[int],
     user_display: str,
+    skip_unchanged_history: bool = False,
 ) -> Dict[str, int]:
     import uuid as _uuid
 
-    if not (default_password or '').strip():
-        raise ValueError('批量导入须设置默认访问密码（应用于新建库）')
+    ensure_material_password_hash(default_password)
     lib_list = list_libraries()
     by_name = {(l.get('name') or '').strip(): l for l in lib_list}
-    created = updated = skipped = 0
+    created = updated = skipped = unchanged = 0
     now = _now_str()
 
     for it in items:
@@ -455,7 +468,8 @@ def batch_import_libraries(
                 continue
             hist = existing.get('historyTables') or []
             cur = existing.get('currentTable')
-            if cur:
+            data_unchanged = skip_unchanged_history and _same_table_data(cur, table)
+            if cur and not data_unchanged:
                 hist = [{
                     'fileName': cur.get('fileName'),
                     'updatedAt': cur.get('updatedAt'),
@@ -477,11 +491,21 @@ def batch_import_libraries(
                         existing['id'],
                     ),
                 )
-            log_audit(user_id, user_display, 'upload_table', existing['id'], name, {'source': 'batch'})
-            updated += 1
+            log_audit(
+                user_id,
+                user_display,
+                'upload_table',
+                existing['id'],
+                name,
+                {'source': 'batch', 'unchanged': data_unchanged},
+            )
+            if data_unchanged:
+                unchanged += 1
+            else:
+                updated += 1
         else:
             lib_id = str(_uuid.uuid4())
-            pwd = (it.get('password') or default_password).strip()
+            pwd = default_password
             create_library(lib_id, name, prefix, pwd, table, user_id, user_display)
             by_name[name] = {'id': lib_id, 'name': name}
             created += 1
@@ -490,8 +514,14 @@ def batch_import_libraries(
         'created': created,
         'updated': updated,
         'skipped': skipped,
+        'unchanged': unchanged,
     })
-    return {'created': created, 'updated': updated, 'skipped': skipped}
+    return {
+        'created': created,
+        'updated': updated,
+        'skipped': skipped,
+        'unchanged': unchanged,
+    }
 
 
 def migrate_from_client(
@@ -502,8 +532,7 @@ def migrate_from_client(
 ) -> int:
     if not libraries:
         return 0
-    if not (default_password or '').strip():
-        raise ValueError('迁移须设置默认密码（用于尚未设置密码的库）')
+    ensure_material_password_hash(default_password)
     count = 0
     for lib in libraries:
         lib_id = lib.get('id') or secrets.token_hex(16)
@@ -612,6 +641,63 @@ def _set_setting(key: str, value: str) -> None:
             ''',
             (key, value, now),
         )
+
+
+def ensure_material_password_hash(seed_password: str = '') -> str:
+    """返回全局物料库密码哈希；首次启用时用环境变量或兼容入参初始化。"""
+    pwd_hash = (_get_setting(MATERIAL_PASSWORD_SETTING_KEY) or '').strip()
+    if pwd_hash:
+        return pwd_hash
+    seed = (
+        (os.getenv('MATERIAL_DB_GLOBAL_PASSWORD') or '').strip()
+        or (os.getenv('YIDA_LIBRARY_PASSWORD') or '').strip()
+        or (seed_password or '').strip()
+    )
+    if not seed:
+        raise ValueError('未配置物料库共用密码（MATERIAL_DB_GLOBAL_PASSWORD）')
+    pwd_hash = PasswordHasher.hash_password(seed)
+    _set_setting(MATERIAL_PASSWORD_SETTING_KEY, pwd_hash)
+    pool = get_connection_pool()
+    with pool.get_cursor() as cursor:
+        cursor.execute(
+            'UPDATE material_db_libraries SET password_hash=%s, updated_at=%s',
+            (pwd_hash, _now_str()),
+        )
+    return pwd_hash
+
+
+def verify_material_password(password: str) -> bool:
+    try:
+        pwd_hash = ensure_material_password_hash()
+    except ValueError:
+        return False
+    return PasswordHasher.verify_password(password or '', pwd_hash)
+
+
+def change_material_password(
+    new_password: str,
+    user_id: Optional[int],
+    user_display: str,
+) -> None:
+    password = (new_password or '').strip()
+    if not password:
+        raise ValueError('请设置新的物料库共用密码')
+    pwd_hash = PasswordHasher.hash_password(password)
+    _set_setting(MATERIAL_PASSWORD_SETTING_KEY, pwd_hash)
+    pool = get_connection_pool()
+    with pool.get_cursor() as cursor:
+        cursor.execute(
+            'UPDATE material_db_libraries SET password_hash=%s, updated_at=%s',
+            (pwd_hash, _now_str()),
+        )
+    clear_material_unlock_tokens()
+    log_audit(
+        user_id,
+        user_display,
+        'change_password',
+        MATERIAL_LIBRARY_MODULE_ID,
+        '全部物料库（共用密码）',
+    )
 
 
 def replacement_password_configured() -> bool:

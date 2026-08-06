@@ -35,6 +35,41 @@ from server.config import (
 )
 from server.security import InputValidator
 from server.logger import logger
+from server.object_store import build_store_from_env
+from server.tree_mirror import TreeMirror
+
+# 公告目录 → 对象存储 的写通镜像（进程内单例；多个 AnnouncementManager 实例共享）。
+# STORAGE_BACKEND=local 时 store 为 None，镜像整体空转，行为与历史版本完全一致。
+_MIRRORS: dict = {}
+_MIRRORS_LOCK = threading.Lock()
+
+
+def _announcement_mirror(base_dir: str) -> TreeMirror:
+    with _MIRRORS_LOCK:
+        mirror = _MIRRORS.get(base_dir)
+        if mirror is None:
+            store = build_store_from_env('announcements')
+            mirror = TreeMirror(base_dir, store)
+            _MIRRORS[base_dir] = mirror
+            if store is not None:
+                # 卷丢失后的整树恢复（本地非空则跳过），随后后台对账自愈漏传
+                restored = mirror.restore_all()
+                if restored:
+                    logger.info('公告目录已从对象存储恢复 %d 个文件', restored)
+
+                def _reconcile_loop():
+                    import time as _time
+                    _time.sleep(60)
+                    while True:
+                        try:
+                            mirror.reconcile()
+                        except Exception as e:  # noqa: BLE001
+                            logger.warning('公告镜像对账异常: %s', e)
+                        _time.sleep(6 * 3600)
+
+                threading.Thread(target=_reconcile_loop, daemon=True,
+                                 name='announcement-mirror-reconcile').start()
+        return mirror
 
 # 常见文件 magic bytes 校验（扩展名与实际内容不符时拒绝）
 _ATTACHMENT_MAGIC_CHECKS = {
@@ -71,10 +106,79 @@ class AnnouncementManager:
         self.base_dir = os.path.abspath(announcement_base)
         self.temp_dir = ANNOUNCEMENT_TEMP_DIR
         self._ensure_directories()
+        self._mirror = _announcement_mirror(self.base_dir)
+        self._install_mirror_hooks()
         # 只在调试模式下打印初始化信息，减少日志输出
         if os.getenv('DEBUG', '').lower() in ('1', 'true', 'yes'):
             print(f"公告管理器初始化: 项目目录={project_base}, base_dir={self.base_dir}, temp_dir={self.temp_dir}")
     
+    # ---------- 对象存储镜像 ----------
+    # 公告逻辑本身只操作本地目录；这里在四个改动数据的公共方法外面套一层
+    # finally 同步，把该公告的子树差量推到对象存储。放在方法外壁而不是散布
+    # 在上百个文件操作点，是因为这些方法内部有大量早退分支和重试路径。
+
+    _MIRRORED_METHODS = (
+        ('create_announcement', 'result'),   # id 在返回值 (id, msg) 里
+        ('update_announcement', 'arg'),
+        ('delete_announcement', 'arg'),
+        ('approve_announcement', 'arg'),
+    )
+
+    def _install_mirror_hooks(self):
+        if getattr(self, '_mirror_hooks_installed', False):
+            return
+        self._mirror_hooks_installed = True
+        if self._mirror.store is None:
+            return
+
+        def wrap(method_name, id_source):
+            original = getattr(self, method_name)
+
+            def wrapper(*args, **kwargs):
+                announcement_id = None
+                if id_source == 'arg':
+                    announcement_id = kwargs.get('announcement_id') or (args[0] if args else None)
+                try:
+                    result = original(*args, **kwargs)
+                    if id_source == 'result' and isinstance(result, tuple) and result and result[0]:
+                        announcement_id = result[0]
+                    return result
+                finally:
+                    # 创建路径抛异常时拿不到 id，残留文件由启动对账补传
+                    if announcement_id:
+                        self._mirror_sync_announcement(str(announcement_id))
+
+            wrapper.__name__ = method_name
+            setattr(self, method_name, wrapper)
+
+        for name, id_source in self._MIRRORED_METHODS:
+            wrap(name, id_source)
+
+    def _mirror_sync_announcement(self, announcement_id):
+        """同步一条公告可能存在过的所有位置：各板块、temp/<id>、temp/<user>/<id>。
+
+        对已消失的位置（删除、跨板块移动、审批后离开 temp），sync_subtree 会
+        依据状态清单清掉远端残留，因此无需区分是哪种变更。绝不抛出。
+        """
+        try:
+            candidates = set(self._mirror.prefixes_containing(announcement_id))
+            for entry in os.listdir(self.base_dir):
+                entry_path = os.path.join(self.base_dir, entry)
+                if not os.path.isdir(entry_path):
+                    continue
+                if entry == self.temp_dir:
+                    if os.path.isdir(os.path.join(entry_path, announcement_id)):
+                        candidates.add(f'{self.temp_dir}/{announcement_id}')
+                    for user_dir in os.listdir(entry_path):
+                        if os.path.isdir(os.path.join(entry_path, user_dir, announcement_id)):
+                            candidates.add(f'{self.temp_dir}/{user_dir}/{announcement_id}')
+                elif os.path.isdir(os.path.join(entry_path, announcement_id)):
+                    candidates.add(f'{entry}/{announcement_id}')
+            for rel in sorted(candidates):
+                self._mirror.sync_subtree(rel)
+        except Exception as e:  # noqa: BLE001 — 同步失败不还原业务操作，见 tree_mirror 模块注释
+            logger.warning('公告 %s 镜像同步失败（对账会自愈）: %s', announcement_id, e)
+
     def _get_file_lock(self, announcement_id):
         """获取公告的文件锁（线程安全）
         

@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import json
+import random
 import ssl
 import time
 import urllib.error
@@ -28,10 +29,24 @@ _token_cache: Dict[str, Any] = {'token': None, 'expire_at': 0.0}
 
 
 def _ssl_context() -> ssl.SSLContext:
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    return ctx
+    """使用系统受信任 CA 校验钉钉 API 的 TLS 证书。"""
+    return ssl.create_default_context()
+
+
+def _retry_delay(retry_base_sec: float, attempt: int) -> float:
+    """指数退避加少量抖动，避免多个表单失败时同时重试上游。"""
+    return retry_base_sec * (2 ** attempt) + random.uniform(0, 0.5)
+
+
+def _first_not_none(*values: Any) -> Any:
+    """取第一个非 None 的值。
+
+    不能用 `a or b` 串联：总数为 0 是合法结果，会被 `or` 当成缺失继续向后取。
+    """
+    for value in values:
+        if value is not None:
+            return value
+    return None
 
 
 def _post_json(url: str, body: Dict[str, Any], headers: Dict[str, str],
@@ -60,7 +75,7 @@ def _post_json(url: str, body: Dict[str, Any], headers: Dict[str, str],
         except json.JSONDecodeError as e:
             last_err = RuntimeError(f'宜搭接口返回非 JSON: {e}')
         if attempt < max_retries - 1:
-            time.sleep(retry_base_sec * (2 ** attempt))
+            time.sleep(_retry_delay(retry_base_sec, attempt))
     raise last_err if last_err else RuntimeError('宜搭接口调用失败')
 
 
@@ -140,10 +155,11 @@ def search_form_instances(
     )
     if isinstance(data, dict):
         data = data.get('data') or data.get('list') or []
-    total = (
-        result.get('totalCount')
-        or result.get('total')
-        or (result.get('result') or {}).get('totalCount') if isinstance(result.get('result'), dict) else None
+    nested = result.get('result')
+    total = _first_not_none(
+        result.get('totalCount'),
+        result.get('total'),
+        nested.get('totalCount') if isinstance(nested, dict) else None,
     )
     if total is None:
         total = len(data)
@@ -181,9 +197,15 @@ def iter_form_instances(
             yield inst
         seen += len(instances)
         logger.info(f'宜搭拉取 {form_uuid}: 第 {page} 页 {len(instances)} 条，累计 {seen}/{total}')
-        if seen >= total or len(instances) < page_size:
+        # 只按「本页未满」判定结束。此处曾用 seen >= total 提前跳出，而 total 解析失败时
+        # 会回退成本页长度，于是每张表都只同步了第一页。
+        if len(instances) < page_size:
             break
         page += 1
+    else:
+        logger.warning(
+            f'宜搭拉取 {form_uuid}: 已达最大页数 {max_pages}（累计 {seen} 条），可能仍有未同步数据'
+        )
 
 
 def extract_instance_meta(inst: Dict[str, Any]) -> Dict[str, Any]:
@@ -242,7 +264,7 @@ def _get_json(url: str, headers: Dict[str, str], timeout: int = 30,
         except json.JSONDecodeError as e:
             last_err = RuntimeError(f'返回非 JSON: {e}')
         if attempt < max_retries - 1:
-            time.sleep(retry_base_sec * (2 ** attempt))
+            time.sleep(_retry_delay(retry_base_sec, attempt))
     raise last_err if last_err else RuntimeError('GET 调用失败')
 
 

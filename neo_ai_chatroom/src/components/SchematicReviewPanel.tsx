@@ -81,7 +81,7 @@ export const SchematicReviewPanel: React.FC<SchematicReviewPanelProps> = ({
   canManagePrompt = false,
   onOpenPromptSettings,
   reviewPrompt,
-  defaultAiName = '百炼-deepseekV4',
+  defaultAiName = 'TokenPlan-deepseek-v4-pro',
   historyViewMode = false,
   viewingHistoryTitle = null,
   historyDispositions = {},

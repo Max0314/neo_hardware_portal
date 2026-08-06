@@ -30,7 +30,11 @@ from backend.models.message import MessageStore
 from backend.utils.role_prompt_builder import RolePromptBuilder
 from backend.utils.context_optimizer import ContextOptimizer
 from backend.utils.response_cache import ResponseCache
-from backend.models.knowledge_base import create_knowledge_base
+from backend.models.knowledge_base import (
+    create_knowledge_base,
+    sync_knowledge_dir as kb_sync_knowledge_dir,
+    sync_recycle_dir as kb_sync_recycle_dir,
+)
 from backend.utils.babata_processor import BabataProcessor, TaskAction
 from backend.utils.netlist_parser import PadsNetlistParser, NetlistComparator
 from backend.utils.netlist_analyzer import NetlistAnalyzer
@@ -77,6 +81,7 @@ CHATROOM_DB_PATH = str(_chatroom_data / "chatroom.db")
 NETLIST_RESULTS_DIR = str(_chatroom_data / "netlist_results")
 DASHBOARD_METRICS_DB_PATH = str(_chatroom_data / "dashboard_metrics.db")
 KNOWLEDGE_BASES_DIR = str(_chatroom_data / "knowledge_bases")
+KNOWLEDGE_RECYCLE_BIN_DIR = str(_chatroom_data / "knowledge_recycle_bin")
 
 
 def _make_knowledge_base(role_id: str, use_vector: bool):
@@ -526,6 +531,16 @@ dashboard_metrics_store, dashboard_metrics_storage_kind = create_dashboard_metri
 async def _startup_layered_memory():
     try:
         await memory_item_store.init_db()
+
+        # 全部表结构就绪后，执行 chatroom.db → MySQL 的一次性迁移。
+        # 内部有已迁移判定，重复启动是空操作；失败不阻断服务（消息表为空可运行，
+        # 下次启动自动重试），但要在日志里可见。
+        try:
+            from backend.models.chatroom_migration import migrate_if_needed
+            await asyncio.to_thread(migrate_if_needed, CHATROOM_DB_PATH)
+        except Exception as e:
+            print(f"[chatroom-migration] 迁移失败（服务继续运行，下次启动重试）: {e}")
+
         init_extract_queue(int(os.getenv("MEMORY_EXTRACT_QUEUE_SIZE", "500")))
         asyncio.create_task(
             run_memory_extract_worker(message_store, memory_item_store, memory_service)
@@ -808,28 +823,28 @@ async def stream_bailian_response(
     enable_reasoning: bool,
     max_tokens: int = None,
 ) -> str:
-    """百炼 DashScope OpenAI 兼容流式输出。"""
+    """AI Token Plan OpenAI 兼容流式输出。"""
     spec = get_bailian_model(ai_id)
     if not spec:
-        raise ValueError(f"未知百炼模型: {ai_id}")
+        raise ValueError(f"未知 AI Token Plan 模型: {ai_id}")
 
     api_key = (await get_secret_async("bailian") or "").strip()
     if not api_key:
         raise ValueError(
-            "百炼 API Key 未配置。请在「API 密钥」中保存百炼密钥，"
-            "或设置环境变量 DASHSCOPE_API_KEY。"
+            "AI Token Plan API Key 未配置。请在「API 密钥」中保存密钥，"
+            "或设置环境变量 TOKENPLAN_API_KEY。"
         )
 
     base_url = (
-        (os.getenv("DASHSCOPE_BASE_URL") or "https://dashscope.aliyuncs.com/compatible-mode/v1")
+        (os.getenv("TOKENPLAN_BASE_URL") or "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1")
         .strip()
         .rstrip("/")
     )
-    reasoning_effort = (os.getenv("DASHSCOPE_REASONING_EFFORT") or "high").strip() or "high"
+    reasoning_effort = (os.getenv("TOKENPLAN_REASONING_EFFORT") or "high").strip() or "high"
     cap = int(os.getenv("BAILIAN_MAX_OUTPUT_TOKENS", str(spec.max_tokens)))
     safe_max = max_tokens if isinstance(max_tokens, int) and max_tokens > 0 else cap
     if safe_max > cap:
-        print(f"[百炼流式] max_tokens={safe_max} 超出上限 {cap}，已截断")
+        print(f"[Token Plan流式] max_tokens={safe_max} 超出上限 {cap}，已截断")
         safe_max = cap
 
     use_reasoning = enable_reasoning
@@ -866,14 +881,14 @@ async def stream_bailian_response(
     if not (spec.supports_reasoning and use_reasoning):
         request_params["temperature"] = spec.default_temperature
 
-    print(f"[百炼流式] ai_id={ai_id} model={api_model} message_id={message_id}")
+    print(f"[Token Plan流式] ai_id={ai_id} model={api_model} message_id={message_id}")
 
     try:
         stream = await client.chat.completions.create(**request_params)
     except Exception as e:
         err = str(e).strip() or repr(e)
-        print(f"[百炼流式] API 请求失败: {err}")
-        raise ValueError(f"百炼 API 不可用: {err}") from e
+        print(f"[Token Plan流式] API 请求失败: {err}")
+        raise ValueError(f"AI Token Plan API 不可用: {err}") from e
 
     thinking_text = ""
     answer_text = ""
@@ -1582,10 +1597,10 @@ async def delete_custom_ai(role_id: str):
     _remove_role_knowledge_base(full_role_id)
     
     # 将知识库移动到回收站
-    recycle_bin_dir = Path("./knowledge_recycle_bin")
-    recycle_bin_dir.mkdir(exist_ok=True)
-    
-    knowledge_base_dir = Path("./knowledge_bases")
+    recycle_bin_dir = Path(KNOWLEDGE_RECYCLE_BIN_DIR)
+    recycle_bin_dir.mkdir(parents=True, exist_ok=True)
+
+    knowledge_base_dir = Path(KNOWLEDGE_BASES_DIR)
     full_role_id_for_path = full_role_id
     
     # 检查并移动简单知识库文件
@@ -1617,7 +1632,11 @@ async def delete_custom_ai(role_id: str):
             knowledge_type="vector",
             knowledge_path=str(recycle_path)
         )
-    
+
+    # 移动改变了两个目录，双侧同步镜像
+    kb_sync_knowledge_dir(KNOWLEDGE_BASES_DIR)
+    kb_sync_recycle_dir(KNOWLEDGE_RECYCLE_BIN_DIR)
+
     return {"success": True}
 
 
@@ -1786,9 +1805,9 @@ async def restore_knowledge(request: Request, knowledge_id: str):
         )
     
     # 移动知识库文件到目标角色
-    recycle_bin_dir = Path("./knowledge_recycle_bin")
-    knowledge_base_dir = Path("./knowledge_bases")
-    knowledge_base_dir.mkdir(exist_ok=True)
+    recycle_bin_dir = Path(KNOWLEDGE_RECYCLE_BIN_DIR)
+    knowledge_base_dir = Path(KNOWLEDGE_BASES_DIR)
+    knowledge_base_dir.mkdir(parents=True, exist_ok=True)
     target_full_role_id = f"custom-{target_role_id}"
     
     recycle_path = Path(knowledge_item['knowledge_path'])
@@ -1819,7 +1838,10 @@ async def restore_knowledge(request: Request, knowledge_id: str):
     
     # 清除缓存，强制重新加载
     _remove_role_knowledge_base(target_full_role_id)
-    
+
+    kb_sync_knowledge_dir(KNOWLEDGE_BASES_DIR)
+    kb_sync_recycle_dir(KNOWLEDGE_RECYCLE_BIN_DIR)
+
     return {"success": True}
 
 
@@ -1839,7 +1861,8 @@ async def permanently_delete_knowledge(knowledge_id: str):
                 path.unlink()
             elif path.is_dir():
                 shutil.rmtree(path)
-    
+        kb_sync_recycle_dir(KNOWLEDGE_RECYCLE_BIN_DIR)
+
     return {"success": True}
 
 
@@ -2597,8 +2620,8 @@ async def delete_role_knowledge(role_id: str, request: Request):
         # 尝试从数据库直接删除
         if hasattr(knowledge_base, 'use_database') and knowledge_base.use_database:
             try:
-                import sqlite3
-                conn = sqlite3.connect(knowledge_base.db_path)
+                from backend.models import db_compat
+                conn = db_compat.connect_sync()
                 cursor = conn.cursor()
                 cursor.execute("""
                     DELETE FROM knowledge_base

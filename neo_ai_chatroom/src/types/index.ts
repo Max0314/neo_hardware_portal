@@ -101,7 +101,7 @@ export interface AIConfig {
   rolePrompt?: string;  // 角色设定（system prompt）
   roleConfig?: RoleConfig;  // 详细角色配置
   isCustom?: boolean;  // 是否为自定义角色
-  enableReasoning?: boolean;  // 思考模式（DeepSeek / 百炼等）
+  enableReasoning?: boolean;  // 思考模式（DeepSeek / AI Token Plan 等）
   supportsReasoning?: boolean;  // 是否支持思考模式开关
 }
 

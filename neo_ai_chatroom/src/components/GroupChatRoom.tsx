@@ -34,6 +34,8 @@ import {
   formatBomWorkflowGroupDisplayLabel,
   BOM_NO_LIB_SUBSTITUTE_TAG_MARKER,
   collectDesignatorSubstituteTagIssues,
+  aggregateDesignatorTagConflicts,
+  isBomItemCheckable,
   type BOMState,
   type BOMItem,
 } from '@/utils/bomStore';
@@ -147,7 +149,7 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
   const schematicFinishReasonsRef = useRef<Record<string, string>>({});
   const schematicCatalogAisRef = useRef<AIConfig[]>([]);
   const [schematicDefaultAiId, setSchematicDefaultAiId] = useState(DEFAULT_SCHEMATIC_AI_ID);
-  const [schematicDefaultAiName, setSchematicDefaultAiName] = useState('百炼-deepseekV4');
+  const [schematicDefaultAiName, setSchematicDefaultAiName] = useState('TokenPlan-deepseek-v4-pro');
   const [schematicHistoryViewMode, setSchematicHistoryViewMode] = useState(false);
   const [viewingHistoryTitle, setViewingHistoryTitle] = useState<string | null>(null);
   const [schematicHistoryDispositions, setSchematicHistoryDispositions] =
@@ -230,6 +232,7 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
       }
       const codeToRows = buildCodeToMaterialRows(libs);
       const designatorIssues = collectDesignatorSubstituteTagIssues(bom.items, codeToRows);
+      const designatorConflictGroups = aggregateDesignatorTagConflicts(designatorIssues);
 
       const conflictByCode = new Map<string, Extract<BOMDesignatorTagIssue, { kind: 'tag_conflict' }>[]>();
       const emptyByCode = new Map<string, Extract<BOMDesignatorTagIssue, { kind: 'empty_tag' }>[]>();
@@ -247,6 +250,7 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
 
       const groupMap: Record<string, BOMItem[]> = {};
       for (const item of bom.items) {
+        if (!isBomItemCheckable(item)) continue;
         const key = bomWorkflowGroupKey(item, codeToRows);
         if (!groupMap[key]) groupMap[key] = [];
         groupMap[key].push(item);
@@ -258,12 +262,13 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
       lines.push('');
       if (designatorIssues.length > 0) {
         lines.push('**同位号替代组标签检查**');
+        for (const issue of designatorConflictGroups) {
+          lines.push(
+            `- ⚠️ ${issue.codes.join(', ')} 的替代组标签不一致，影响 ${issue.designators.length} 个位号（${issue.designators.join(', ')}）`
+          );
+        }
         for (const issue of designatorIssues) {
-          if (issue.kind === 'tag_conflict') {
-            lines.push(
-              `- ⚠️ 位号 ${issue.designator}：${issue.message}（${issue.codes.join(', ')}）`
-            );
-          } else {
+          if (issue.kind === 'empty_tag') {
             lines.push(
               `- ⚠️ 位号 ${issue.designator} · 物料 ${issue.code}：物料库此物料替代组标签为空`
             );
@@ -377,13 +382,30 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
         });
       }
 
+      const conflictGroupBySignature = new Map(
+        designatorConflictGroups.map((group) => [group.signature, group])
+      );
       for (const group of newGroups) {
         const addedIssues = new Set<string>();
+        const addedConflictSignatures = new Set<string>();
         let hasTagConflict = false;
         for (const row of group.rows) {
           for (const conflict of conflictByCode.get(row.code) || []) {
             hasTagConflict = true;
-            const msg = `位号 ${conflict.designator}：${conflict.message}`;
+            if (addedConflictSignatures.has(conflict.signature)) continue;
+            addedConflictSignatures.add(conflict.signature);
+
+            const summary = conflictGroupBySignature.get(conflict.signature);
+            const codeLabels = summary?.codeLabels || conflict.codeLabels;
+            const designators = summary?.designators || [conflict.designator];
+            const maxShown = 6;
+            const shown = designators.slice(0, maxShown);
+            const rest = Math.max(designators.length - shown.length, 0);
+            const msg =
+              `替代组标签不一致：${codeLabels
+                .map((entry) => `${entry.code}=${entry.groupLabel}`)
+                .join(' / ')}；影响 ${designators.length} 个位号：${shown.join(', ')}` +
+              (rest > 0 ? `，等 ${rest} 个已折叠` : '');
             if (!addedIssues.has(msg)) {
               group.issues.push(msg);
               addedIssues.add(msg);
@@ -496,6 +518,7 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
 
       const groupMap: Record<string, BOMItem[]> = {};
       for (const item of bom.items) {
+        if (!isBomItemCheckable(item)) continue;
         const key = bomWorkflowGroupKey(item, codeToRows);
         if (!groupMap[key]) groupMap[key] = [];
         groupMap[key].push(item);
@@ -664,6 +687,7 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
 
       const bomItemsByCode: Record<string, BOMItem[]> = {};
       for (const item of bom.items) {
+        if (!isBomItemCheckable(item)) continue;
         if (!bomItemsByCode[item.code]) bomItemsByCode[item.code] = [];
         bomItemsByCode[item.code].push(item);
       }
@@ -1121,10 +1145,10 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
         schematicCatalogAisRef.current = [
           {
             id: DEFAULT_SCHEMATIC_AI_ID,
-            name: '百炼-deepseekV4',
+            name: 'TokenPlan-deepseek-v4-pro',
             avatar: '🔮',
             enabled: true,
-            description: '百炼 DeepSeek V4 Pro',
+            description: 'AI Token Plan DeepSeek V4 Pro',
             baseAI: DEFAULT_SCHEMATIC_AI_ID,
             isCustom: false,
           },

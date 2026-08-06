@@ -11,9 +11,9 @@ AI_KEY_PROVIDERS: List[Dict[str, Any]] = [
     },
     {
         "id": "bailian",
-        "name": "百炼 (DashScope)",
-        "env_var": "DASHSCOPE_API_KEY",
-        "description": "阿里云百炼 OpenAI 兼容接口（百炼-XXX 模型共用）",
+        "name": "AI Token Plan",
+        "env_var": "TOKENPLAN_API_KEY",
+        "description": "AI Token Plan OpenAI 兼容接口（TokenPlan-XXX 模型共用）",
     },
     {
         "id": "doubao",

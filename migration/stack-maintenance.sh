@@ -24,12 +24,14 @@ log() {
 cd "$STACK_DIR"
 log "========== stack maintenance 开始 =========="
 
-if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^stack-mysql$'; then
+# shellcheck source=_common.sh
+source "${ROOT}/migration/_common.sh"
+if mysql_reachable; then
   bash "${ROOT}/migration/purge-user-sessions.sh" --all-stale >>"$LOG_FILE" 2>&1 || log "purge-user-sessions 失败"
-  docker exec stack-mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -N -e "SELECT COUNT(*) FROM sessions;"' 2>>"$LOG_FILE" \
+  mysql_cli -N -e "SELECT COUNT(*) FROM sessions;" 2>>"$LOG_FILE" \
     | while read -r n; do log "sessions 表当前行数: ${n:-?}"; done || true
 else
-  log "stack-mysql 未运行，跳过 sessions 清理"
+  log "外部数据库不可达，跳过 sessions 清理"
 fi
 
 log "========== stack maintenance 结束 =========="

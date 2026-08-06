@@ -6,6 +6,11 @@ import { apiUrl } from '@/utils/apiBase';
 import { printHtmlDocument, getPrintMessage } from '@/utils/externalOpen';
 import { trackNeoPoints } from '@/utils/neoPoints';
 import type { BOMState, BOMItem, BOMDesignatorTagIssue } from '@/utils/bomStore';
+import {
+  aggregateDesignatorTagConflicts,
+  buildBomItemsFromMappedRows,
+  isBomItemCheckable,
+} from '@/utils/bomStore';
 import { fetchMaterialLibraries, buildCodeToGroupLabel } from '@/utils/materialDb';
 
 /** 替换对检查：单个物料在替换组中的检查结果 */
@@ -195,7 +200,7 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
   const GROUP_LABEL_CONFLICT_DECISIONS_STORAGE_KEY =
     'bom_group_label_conflict_decisions_v1';
   const DESIGNATOR_TAG_CONFLICT_DECISIONS_STORAGE_KEY =
-    'bom_designator_tag_conflict_decisions_v1';
+    'bom_designator_tag_conflict_decisions_v2';
 
   const [optimizeRows, setOptimizeRows] = useState<BOMOptimizeRow[]>([]);
   const [groupMissingDecisions, setGroupMissingDecisions] = useState<
@@ -217,6 +222,14 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
   const [plmParentCode, setPlmParentCode] = useState('');
   const [plmParentStdDesc, setPlmParentStdDesc] = useState('');
   const [plmExporting, setPlmExporting] = useState(false);
+
+  const designatorTagConflictGroups = useMemo(
+    () => aggregateDesignatorTagConflicts(matchDesignatorIssues || []),
+    [matchDesignatorIssues]
+  );
+  const bomDecisionScope = `${bomState?.sourceFileName || 'unknown'}::${bomState?.importedAt || 'unknown'}`;
+  const designatorConflictDecisionKey = (signature: string) =>
+    `designator-tag-conflict::${bomDecisionScope}::${signature}`;
 
   const optimizeRowsDerived = useMemo<BOMOptimizeRow[]>(() => {
     const rows: BOMOptimizeRow[] = [];
@@ -254,35 +267,31 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
 
     // 1b) 同位号替代组标签不一致
     if (matchDesignatorIssues && matchDesignatorIssues.length > 0 && matchGroups) {
-      const conflictIssues = matchDesignatorIssues.filter((i) => i.kind === 'tag_conflict');
-      conflictIssues.forEach((issue, di) => {
-        const decisionKey = `designator-tag-conflict::${issue.designator}`;
+      designatorTagConflictGroups.forEach((issue, di) => {
+        const decisionKey = designatorConflictDecisionKey(issue.signature);
         const decision = designatorTagConflictDecisions[decisionKey];
         let status: OptimizeStatus = 'pending';
         let ignoreReason: string | undefined;
         if (decision && decision.status !== 'pending') {
           status = decision.status === 'accepted' ? 'accepted' : 'ignored';
-          if (decision.status === 'ignored') {
-            ignoreReason = decision.reason?.trim() || undefined;
-          }
+          ignoreReason = decision.reason?.trim() || undefined;
         }
-        const groupLabel = `位号 ${issue.designator}：${issue.message}`;
-        issue.codes.forEach((code, ci) => {
-          let foundRow: BOMMatchRow | undefined;
-          for (const g of matchGroups) {
-            foundRow = g.rows.find((r) => r.code === code);
-            if (foundRow) break;
-          }
-          if (!foundRow) return;
-          rows.push({
-            id: `designator-conflict-${di}-${ci}`,
-            level: 'INFO',
-            source: 'match',
-            groupLabel,
-            row: foundRow,
-            status,
-            ignoreReason,
-          });
+        const groupLabel = `同位号替代组标签冲突：${issue.designators.length} 个位号`;
+        rows.push({
+          id: `designator-conflict-${di}`,
+          level: 'INFO',
+          source: 'match',
+          groupLabel,
+          row: {
+            code: issue.codes.join(' / '),
+            name: issue.codeLabels.map((entry) => `${entry.code}=${entry.groupLabel}`).join('；'),
+            quantity: issue.designators.length,
+            designators: issue.designators,
+            qtyCheck: '同一冲突已按物料组合合并',
+            libMatch: '替代组标签不一致',
+          },
+          status,
+          ignoreReason,
         });
       });
     }
@@ -402,6 +411,8 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
     matchLibMissingDecisions,
     groupLabelConflictDecisions,
     designatorTagConflictDecisions,
+    designatorTagConflictGroups,
+    bomDecisionScope,
   ]);
   useEffect(() => {
     setOptimizeRows(optimizeRowsDerived);
@@ -642,27 +653,17 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
       alert('请先在映射区域选择物料代码 / 数量 / 位号三列。');
       return;
     }
-    const items: BOMItem[] = [];
-    for (const cols of rows) {
-      const code = (cols[codeIdx] || '').trim();
-      if (!code) continue;
-      const name = nameIdx >= 0 ? (cols[nameIdx] || '').trim() : '';
-      const qtyRaw = (cols[qtyIdx] || '').trim();
-      const qty = parseFloat(qtyRaw || '0');
-      const desRaw = (cols[desIdx] || '').trim();
-      const substituteProjectGroup =
-        substituteProjectGroupIdx >= 0 ? (cols[substituteProjectGroupIdx] || '').trim() : '';
-      const designators = splitDesignators(desRaw);
-      const item: BOMItem = {
-        code,
-        name: name || undefined,
-        quantity: Number.isFinite(qty) && qty > 0 ? qty : designators.length || 0,
-        designators,
-        substituteProjectGroup: substituteProjectGroup || undefined,
-      };
-      item.groupKey = computeGroupKey(item.designators);
-      items.push(item);
-    }
+    const items: BOMItem[] = buildBomItemsFromMappedRows(
+      rows,
+      {
+        codeIdx,
+        nameIdx,
+        qtyIdx,
+        designatorIdx: desIdx,
+        substituteProjectGroupIdx,
+      },
+      splitDesignators
+    );
 
     // 根据 MySQL 物料库中的「替代组标签」重写替代组（优先使用库中的分组）
     try {
@@ -670,6 +671,7 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
       const codeToGroup = buildCodeToGroupLabel(libs);
       if (Object.keys(codeToGroup).length > 0) {
         for (const item of items) {
+          if (!isBomItemCheckable(item)) continue;
           const g = codeToGroup[item.code];
           if (g) {
             item.groupKey = g;
@@ -1249,7 +1251,7 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
                   <div className="flex items-center gap-2 text-xs font-semibold text-amber-800">
                     <span>⚠️ 同位号替代组标签检查</span>
                     <span className="text-[11px] text-amber-700">
-                      {matchDesignatorIssues.length} 项
+                      {designatorTagConflictGroups.length + matchDesignatorIssues.filter((i) => i.kind === 'empty_tag').length} 项
                     </span>
                   </div>
                   <span className="text-[11px] text-amber-700">
@@ -1258,23 +1260,55 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
                 </button>
                 {!matchDesignatorCollapsed && (
                   <div className="p-3 space-y-2">
-                    <ul className="list-disc list-inside text-[11px] text-gray-700 space-y-1">
-                      {matchDesignatorIssues.map((issue, i) => (
-                        <li key={i}>
-                          {issue.kind === 'tag_conflict' ? (
-                            <>
-                              位号 {issue.designator}：{issue.message}
-                              <span className="text-gray-500">
-                                {' '}
-                                （{issue.codes.join(', ')}）
+                    {designatorTagConflictGroups.map((group) => {
+                      const decisionKey = designatorConflictDecisionKey(group.signature);
+                      const decision = designatorTagConflictDecisions[decisionKey];
+                      return (
+                        <div key={group.signature} className="rounded border border-amber-200 bg-amber-50 p-2 text-[11px] text-gray-700">
+                          <div className="font-semibold">
+                            {group.codeLabels.map((entry) => `${entry.code}（${entry.groupLabel}）`).join(' / ')}
+                          </div>
+                          <div className="mt-1">
+                            影响 {group.designators.length} 个位号：{group.designators.join(', ')}
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              className="rounded border border-emerald-400 bg-white px-2 py-1 text-emerald-700"
+                              onClick={() => setDesignatorTagConflictDecisions((prev) => ({
+                                ...prev,
+                                [decisionKey]: { status: 'accepted', reason: '用户确认不同替代组间兼容' },
+                              }))}
+                            >
+                              不同替代组间兼容
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded border border-amber-400 bg-white px-2 py-1 text-amber-700"
+                              onClick={() => {
+                                const reason = window.prompt('请输入备注原因：', decision?.reason || '')?.trim();
+                                if (!reason) return;
+                                setDesignatorTagConflictDecisions((prev) => ({
+                                  ...prev,
+                                  [decisionKey]: { status: 'ignored', reason },
+                                }));
+                              }}
+                            >
+                              备注原因
+                            </button>
+                            {decision?.status && decision.status !== 'pending' && (
+                              <span className="text-gray-600">
+                                已处理：{decision.status === 'accepted' ? '不同替代组间兼容' : decision.reason}
                               </span>
-                            </>
-                          ) : (
-                            <>
-                              位号 {issue.designator} · 物料 {issue.code}
-                              ：物料库此物料替代组标签为空
-                            </>
-                          )}
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <ul className="list-disc list-inside text-[11px] text-gray-700 space-y-1">
+                      {matchDesignatorIssues.filter((issue) => issue.kind === 'empty_tag').map((issue, i) => (
+                        <li key={`${issue.designator}-${issue.code}-${i}`}>
+                          位号 {issue.designator} · 物料 {issue.code}：物料库此物料替代组标签为空
                         </li>
                       ))}
                     </ul>
@@ -2606,7 +2640,9 @@ export const BOMPanel: React.FC<BOMPanelProps> = ({
           s === 'pending' ? '待定' : s === 'accepted' ? '接受' : '忽略';
 
         const totalChecked =
-          bomState && bomState.items ? bomState.items.length : undefined;
+          bomState && bomState.items
+            ? bomState.items.filter(isBomItemCheckable).length
+            : undefined;
         const infoItemCodes = new Set(
           optimizeRows.map((it) => (it.row.code || '').trim()).filter(Boolean)
         );

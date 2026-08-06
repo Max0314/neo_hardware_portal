@@ -23,11 +23,17 @@ from server.yida_client import (
 from server.yida_config import (
     LIBRARY_PASSWORD, MATERIAL_FORM_TITLE_KEYWORDS, MATERIAL_FORM_EXCLUDE_KEYWORDS,
     SPECIAL_GROUP_LABEL_FIELDS, YIDA_MATERIAL_SOURCES, YIDA_SPECIAL_MATERIAL_SOURCES,
+    YIDA_AUTO_DISCOVER_MATERIAL_FORMS, YIDA_MIN_ROW_RETAIN_RATIO,
+    YIDA_ROW_REDUCTION_MIN_BASELINE,
 )
 
 # 物料库标准表头（与 material-database.html STANDARD_HEADERS 一致）
 STANDARD_HEADERS = ['物料代码', '物料描述', 'pads库物料描述', '成本单价', '替代组标签', '优选情况', '备注说明']
 LEGACY_LIBRARY_TYPE_SUFFIXES = ('(C)', '(R)', '(L)', '(FB)', '(ECA)')
+
+
+class YidaSyncSafetyError(RuntimeError):
+    """同步投影违反防数据损坏规则时抛出。"""
 
 
 def _s(v: Any) -> str:
@@ -42,8 +48,8 @@ def _legacy_library_aliases(library_name: str) -> List[str]:
     """Return old material-library names that predate YiDa type suffixes.
 
     YiDa discovery names forms as e.g. ``0201电容(C)`` while older material DB
-    libraries were named ``0201电容``.  If the old library already exists, sync
-    should update it too so users do not keep seeing stale May 2026 tables.
+    libraries were named ``0201电容``.  The alias is used only as a single-target
+    compatibility fallback when the YiDa-title library does not exist.
     """
     name = _normalize_library_name(library_name)
     aliases: List[str] = []
@@ -56,21 +62,104 @@ def _legacy_library_aliases(library_name: str) -> List[str]:
     return aliases
 
 
-def _sync_target_library_names(library_name: str) -> List[str]:
+def _sync_target_library_names(library_name: str, form_uuid: Optional[str] = None) -> List[str]:
+    """Resolve exactly one material library for a YiDa form.
+
+    The YiDa form UUID is the durable identity and wins over names.  This keeps a
+    renamed form attached to its existing library instead of creating a second
+    library.  For libraries created before source metadata was recorded, prefer
+    the exact YiDa title, then fall back to the old suffix-less alias.
+    """
+    source_title = _s(library_name)
+    source_form_uuid = _s(form_uuid)
+    libraries = mdb.list_libraries()
+
+    if source_form_uuid:
+        uuid_matches = []
+        for lib in libraries:
+            current_table = lib.get('currentTable')
+            if not isinstance(current_table, dict):
+                continue
+            if _s(current_table.get('sourceFormUuid')) == source_form_uuid:
+                uuid_matches.append(lib)
+        if uuid_matches:
+            exact_match = next(
+                (lib for lib in uuid_matches if _s(lib.get('name')) == source_title),
+                None,
+            )
+            selected = exact_match or sorted(
+                uuid_matches,
+                key=lambda lib: (_s(lib.get('name')), _s(lib.get('id'))),
+            )[0]
+            return [_s(selected.get('name'))]
+
     existing_names = {
         _s(lib.get('name'))
-        for lib in mdb.list_libraries()
+        for lib in libraries
         if _s(lib.get('name'))
     }
-    aliases = [name for name in _legacy_library_aliases(library_name) if name in existing_names]
-    primary_exists = library_name in existing_names
-    targets: List[str] = []
-    if primary_exists or not aliases:
-        targets.append(library_name)
-    for alias in aliases:
-        if alias not in targets:
-            targets.append(alias)
-    return targets
+    if source_title in existing_names:
+        return [source_title]
+
+    alias = next(
+        (name for name in _legacy_library_aliases(source_title) if name in existing_names),
+        None,
+    )
+    return [alias or source_title]
+
+
+def _table_row_count(table: Any) -> int:
+    """返回物料表数据行数；损坏或旧格式数据按 0 行处理。"""
+    if not isinstance(table, dict):
+        return 0
+    data = table.get('data')
+    if not isinstance(data, list):
+        return 0
+    return max(len(data) - 1, 0)
+
+
+def _validate_projection_before_overwrite(
+    source_title: str,
+    form_uuid: str,
+    target_libraries: List[str],
+    incoming_rows: int,
+    instance_count: int = 0,
+) -> None:
+    """在任何写库操作前执行不可绕过的行数安全校验。"""
+    if incoming_rows <= 0:
+        # 「一条实例都没读到」和「读到了实例但物料代码全空」的处理方式完全不同：前者多为
+        # 查询人没有该表单的数据权限，后者是源表这一列没填。混成一句会把排查引向错误方向。
+        if instance_count <= 0:
+            reason = (
+                '未读到任何实例。常见原因是查询人（YIDA_QUERY_USER_ID）对该表单没有数据权限，'
+                '或源表确实没有数据。'
+            )
+        else:
+            reason = (
+                f'读到 {instance_count} 条实例，但物料代码字段全部为空。'
+                '请检查源表的物料代码列是否已填写，以及字段映射是否正确。'
+            )
+        raise YidaSyncSafetyError(
+            f'安全阻断：宜搭表单 {source_title} ({form_uuid}) {reason}未覆盖任何物料库。'
+        )
+
+    existing_by_name = {
+        _s(lib.get('name')): lib for lib in mdb.list_libraries() if _s(lib.get('name'))
+    }
+    dangerous_reductions = []
+    for name in target_libraries:
+        existing = existing_by_name.get(_s(name))
+        previous_rows = _table_row_count((existing or {}).get('currentTable'))
+        if (
+            previous_rows >= YIDA_ROW_REDUCTION_MIN_BASELINE
+            and incoming_rows < previous_rows * YIDA_MIN_ROW_RETAIN_RATIO
+        ):
+            dangerous_reductions.append(f'{name}: {previous_rows}→{incoming_rows}')
+    if dangerous_reductions:
+        raise YidaSyncSafetyError(
+            '安全阻断：宜搭投影行数异常下降（' + '；'.join(dangerous_reductions)
+            + f'，最低保留比例 {YIDA_MIN_ROW_RETAIN_RATIO:.0%}），未覆盖任何物料库。'
+        )
 
 
 def _field_value(fd: Dict[str, Any], field_id: Optional[str]) -> Any:
@@ -266,7 +355,12 @@ def sync_form_to_library(source: Dict[str, Any], *,
     pwd = (password or LIBRARY_PASSWORD or '').strip()
     if not pwd:
         raise ValueError('未配置物料库默认密码（环境变量 YIDA_LIBRARY_PASSWORD）')
-    library_name = source.get('library_name') or source.get('source_name') or source['form_uuid']
+    library_name = (
+        source.get('library_name')
+        or source.get('source_name')
+        or source['form_uuid']
+    )
+    source_title = source.get('source_name') or library_name
     now = datetime.now()
     create_to_gmt = create_to_gmt or (now + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')
     create_from_gmt = create_from_gmt or '2015-01-01 00:00:00'
@@ -278,13 +372,20 @@ def sync_form_to_library(source: Dict[str, Any], *,
         create_to_gmt=create_to_gmt,
         source=source,
     )
+    target_libraries = _sync_target_library_names(library_name, source['form_uuid'])
+    _validate_projection_before_overwrite(
+        source_title, source['form_uuid'], target_libraries, len(built['rows']),
+        instance_count=built.get('instances', 0),
+    )
+
     data = [list(STANDARD_HEADERS)] + built['rows']
     current_table = {
         'fileName': f'宜搭同步-{library_name}.xlsx',
         'updatedAt': now.strftime('%Y-%m-%dT%H:%M:%S'),
+        'sourceFormUuid': source['form_uuid'],
+        'sourceTitle': source_title,
         'data': data,
     }
-    target_libraries = _sync_target_library_names(library_name)
     import_items = []
     for target_name in target_libraries:
         target_table = dict(current_table)
@@ -295,8 +396,9 @@ def sync_form_to_library(source: Dict[str, Any], *,
         import_items,
         overwrite=True, default_prefix='', default_password=pwd,
         user_id=user_id, user_display=user_display,
+        skip_unchanged_history=True,
     )
-    logger.info(f"✅ 宜搭同步 {library_name}: 实例 {built['instances']} 条 → 物料 {len(built['rows'])} 行 "
+    logger.info(f"✅ 宜搭同步 {source_title}: 实例 {built['instances']} 条 → 物料 {len(built['rows'])} 行 "
                 f"(multi={built['multi']}, slots={built['slot_count']}, {res})")
     return {
         'library': library_name, 'form_uuid': source['form_uuid'],
@@ -306,6 +408,7 @@ def sync_form_to_library(source: Dict[str, Any], *,
         'group_projection': built.get('group_projection'),
         'group_label_fields': built.get('group_label_fields') or [],
         'created': res.get('created', 0), 'updated': res.get('updated', 0),
+        'unchanged': res.get('unchanged', 0),
     }
 
 
@@ -313,26 +416,44 @@ def sync_material_forms(sources: Optional[List[Dict[str, Any]]] = None, *,
                         password: Optional[str] = None,
                         user_id: Optional[int] = None,
                         user_display: str = '宜搭同步') -> Dict[str, Any]:
-    """同步多张表单。sources 为空时：用 YIDA_MATERIAL_SOURCES，否则自动发现。"""
+    """同步多张表单；默认只使用明确配置的白名单。"""
     if sources is None:
-        discovered = discover_material_forms()
+        configured = (YIDA_SPECIAL_MATERIAL_SOURCES or []) + (YIDA_MATERIAL_SOURCES or [])
+        discovered = discover_material_forms() if YIDA_AUTO_DISCOVER_MATERIAL_FORMS else []
         sources = _merge_material_sources(
-            (YIDA_SPECIAL_MATERIAL_SOURCES or []) + (YIDA_MATERIAL_SOURCES or []),
+            configured,
             discovered,
         )
+    if not sources:
+        raise YidaSyncSafetyError(
+            '同步源为空：请配置 YIDA_MATERIAL_FORMS 白名单；自动发现默认关闭。'
+        )
     results = []
-    ok = failed = 0
+    ok = failed = blocked = 0
     for src in sources:
         try:
             results.append(sync_form_to_library(src, password=password, user_id=user_id, user_display=user_display))
             ok += 1
+        except YidaSyncSafetyError as e:
+            logger.warning(
+                '宜搭同步安全阻断 %s: %s',
+                src.get('library_name') or src.get('form_uuid'), e,
+            )
+            results.append({
+                'library': src.get('library_name') or src.get('form_uuid'),
+                'form_uuid': src.get('form_uuid'), 'source_name': src.get('source_name'),
+                'blocked': True, 'error': str(e),
+            })
+            failed += 1
+            blocked += 1
         except Exception as e:
             logger.error(f"宜搭同步失败 {src.get('library_name') or src.get('form_uuid')}: {e}", exc_info=True)
             results.append({'library': src.get('library_name') or src.get('form_uuid'),
-                            'form_uuid': src.get('form_uuid'), 'error': str(e)})
+                            'form_uuid': src.get('form_uuid'),
+                            'source_name': src.get('source_name'), 'error': str(e)})
             failed += 1
     total_rows = sum(r.get('rows', 0) for r in results if not r.get('error'))
-    # 同步成功但写入 0 行的库（多为源表物料代码为空，如线材），单独计数便于排查
+    # 空投影会在写入前被安全阻断，这个字段保留给旧状态兼容。
     empty = sum(1 for r in results if not r.get('error') and r.get('rows', 0) == 0)
     return {'total': len(sources), 'ok': ok, 'failed': failed,
-            'empty': empty, 'total_rows': total_rows, 'results': results}
+            'blocked': blocked, 'empty': empty, 'total_rows': total_rows, 'results': results}

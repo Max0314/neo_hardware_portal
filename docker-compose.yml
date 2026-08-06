@@ -1,9 +1,12 @@
-# 单机统一部署：MySQL + 硬件研发部管理系统（htmlsystm）+ NEO（neo_ai_chatroom）
-# 用法（在仓库根目录「docker版本」下）：
-#   1. cp .env.example .env 并填写 MYSQL_ROOT_PASSWORD、MYSQL_PASSWORD、API 密钥等
+# 硬件研发部管理系统（htmlsystm）+ NEO（neo_ai_chatroom），部署于 NeoFlow 平台。
+# 数据库不在本栈内：平台要求应用服务器上不得自行运行数据库，统一连 NeoFlowData。
+#
+# 用法（在仓库根目录下）：
+#   1. cp .env.example .env 并填写 MYSQL_HOST/USER/PASSWORD/DATABASE 与各 API 密钥
 #   2. bash migration/deploy.sh          # 推荐：build + 健康/DB 检查 + 开放登录
 #      bash migration/deploy.sh --no-build   # 仅重启，不重建镜像
-#   3. 浏览器访问 PUBLIC_BASE_URL — 管理系统在 /neo_hardware/，NEO 在 /neo_hardware/neo/（端口见 GATEWAY_PUBLISH_PORT）
+#   3. 网关只监听 127.0.0.1:GATEWAY_PUBLISH_PORT 的明文 HTTP，由平台 Nginx 终止 TLS 后反代；
+#      对外地址见 PUBLIC_BASE_URL — 管理系统在 /neo_hardware/，NEO 在 /neo_hardware/neo/
 #
 # 说明：若仅部署 NEO 聊天室，仍可使用子目录 neo_ai_chatroom/docker-compose.yml
 
@@ -13,29 +16,8 @@ x-stack-autoheal-labels: &stack_autoheal_labels
   stack.autoheal: "true"
 
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: stack-mysql
-    restart: unless-stopped
-    labels:
-      <<: *stack_autoheal_labels
-    environment:
-      TZ: ${TZ:-Asia/Shanghai}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 中设置 MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-htmlsystm}
-      MYSQL_USER: ${MYSQL_USER:-htmlsystm_user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 中设置 MYSQL_PASSWORD}
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-time-zone=+08:00
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 40s
-
+  # 本栈不含数据库。NeoFlow 平台要求应用服务器上不得自行运行数据库，统一使用
+  # NeoFlowData（内网 172.16.0.244:3306）。连接参数全部来自 .env，勿写死。
   htmlsystm:
     build:
       context: .
@@ -50,11 +32,11 @@ services:
       - "8000"
     environment:
       TZ: ${TZ:-Asia/Shanghai}
-      MYSQL_HOST: mysql
-      MYSQL_PORT: "3306"
-      MYSQL_USER: ${MYSQL_USER:-htmlsystm_user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-htmlsystm}
+      MYSQL_HOST: ${MYSQL_HOST:?请在 .env 中设置 MYSQL_HOST（NeoFlowData 内网地址）}
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      MYSQL_USER: ${MYSQL_USER:?请在 .env 中设置 MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 中设置 MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?请在 .env 中设置 MYSQL_DATABASE}
       SERVER_PORT: "8000"
       USE_MONITOR: "0"
       ENABLE_GZIP: ${HTMLSYSTM_ENABLE_GZIP:-0}
@@ -105,9 +87,6 @@ services:
       timeout: 8s
       retries: 12
       start_period: 90s
-    depends_on:
-      mysql:
-        condition: service_healthy
 
   backend:
     build:
@@ -125,11 +104,11 @@ services:
       HTMLSYSTM_INTERNAL_URL: http://htmlsystm:8000
       HTMLSYSTM_AUTH_TIMEOUT_SEC: ${HTMLSYSTM_AUTH_TIMEOUT_SEC:-45}
       NEO_INTERNAL_SECRET: ${NEO_INTERNAL_SECRET:?请在 .env 中设置 NEO_INTERNAL_SECRET}
-      MYSQL_HOST: mysql
-      MYSQL_PORT: "3306"
-      MYSQL_USER: ${MYSQL_USER:-htmlsystm_user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-htmlsystm}
+      MYSQL_HOST: ${MYSQL_HOST:?请在 .env 中设置 MYSQL_HOST（NeoFlowData 内网地址）}
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      MYSQL_USER: ${MYSQL_USER:?请在 .env 中设置 MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 中设置 MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?请在 .env 中设置 MYSQL_DATABASE}
       # 嵌入式/低内存设备建议关闭 Chroma，避免启动失败
       MEMORY_VECTOR_BACKEND: ${MEMORY_VECTOR_BACKEND:-none}
     volumes:
@@ -150,8 +129,6 @@ services:
       retries: 10
       start_period: 120s
     depends_on:
-      mysql:
-        condition: service_healthy
       htmlsystm:
         condition: service_healthy
 
@@ -192,7 +169,9 @@ services:
     environment:
       TZ: ${TZ:-Asia/Shanghai}
     ports:
-      - "127.0.0.1:${GATEWAY_PUBLISH_PORT:-7892}:443"
+      # 仅绑定回环。TLS 由平台 Nginx 在 443 终止，本网关只需明文 HTTP，
+      # 内层再套一层自签证书没有安全收益，只会多一份证书要维护。
+      - "127.0.0.1:${GATEWAY_PUBLISH_PORT:-39020}:80"
     healthcheck:
       test:
         [
@@ -201,8 +180,7 @@ services:
           "-q",
           "-O",
           "/dev/null",
-          "--no-check-certificate",
-          "https://127.0.0.1/gateway-health",
+          "http://127.0.0.1/gateway-health",
         ]
       interval: 15s
       timeout: 5s
@@ -213,7 +191,6 @@ services:
       - ./gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       # 勿挂到 conf.d/：会被主配置在 http 层二次加载，导致 location 指令报错
       - ./gateway/proxy_locations.conf:/etc/nginx/proxy_locations.conf:ro
-      - ./gateway/certs:/etc/nginx/certs:ro
     depends_on:
       htmlsystm:
         condition: service_healthy
@@ -237,7 +214,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
-  mysql_data:
   ai_chatroom_data:
   htmlsystm_data:
   htmlsystm_uploads:

@@ -8,15 +8,21 @@
     python3 scripts/yida_sync_test.py FORM-XXXX [FORM-YYYY ...]
     # 自动发现所有物料表单并预览：
     python3 scripts/yida_sync_test.py --discover
-    # 真正写入物料库（需 YIDA_LIBRARY_PASSWORD）：加 --write
-    python3 scripts/yida_sync_test.py FORM-XXXX --write
+    # 真正写入物料库（需白名单、YIDA_LIBRARY_PASSWORD 和二次确认）：
+    python3 scripts/yida_sync_test.py FORM-XXXX --write --confirm-write
 """
 import os
 import sys
 
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from server.yida_config import check_yida_config  # noqa: E402
+from server.yida_config import (  # noqa: E402
+    check_yida_config, check_material_sync_config,
+    YIDA_MATERIAL_SOURCES, YIDA_SPECIAL_MATERIAL_SOURCES,
+)
 from server.material_yida_projection import (  # noqa: E402
     build_rows_for_form, sync_form_to_library, discover_material_forms, STANDARD_HEADERS,
 )
@@ -51,7 +57,22 @@ def main():
 
     args = sys.argv[1:]
     do_write = '--write' in args
-    args = [a for a in args if a != '--write']
+    confirmed_write = '--confirm-write' in args
+    args = [a for a in args if a not in ('--write', '--confirm-write')]
+    if do_write and not confirmed_write:
+        print('❌ 拒绝写库：--write 需要同时提供 --confirm-write。默认命令始终只读。')
+        sys.exit(2)
+    if do_write:
+        ok, err = check_material_sync_config()
+        if not ok:
+            print(f'❌ 拒绝写库：{err}')
+            sys.exit(2)
+
+    configured_sources = {
+        source.get('form_uuid'): source
+        for source in (YIDA_SPECIAL_MATERIAL_SOURCES or []) + (YIDA_MATERIAL_SOURCES or [])
+        if source.get('form_uuid')
+    }
 
     if '--discover' in args:
         print('自动发现物料表单中…')
@@ -88,15 +109,19 @@ def main():
 
     if do_write:
         for fu, name in forms:
+            source = configured_sources.get(fu)
+            if not source:
+                print(f'❌ 拒绝写库 {name}: {fu} 不在 YIDA_MATERIAL_FORMS 白名单中')
+                continue
             try:
-                res = sync_form_to_library({'form_uuid': fu, 'library_name': name})
+                res = sync_form_to_library(source)
                 print(f'✅ 写库: {res}')
             except Exception as e:
                 print(f'❌ {name}: {e}')
     else:
         for fu, name in forms:
             preview(fu, name)
-        print('\n预览完成（未写库）。确认无误后加 --write 真正写入物料库（需 YIDA_LIBRARY_PASSWORD）。')
+        print('\n预览完成（未写库）。确认白名单和投影后，才可加 --write --confirm-write 写库。')
 
 
 if __name__ == '__main__':

@@ -64,10 +64,13 @@ if ! docker ps --format '{{.Names}}' | grep -q '^stack-htmlsystm$'; then
   exit 1
 fi
 
+# shellcheck source=_common.sh
+source "${ROOT}/migration/_common.sh"
+
 echo ""
 echo "========== 1/5 MySQL 连接检查 =========="
-docker exec stack-mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SELECT COUNT(*) AS users FROM users"' \
-  || { echo "MySQL 连接失败，检查 .env 与 stack-mysql" >&2; exit 1; }
+mysql_cli -e "SELECT COUNT(*) AS users FROM users" \
+  || { echo "MySQL 连接失败，检查 .env 的 MYSQL_*" >&2; exit 1; }
 
 echo ""
 echo "========== 2/5 备份 users 表（可选）=========="
@@ -75,7 +78,7 @@ BACKUP_DIR="${ROOT}/migration/backups"
 mkdir -p "$BACKUP_DIR"
 TS="$(date +%Y%m%d_%H%M%S)"
 BACKUP_FILE="${BACKUP_DIR}/users_before_reset_${TS}.sql"
-docker exec stack-mysql sh -c 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" users sessions todos neo_point_events neo_user_point_balances 2>/dev/null' \
+mysql_dump_cli users sessions todos neo_point_events neo_user_point_balances \
   > "$BACKUP_FILE" 2>/dev/null || true
 if [ -s "$BACKUP_FILE" ]; then
   echo "已备份到: $BACKUP_FILE"
@@ -98,13 +101,13 @@ else
   echo "容器内无 reset_users_keep_admin.py，使用 MySQL 直接执行（请先 rebuild 以使用 Python 版）"
   ADMIN_ESC="$(printf '%s' "$ADMIN_USER" | sed "s/'/''/g")"
   if [ "$DRY_RUN" -eq 1 ]; then
-    docker exec stack-mysql sh -c "mysql -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" \"\$MYSQL_DATABASE\" -e \"
+    mysql_cli -e "
 SELECT COUNT(*) AS users_total FROM users;
 SELECT COUNT(*) AS users_to_delete FROM users WHERE username != '${ADMIN_ESC}';
 SELECT id, username, status FROM users WHERE username = '${ADMIN_ESC}';
-\""
+"
   else
-    docker exec stack-mysql sh -c "mysql -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" \"\$MYSQL_DATABASE\" -e \"
+    mysql_cli -e "
 SET FOREIGN_KEY_CHECKS=0;
 DELETE FROM sessions;
 DELETE FROM login_attempts;
@@ -123,7 +126,7 @@ UPDATE users SET status='active', roles='admin,management,super_admin',
 WHERE username='${ADMIN_ESC}';
 SET FOREIGN_KEY_CHECKS=1;
 SELECT COUNT(*) AS users_remaining FROM users;
-\""
+"
   fi
 fi
 
@@ -149,11 +152,11 @@ docker compose "${COMPOSE_EMERGENCY[@]}" up -d gateway 2>/dev/null || \
 
 echo ""
 echo "当前 users 表:"
-docker exec stack-mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "
+mysql_cli -e '
 SELECT id, username, status, user_source,
        CASE WHEN dingtalk_data IS NULL THEN 0 ELSE CHAR_LENGTH(dingtalk_data) END AS dingtalk_chars
 FROM users ORDER BY id;
-"'
+'
 
 echo ""
 echo "完成。请登录 zzw 后在管理界面手动「同步钉钉用户」。"
