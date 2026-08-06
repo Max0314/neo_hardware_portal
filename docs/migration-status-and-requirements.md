@@ -196,3 +196,26 @@ BI 侧无需任何改动，实测两个导出接口均返回 200，无密钥仍 
 - 旧 Nginx 配置备份：`/etc/nginx/sites-available/neoflow.neo-net.com.conf.bak-redirect-20260805-192601`
   与本机 `D:\code_CPL\nginx-backup\`
 - 保留期：**一周（至 2026-08-12）**
+
+---
+
+## SQLite → MySQL 迁移（2026-08-06 完成）
+
+NEO 聊天室的 `chatroom.db` 是栈内最后一个活跃 SQLite，已整体迁入共享 MySQL：
+
+- **适配层** `backend/models/db_compat.py`：pymysql 实现 aiosqlite 的调用面（异步上下文、
+  Row 双形态、`?` 占位符翻译、IntegrityError），45 个查询方法零重写。
+- **方言差异**：4 处 `INSERT OR ...`、2 处 `ON CONFLICT` 显式改写；DDL 重写为 InnoDB；
+  外键刻意不建（SQLite 下从未生效，保持行为一致）；`system_config` 更名
+  `neo_system_config`（htmlsystm 同库有同名异构表）。
+- **迁移**：启动时自动执行，单事务 + 行数核对 + 源文件归档不删除。生产结果
+  **419/419 行**，323 条消息（387 万字符）逐行内容 MD5 与 SQLite 完全一致。
+- **验证**：14 项单元测试；15 项真实 MySQL 集成测试（一次性容器 + 隔离测试库）；
+  生产部署后 4 容器 healthy，公网端点 200，store 实读 MySQL 返回 59 个会话。
+- **备份**：`~/backups/pre-sqlite-migration-20260806-093635/`（DB dump + chatroom.db，
+  SHA-256 已记录）；卷内原文件归档为 `chatroom.db.migrated-20260806-093655`。
+- 教训一则：验证数据时 MySQL `GROUP_CONCAT` 默认 1KB 截断，比对校验和前必须
+  `SET SESSION group_concat_max_len`，否则会得出假阴性。
+
+至此栈内不再有活跃 SQLite；`ai_chatroom_data` 卷只剩纯文件（netlist_results 169M、
+归档的 .migrated 文件），OSS 接入时可整卷按对象迁移。
