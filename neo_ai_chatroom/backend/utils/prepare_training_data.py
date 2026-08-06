@@ -3,15 +3,18 @@
 从对话记录中提取和标注数据
 """
 import json
-import sqlite3
 from pathlib import Path
 from typing import List, Dict
 from backend.models.dialogue_classifier import DialogueCategory
+from backend.models import db_compat
 
 
 def extract_from_database(db_path: str = "chatroom.db", limit: int = 1000) -> List[Dict]:
-    """从数据库提取对话数据"""
-    conn = sqlite3.connect(db_path)
+    """从数据库提取对话数据。
+
+    消息已迁移至共享 MySQL（MYSQL_* 环境变量），db_path 参数仅为兼容旧调用保留。
+    """
+    conn = db_compat.connect_sync()
     cursor = conn.cursor()
     
     # 查询用户消息

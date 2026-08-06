@@ -526,6 +526,16 @@ dashboard_metrics_store, dashboard_metrics_storage_kind = create_dashboard_metri
 async def _startup_layered_memory():
     try:
         await memory_item_store.init_db()
+
+        # 全部表结构就绪后，执行 chatroom.db → MySQL 的一次性迁移。
+        # 内部有已迁移判定，重复启动是空操作；失败不阻断服务（消息表为空可运行，
+        # 下次启动自动重试），但要在日志里可见。
+        try:
+            from backend.models.chatroom_migration import migrate_if_needed
+            await asyncio.to_thread(migrate_if_needed, CHATROOM_DB_PATH)
+        except Exception as e:
+            print(f"[chatroom-migration] 迁移失败（服务继续运行，下次启动重试）: {e}")
+
         init_extract_queue(int(os.getenv("MEMORY_EXTRACT_QUEUE_SIZE", "500")))
         asyncio.create_task(
             run_memory_extract_worker(message_store, memory_item_store, memory_service)
@@ -2597,8 +2607,8 @@ async def delete_role_knowledge(role_id: str, request: Request):
         # 尝试从数据库直接删除
         if hasattr(knowledge_base, 'use_database') and knowledge_base.use_database:
             try:
-                import sqlite3
-                conn = sqlite3.connect(knowledge_base.db_path)
+                from backend.models import db_compat
+                conn = db_compat.connect_sync()
                 cursor = conn.cursor()
                 cursor.execute("""
                     DELETE FROM knowledge_base

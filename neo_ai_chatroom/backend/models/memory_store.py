@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-import aiosqlite
+from backend.models import db_compat
 
 from backend.memory.types import MemoryScopeType, RecallStrategy, RecallStep
 
@@ -51,76 +51,67 @@ class MemoryItemStore:
         self.db_path = db_path
 
     async def init_db(self):
-        async with aiosqlite.connect(self.db_path) as db:
+        # MySQL DDL：TEXT 主键改 VARCHAR，REAL 改 DOUBLE，索引改建表内联
+        # （MySQL 无 CREATE INDEX IF NOT EXISTS），source_refs 的默认值由
+        # insert_memory_item 显式传入，故列上不再声明 DEFAULT。
+        async with db_compat.connect() as db:
             await db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS memory_recall_config (
-                    id INTEGER PRIMARY KEY CHECK (id = 1),
-                    strategy_json TEXT NOT NULL,
+                    id INT PRIMARY KEY CHECK (id = 1),
+                    strategy_json MEDIUMTEXT NOT NULL,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """
             )
             await db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS memory_templates (
-                    id TEXT PRIMARY KEY,
-                    kind TEXT NOT NULL,
-                    name TEXT NOT NULL,
-                    json_schema TEXT NOT NULL,
-                    prompt_hint TEXT,
-                    version INTEGER NOT NULL DEFAULT 1,
-                    enabled INTEGER NOT NULL DEFAULT 1,
+                    id VARCHAR(64) PRIMARY KEY,
+                    kind VARCHAR(32) NOT NULL,
+                    name VARCHAR(255) NOT NULL,
+                    json_schema MEDIUMTEXT NOT NULL,
+                    prompt_hint MEDIUMTEXT,
+                    version INT NOT NULL DEFAULT 1,
+                    enabled TINYINT NOT NULL DEFAULT 1,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """
             )
             await db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS memory_items (
-                    id TEXT PRIMARY KEY,
-                    scope_type TEXT NOT NULL,
-                    org_id TEXT NOT NULL DEFAULT '',
-                    group_id TEXT NOT NULL DEFAULT '',
-                    user_id TEXT NOT NULL DEFAULT '',
-                    assistant_id TEXT NOT NULL DEFAULT '',
-                    conversation_id TEXT NOT NULL DEFAULT '',
-                    template_id TEXT NOT NULL,
-                    template_version INTEGER NOT NULL DEFAULT 1,
-                    kind TEXT NOT NULL,
-                    structured_json TEXT NOT NULL,
-                    search_text TEXT NOT NULL,
-                    source_refs TEXT NOT NULL DEFAULT '[]',
-                    confidence REAL NOT NULL DEFAULT 0.8,
-                    supersedes_id TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-                """
-            )
-            await db.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_memory_items_conv ON memory_items(conversation_id)
-                """
-            )
-            await db.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_memory_items_user_asst ON memory_items(user_id, assistant_id)
-                """
-            )
-            await db.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_memory_items_group ON memory_items(group_id)
+                    id VARCHAR(64) PRIMARY KEY,
+                    scope_type VARCHAR(32) NOT NULL,
+                    org_id VARCHAR(64) NOT NULL DEFAULT '',
+                    group_id VARCHAR(64) NOT NULL DEFAULT '',
+                    user_id VARCHAR(64) NOT NULL DEFAULT '',
+                    assistant_id VARCHAR(64) NOT NULL DEFAULT '',
+                    conversation_id VARCHAR(64) NOT NULL DEFAULT '',
+                    template_id VARCHAR(64) NOT NULL,
+                    template_version INT NOT NULL DEFAULT 1,
+                    kind VARCHAR(32) NOT NULL,
+                    structured_json MEDIUMTEXT NOT NULL,
+                    search_text MEDIUMTEXT NOT NULL,
+                    source_refs MEDIUMTEXT NOT NULL,
+                    confidence DOUBLE NOT NULL DEFAULT 0.8,
+                    supersedes_id VARCHAR(64),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    KEY idx_memory_items_conv (conversation_id),
+                    KEY idx_memory_items_user_asst (user_id, assistant_id),
+                    KEY idx_memory_items_group (group_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """
             )
             await db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS memory_extraction_dedup (
-                    conversation_id TEXT NOT NULL,
-                    message_id TEXT NOT NULL,
-                    template_id TEXT NOT NULL,
+                    conversation_id VARCHAR(64) NOT NULL,
+                    message_id VARCHAR(64) NOT NULL,
+                    template_id VARCHAR(64) NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (conversation_id, message_id, template_id)
-                )
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """
             )
             await db.commit()
@@ -128,7 +119,7 @@ class MemoryItemStore:
         await self._seed_defaults()
 
     async def _seed_defaults(self):
-        async with aiosqlite.connect(self.db_path) as db:
+        async with db_compat.connect() as db:
             cur = await db.execute("SELECT COUNT(*) FROM memory_recall_config WHERE id = 1")
             row = await cur.fetchone()
             if row and row[0] == 0:
@@ -170,7 +161,7 @@ class MemoryItemStore:
             await db.commit()
 
     async def get_recall_strategy(self) -> RecallStrategy:
-        async with aiosqlite.connect(self.db_path) as db:
+        async with db_compat.connect() as db:
             cur = await db.execute(
                 "SELECT strategy_json FROM memory_recall_config WHERE id = 1"
             )
@@ -183,13 +174,13 @@ class MemoryItemStore:
                 return DEFAULT_RECALL_STRATEGY
 
     async def set_recall_strategy(self, strategy: RecallStrategy):
-        async with aiosqlite.connect(self.db_path) as db:
+        async with db_compat.connect() as db:
             await db.execute(
                 """
                 INSERT INTO memory_recall_config (id, strategy_json, updated_at)
                 VALUES (1, ?, CURRENT_TIMESTAMP)
-                ON CONFLICT(id) DO UPDATE SET
-                    strategy_json = excluded.strategy_json,
+                ON DUPLICATE KEY UPDATE
+                    strategy_json = VALUES(strategy_json),
                     updated_at = CURRENT_TIMESTAMP
                 """,
                 (strategy.model_dump_json(),),
@@ -197,8 +188,8 @@ class MemoryItemStore:
             await db.commit()
 
     async def list_templates(self, enabled_only: bool = True) -> List[Dict[str, Any]]:
-        async with aiosqlite.connect(self.db_path) as db:
-            db.row_factory = aiosqlite.Row
+        async with db_compat.connect() as db:
+            db.row_factory = db_compat.Row
             q = "SELECT * FROM memory_templates"
             if enabled_only:
                 q += " WHERE enabled = 1"
@@ -208,8 +199,8 @@ class MemoryItemStore:
             return [dict(r) for r in rows]
 
     async def get_template(self, template_id: str) -> Optional[Dict[str, Any]]:
-        async with aiosqlite.connect(self.db_path) as db:
-            db.row_factory = aiosqlite.Row
+        async with db_compat.connect() as db:
+            db.row_factory = db_compat.Row
             cur = await db.execute(
                 "SELECT * FROM memory_templates WHERE id = ?", (template_id,)
             )
@@ -226,18 +217,18 @@ class MemoryItemStore:
         version: int = 1,
         enabled: bool = True,
     ) -> None:
-        async with aiosqlite.connect(self.db_path) as db:
+        async with db_compat.connect() as db:
             await db.execute(
                 """
                 INSERT INTO memory_templates (id, kind, name, json_schema, prompt_hint, version, enabled)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    kind = excluded.kind,
-                    name = excluded.name,
-                    json_schema = excluded.json_schema,
-                    prompt_hint = excluded.prompt_hint,
-                    version = excluded.version,
-                    enabled = excluded.enabled
+                ON DUPLICATE KEY UPDATE
+                    kind = VALUES(kind),
+                    name = VALUES(name),
+                    json_schema = VALUES(json_schema),
+                    prompt_hint = VALUES(prompt_hint),
+                    version = VALUES(version),
+                    enabled = VALUES(enabled)
                 """,
                 (
                     template_id,
@@ -269,7 +260,7 @@ class MemoryItemStore:
         confidence: float,
         supersedes_id: Optional[str],
     ) -> None:
-        async with aiosqlite.connect(self.db_path) as db:
+        async with db_compat.connect() as db:
             await db.execute(
                 """
                 INSERT INTO memory_items (
@@ -299,8 +290,8 @@ class MemoryItemStore:
             await db.commit()
 
     async def get_memory_item(self, item_id: str) -> Optional[Dict[str, Any]]:
-        async with aiosqlite.connect(self.db_path) as db:
-            db.row_factory = aiosqlite.Row
+        async with db_compat.connect() as db:
+            db.row_factory = db_compat.Row
             cur = await db.execute(
                 "SELECT * FROM memory_items WHERE id = ?", (item_id,)
             )
@@ -311,7 +302,7 @@ class MemoryItemStore:
         self, conversation_id: str, message_id: str, template_id: str
     ) -> bool:
         """幂等：若已存在则返回 False。"""
-        async with aiosqlite.connect(self.db_path) as db:
+        async with db_compat.connect() as db:
             try:
                 await db.execute(
                     """
@@ -322,7 +313,7 @@ class MemoryItemStore:
                 )
                 await db.commit()
                 return True
-            except aiosqlite.IntegrityError:
+            except db_compat.IntegrityError:
                 return False
 
     def new_id(self) -> str:

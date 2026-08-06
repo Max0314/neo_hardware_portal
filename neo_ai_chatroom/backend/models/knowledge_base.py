@@ -6,7 +6,7 @@
 import os
 from typing import List, Dict, Optional, Tuple
 import json
-import sqlite3
+from backend.models import db_compat
 import uuid
 from datetime import datetime
 
@@ -190,49 +190,31 @@ class SimpleKnowledgeBase(KnowledgeBase):
         self._load_knowledge()
     
     def _init_database(self):
-        """初始化数据库表（如果不存在）"""
+        """初始化数据库表（如果不存在）。
+
+        与 message.py 的 _MYSQL_DDL 中 knowledge_base 定义保持一致（含 event_config），
+        CREATE TABLE IF NOT EXISTS 幂等，重复执行无副作用；不再需要旧的
+        “探测缺列再 ALTER” 逻辑。
+        """
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = db_compat.connect_sync()
             cursor = conn.cursor()
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS knowledge_base (
-                    id TEXT PRIMARY KEY,
-                    role_id TEXT NOT NULL,
-                    keywords TEXT NOT NULL,
-                    answer TEXT NOT NULL,
-                    image_data TEXT,
-                    image_path TEXT,
-                    image_type TEXT,
-                    metadata TEXT,
-                    event_config TEXT,
+                    id VARCHAR(64) PRIMARY KEY,
+                    role_id VARCHAR(64) NOT NULL,
+                    keywords MEDIUMTEXT NOT NULL,
+                    answer MEDIUMTEXT NOT NULL,
+                    image_data LONGTEXT,
+                    image_path VARCHAR(1024),
+                    image_type VARCHAR(64),
+                    metadata MEDIUMTEXT,
+                    event_config MEDIUMTEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    KEY idx_knowledge_role_id (role_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """)
-            
-            # 检查并添加 event_config 列（如果不存在）
-            try:
-                cursor.execute("SELECT event_config FROM knowledge_base LIMIT 1")
-            except sqlite3.OperationalError:
-                # 列不存在，添加它
-                cursor.execute("ALTER TABLE knowledge_base ADD COLUMN event_config TEXT")
-                conn.commit()
-                print("[知识库] 已添加 event_config 列")
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_knowledge_role_id ON knowledge_base(role_id)
-            """)
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_knowledge_keywords ON knowledge_base(keywords)
-            """)
-            
-            # 检查并添加 event_config 列（如果不存在）
-            try:
-                cursor.execute("SELECT event_config FROM knowledge_base LIMIT 1")
-            except sqlite3.OperationalError:
-                # 列不存在，添加它
-                cursor.execute("ALTER TABLE knowledge_base ADD COLUMN event_config TEXT")
-                print("[知识库] 已添加 event_config 列")
-            
             conn.commit()
             conn.close()
         except Exception as e:
@@ -244,7 +226,7 @@ class SimpleKnowledgeBase(KnowledgeBase):
         # 优先从数据库加载
         if self.use_database:
             try:
-                conn = sqlite3.connect(self.db_path)
+                conn = db_compat.connect_sync()
                 cursor = conn.cursor()
                 cursor.execute("""
                     SELECT id, keywords, answer, image_data, image_path, image_type, metadata, event_config
@@ -406,7 +388,7 @@ class SimpleKnowledgeBase(KnowledgeBase):
         # 如果使用数据库存储（只要有keywords就可以存储）
         if self.use_database and keywords:
             try:
-                conn = sqlite3.connect(self.db_path)
+                conn = db_compat.connect_sync()
                 cursor = conn.cursor()
                 
                 # 将metadata和event_config转换为JSON字符串
@@ -455,7 +437,7 @@ class SimpleKnowledgeBase(KnowledgeBase):
         # 优先从数据库删除
         if self.use_database:
             try:
-                conn = sqlite3.connect(self.db_path)
+                conn = db_compat.connect_sync()
                 cursor = conn.cursor()
                 
                 if answer:
