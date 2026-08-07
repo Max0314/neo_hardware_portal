@@ -211,6 +211,7 @@ gunzip -c backup-xxx.sql.gz | MYSQL_PWD='<密码>' mysql --default-character-set
 | `prod/netlist-results/` | 网表分析结果 JSON | 保存/删除直接写通，读走本地缓存、miss 回源 |
 | `prod/knowledge/` | 知识库 JSON | 保存后整树同步（chroma 向量文件不镜像） |
 | `prod/knowledge-recycle/` | 知识库回收站 | 移动/删除后同步 |
+| `prod/todos/` | 公告待办 Excel | 保存后整树同步；损坏件隔离为 .bak 不镜像 |
 
 要点：
 

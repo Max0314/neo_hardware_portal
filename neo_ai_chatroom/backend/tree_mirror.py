@@ -28,7 +28,35 @@ import logging
 logger = logging.getLogger(__name__)
 
 STATE_FILE = '.mirror_state.json'
-_EXCLUDE_SUFFIXES = ('.lock', '.tmp', '.swp')
+
+import contextlib
+try:
+    import fcntl
+    _HAS_FCNTL = True
+except ImportError:  # Windows 开发机
+    _HAS_FCNTL = False
+
+
+@contextlib.contextmanager
+def _flock(path: str):
+    """跨进程互斥：gunicorn 多 worker 各持一个 TreeMirror 实例，线程锁只护得住
+    进程内。状态清单的读-改-写若无进程级互斥，两个 worker 并发同步时后写者会
+    覆盖前写者的删除记录，在远端留下永远无人认领的孤儿对象（2026-08-07 实测）。
+    """
+    if not _HAS_FCNTL:
+        yield
+        return
+    fh = open(path, 'a+')
+    try:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+        yield
+    finally:
+        try:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+        finally:
+            fh.close()
+
+_EXCLUDE_SUFFIXES = ('.lock', '.tmp', '.swp', '.bak')
 _EXCLUDE_PARTS = ('locks',)
 
 
@@ -116,7 +144,7 @@ class TreeMirror:
         rel_prefix = rel_prefix.strip('/').replace(os.sep, '/')
         uploaded = removed = 0
         errors: List[str] = []
-        with self._lock:
+        with self._lock, _flock(self._state_path() + '.flock'):
             state = self._load_state()
             local = self._walk_local(rel_prefix)
 
@@ -154,7 +182,7 @@ class TreeMirror:
             return 0
         rel_prefix = rel_prefix.strip('/').replace(os.sep, '/')
         n = 0
-        with self._lock:
+        with self._lock, _flock(self._state_path() + '.flock'):
             state = self._load_state()
             try:
                 n = self.store.delete_prefix(rel_prefix + '/')
@@ -181,7 +209,7 @@ class TreeMirror:
         记忆它曾经在哪。返回截止到该段的前缀，如 hardware/<id>。
         """
         found = set()
-        with self._lock:
+        with self._lock, _flock(self._state_path() + '.flock'):
             for rel in self._load_state():
                 parts = rel.split('/')
                 if segment in parts:
@@ -219,7 +247,7 @@ class TreeMirror:
         except Exception as e:  # noqa: BLE001
             logger.error('镜像整树恢复中断（已恢复 %d 个）: %s', n, e)
         if n:
-            with self._lock:
+            with self._lock, _flock(self._state_path() + '.flock'):
                 self._save_state(state)
             logger.info('已从对象存储恢复 %d 个文件到 %s', n, self.root)
         return n
@@ -228,7 +256,7 @@ class TreeMirror:
         """全树对账：补传本地新增/变更，删除远端多余。启动后台线程用。"""
         if self.store is None:
             return 0, 0
-        with self._lock:
+        with self._lock, _flock(self._state_path() + '.flock'):
             state = self._load_state()
             local = self._walk_local()
             up = rm = 0
