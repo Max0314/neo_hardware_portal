@@ -1,4 +1,6 @@
 import os
+import threading
+import zipfile
 import openpyxl
 from datetime import datetime
 from typing import List, Dict, Any, Optional
@@ -35,13 +37,74 @@ def _normalize_userid_cell(value) -> str:
     return s
 
 
+_TODOS_MIRRORS: dict = {}
+_TODOS_MIRRORS_LOCK = threading.Lock()
+
+
+def _todos_mirror(todos_dir: str):
+    """todos 目录 → 对象存储 的写通镜像（进程内单例）。
+
+    待办 Excel 是业务数据，此前不在任何镜像范围内——卷丢失即丢失。
+    STORAGE_BACKEND=local 时 store 为 None，镜像空转。
+    """
+    from server.object_store import build_store_from_env
+    from server.tree_mirror import TreeMirror
+    with _TODOS_MIRRORS_LOCK:
+        mirror = _TODOS_MIRRORS.get(todos_dir)
+        if mirror is None:
+            mirror = TreeMirror(todos_dir, build_store_from_env('todos'))
+            _TODOS_MIRRORS[todos_dir] = mirror
+            if mirror.store is not None:
+                restored = mirror.restore_all()
+                if restored:
+                    logger.info('待办目录已从对象存储恢复 %d 个文件', restored)
+        return mirror
+
+
 class TodoManager:
     """待办任务管理器，支持MySQL和Excel两种存储方式"""
-    
+
     def __init__(self):
         self.todos_dir = os.path.join(DATA_DIR, 'todos')
         os.makedirs(self.todos_dir, exist_ok=True)
         self.use_mysql = USE_MYSQL and USE_TODO_MYSQL
+        self._mirror = _todos_mirror(self.todos_dir)
+
+    def _save_workbook(self, wb, file_path: str) -> None:
+        """原子保存并写通镜像。
+
+        2026-06-25 曾有两个待办文件因进程在 wb.save() 直写目标途中被打断，
+        留下只含 docProps 的半截 zip，此后每次读取都抛
+        "There is no item named '[Content_Types].xml'"。先写临时文件再
+        os.replace，保证磁盘上要么是旧的完整文件、要么是新的完整文件。
+        """
+        tmp_path = f'{file_path}.tmp'
+        wb.save(tmp_path)
+        os.replace(tmp_path, file_path)
+        # 整目录差量同步（绝不抛出）：todos 共几十个小文件，哈希开销可忽略，
+        # 且统一经状态清单处理新增/覆盖/删除。
+        self._mirror.sync_subtree('')
+
+    def _load_workbook_safe(self, file_path: str):
+        """加载待办工作簿；损坏文件隔离后按不存在处理。
+
+        返回 None 表示文件不存在或已损坏。损坏文件重命名为 .corrupt-<时间>.bak
+        留档（不再参与镜像），避免同一残骸每次轮询都刷一遍 ERROR 堆栈。
+        """
+        if not os.path.exists(file_path):
+            return None
+        try:
+            return openpyxl.load_workbook(file_path)
+        except (zipfile.BadZipFile, KeyError, OSError) as e:
+            quarantined = f"{file_path}.corrupt-{datetime.now().strftime('%Y%m%d%H%M%S')}.bak"
+            try:
+                os.replace(file_path, quarantined)
+                self._mirror.sync_subtree('')
+            except OSError:
+                quarantined = '(隔离失败，文件保留原位)'
+            logger.warning('待办文件损坏，已隔离: %s -> %s（%s）',
+                           os.path.basename(file_path), os.path.basename(quarantined), e)
+            return None
     
     def get_todo_file_path(self, announcement_id: str) -> str:
         """获取公告对应的待办Excel文件路径"""
@@ -108,7 +171,7 @@ class TodoManager:
                 ws.cell(row=row, column=10, value='')  # 完成时间
                 ws.cell(row=row, column=11, value=now)  # 创建时间
             
-            wb.save(file_path)
+            self._save_workbook(wb, file_path)
             logger.info(f"成功创建待办Excel文件: {file_path}, 共 {len(userids)} 条记录")
             return True
             
@@ -150,7 +213,9 @@ class TodoManager:
                 logger.debug(f"待办Excel文件不存在: {file_path}, announcement_id={announcement_id}")
                 return None
             
-            wb = openpyxl.load_workbook(file_path)
+            wb = self._load_workbook_safe(file_path)
+            if wb is None:
+                return None
             ws = wb.active
             
             # 查找用户ID列（第4列）
@@ -293,7 +358,10 @@ class TodoManager:
                 
                 try:
                     with file_lock:
-                        wb = openpyxl.load_workbook(file_path)
+                        wb = self._load_workbook_safe(file_path)
+                        if wb is None:
+                            logger.warning("待办文件缺失或已隔离，无法更新")
+                            return False
                         ws = wb.active
                         
                         # 查找用户ID列（第4列）
@@ -311,7 +379,7 @@ class TodoManager:
                                 break
                         
                         if found:
-                            wb.save(file_path)
+                            self._save_workbook(wb, file_path)
                             # 确保文件写入完成（刷新文件系统缓冲区）
                             try:
                                 # 打开文件并同步到磁盘
@@ -386,7 +454,9 @@ class TodoManager:
                 logger.warning(f"待办Excel文件不存在，无法保存: {file_path}")
                 return False
             
-            wb = openpyxl.load_workbook(file_path)
+            wb = self._load_workbook_safe(file_path)
+            if wb is None:
+                return False
             ws = wb.active
             
             # 构建userid到待办数据的映射，便于快速查找
@@ -409,7 +479,7 @@ class TodoManager:
                     updated_count += 1
             
             if updated_count > 0:
-                wb.save(file_path)
+                self._save_workbook(wb, file_path)
                 logger.debug(f"成功保存待办数据到文件: announcement_id={announcement_id}, 更新了{updated_count}条记录")
                 return True
             else:
@@ -435,7 +505,9 @@ class TodoManager:
                 logger.debug(f"待办文件不存在: {file_path}")
                 return []
             
-            wb = openpyxl.load_workbook(file_path)
+            wb = self._load_workbook_safe(file_path)
+            if wb is None:
+                return []
             ws = wb.active
             
             todos = []
