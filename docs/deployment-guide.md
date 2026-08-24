@@ -52,7 +52,8 @@
                  │  │   gateway      nginx:alpine   39020:80          │  │
                  │  │     ├─▶ htmlsystm     expose 8000               │  │
                  │  │     ├─▶ neo-backend   expose 8000               │  │
-                 │  │     └─▶ neo-web       expose 80                 │  │
+                 │  │     ├─▶ neo-web       expose 80                 │  │
+                 │  │     └─▶ report-audit-platform（共享 Docker 网络）│  │
                  │  │   本栈内无任何数据库容器                        │  │
                  │  └────────────────────┬───────────────────────────┘  │
                  └───────────────────────┼──────────────────────────────┘
@@ -212,6 +213,7 @@ gunzip -c backup-xxx.sql.gz | MYSQL_PWD='<密码>' mysql --default-character-set
 | `prod/knowledge/` | 知识库 JSON | 保存后整树同步（chroma 向量文件不镜像） |
 | `prod/knowledge-recycle/` | 知识库回收站 | 移动/删除后同步 |
 | `prod/todos/` | 公告待办 Excel | 保存后整树同步；损坏件隔离为 .bak 不镜像 |
+| `prod/report-audit/` | 测试报告审核原文件与旧数据 | 独立服务写通；历史数据逐对象 SHA-256 校验 |
 
 要点：
 
@@ -225,6 +227,21 @@ gunzip -c backup-xxx.sql.gz | MYSQL_PWD='<密码>' mysql --default-character-set
 - 回滚：`.env` 改回 `STORAGE_BACKEND=local` 并重建容器，本地缓存即完整数据
 
 ⚠️ `ai_chatroom_data` 内的 `chatroom.db` 等 SQLite 已迁入 MySQL（NeoFlowData），与 OSS 无关。
+
+### 5.1 测试报告审核子服务
+
+测试报告审核已拆分到独立仓库 `Max0314/report-audit-platform`，但继续复用本门户的基础设施：
+
+- 与 `htmlsystm`、`gateway` 同接 `neo-hardware-report-audit` Docker 网络；
+- gateway 将 `/neo_hardware/report-audit/` 转发到服务名
+  `report-audit-platform:8000`，不再访问旧宿主机 `172.17.0.1:8000`；
+- 报告服务通过 `htmlsystm:8000/api/internal/neo/verify-session` 校验现有会话，
+  内部密钥与本栈 `NEO_INTERNAL_SECRET` 一致；Cookie 不复制、不另建登录状态；
+- 生产原文件写入同一私有 bucket 的 `prod/report-audit/` 独立前缀，本地卷仅为解析缓存；
+- 独立 Compose 的宿主机发布端口为 `127.0.0.1:39023`，只用于本机探活。
+
+先部署本仓库以创建共享网络，再部署报告服务。报告服务迁移和回滚步骤以其仓库
+`docs/neoflow-migration.md` 为准。
 
 ---
 

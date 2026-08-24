@@ -75,6 +75,9 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - htmlsystm_data:/app/data
       - htmlsystm_uploads:/app/uploads
+    networks:
+      - default
+      - report_audit_internal
     healthcheck:
       test:
         [
@@ -191,6 +194,9 @@ services:
       - ./gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       # 勿挂到 conf.d/：会被主配置在 http 层二次加载，导致 location 指令报错
       - ./gateway/proxy_locations.conf:/etc/nginx/proxy_locations.conf:ro
+    networks:
+      - default
+      - report_audit_internal
     depends_on:
       htmlsystm:
         condition: service_healthy
@@ -217,3 +223,9 @@ volumes:
   ai_chatroom_data:
   htmlsystm_data:
   htmlsystm_uploads:
+
+networks:
+  # 跨 Compose 的稳定服务网络：报告平台通过此网络校验 htmlsystm 会话，
+  # gateway 也通过服务名访问报告平台。网络不对宿主机或公网发布端口。
+  report_audit_internal:
+    name: neo-hardware-report-audit
