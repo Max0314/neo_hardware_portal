@@ -5,7 +5,7 @@
 - 交付分支：`fix/task-013-neoflow-tokenplan-models`
 - Worktree：`D:\code_CPL\.codex-worktrees\hardware-neoflow-tokenplan`
 - 基线：`github/main` `e087066`
-- 当前状态：未提交
+- 当前状态：已合入 main
 
 ## 目标
 
