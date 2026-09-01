@@ -7,8 +7,12 @@ from abc import ABC, abstractmethod
 
 from backend.services.ai_key_resolver import get_secret_async
 from backend.ai.bailian_models import (
+    build_tokenplan_extra_body,
     get_api_model,
     get_bailian_model,
+    get_tokenplan_base_url,
+    get_tokenplan_provider,
+    get_tokenplan_secret_provider_id,
     is_bailian_ai_id,
     resolve_base_ai_id,
 )
@@ -148,14 +152,6 @@ class BailianAdapter(AIAdapter):
     """AI Token Plan OpenAI 兼容 Chat API（内部沿用 bailian id 兼容历史配置）。"""
 
     def __init__(self):
-        self.base_url = (
-            (
-                os.getenv("TOKENPLAN_BASE_URL")
-                or "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
-            )
-            .strip()
-            .rstrip("/")
-        )
         self.reasoning_effort = (
             os.getenv("TOKENPLAN_REASONING_EFFORT") or "high"
         ).strip() or "high"
@@ -186,23 +182,26 @@ class BailianAdapter(AIAdapter):
         history: List[Dict],
         system_prompt: Optional[str] = None,
         enable_reasoning: bool = False,
-        ai_id: str = "bailian-deepseekv4",
+        ai_id: str = "bailian-qwen37plus",
     ) -> str:
         spec = get_bailian_model(ai_id)
         if not spec:
             raise ValueError(f"未知 AI Token Plan 模型: {ai_id}")
 
-        api_key = (await get_secret_async("bailian") or "").strip()
+        provider = get_tokenplan_provider()
+        secret_provider_id = get_tokenplan_secret_provider_id()
+        api_key = (await get_secret_async(secret_provider_id) or "").strip()
         if not api_key:
+            env_var = "NEOFLOW_API_KEY" if provider == "neoflow" else "TOKENPLAN_API_KEY"
             raise ValueError(
-                "AI Token Plan API Key 未配置。请在「API 密钥」中保存密钥，"
-                "或设置环境变量 TOKENPLAN_API_KEY。"
+                f"AI Token Plan（{provider}）API Key 未配置。"
+                f"请在「API 密钥」中保存密钥，或设置环境变量 {env_var}。"
             )
 
         try:
             from openai import AsyncOpenAI
 
-            client = AsyncOpenAI(api_key=api_key, base_url=self.base_url)
+            client = AsyncOpenAI(api_key=api_key, base_url=get_tokenplan_base_url())
             messages = self._build_messages(message, history, system_prompt)
             api_model = get_api_model(ai_id)
 
@@ -212,12 +211,9 @@ class BailianAdapter(AIAdapter):
                 "stream": False,
                 "max_tokens": spec.max_tokens,
             }
-            extra_body: Dict = {}
-
-            if spec.supports_reasoning:
-                extra_body["enable_thinking"] = bool(enable_reasoning)
-                if enable_reasoning and spec.use_reasoning_effort:
-                    extra_body["reasoning_effort"] = self.reasoning_effort
+            extra_body = build_tokenplan_extra_body(
+                spec, enable_reasoning, self.reasoning_effort
+            )
 
             if extra_body:
                 request_params["extra_body"] = extra_body
@@ -239,7 +235,9 @@ class BailianAdapter(AIAdapter):
                 )
             return content
         except Exception as e:
-            raise Exception(f"AI Token Plan API错误: {str(e)}") from e
+            raise Exception(
+                f"AI Token Plan（{get_tokenplan_provider()}）API错误: {str(e)}"
+            ) from e
 
 
 class DoubaoArkAdapter(AIAdapter):
