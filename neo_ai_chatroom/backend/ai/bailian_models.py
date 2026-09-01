@@ -1,4 +1,4 @@
-"""AI Token Plan 内置文本模型注册表。
+"""AI Token Plan 内置文本模型注册表及网关路由。
 
 内部继续使用 ``bailian-*`` id，以兼容已有自定义角色和历史会话；对外展示和
 实际 API 均为 AI Token Plan。
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass(frozen=True)
@@ -75,6 +75,18 @@ _LEGACY_ID_ALIASES = {
     "bailian-glm47": "bailian-glm5",
 }
 
+_NEOFLOW_DEFAULT_MODEL_MAP = {
+    "deepseek-v4-pro": "deepseek/deepseek-v4-pro",
+    "qwen3.7-plus": "qwen/qwen3.7-plus",
+    "qwen3.6-plus": "qwen/qwen3.6-plus",
+    "glm-5.2": "z-ai/glm-5.2",
+}
+
+DIRECT_TOKENPLAN_BASE_URL = (
+    "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+)
+DEFAULT_NEOFLOW_BASE_URL = "https://neoflow.neo-net.com/api/v1"
+
 
 def is_bailian_ai_id(ai_id: str) -> bool:
     base = resolve_base_ai_id(ai_id)
@@ -99,20 +111,73 @@ def get_bailian_model(ai_id: str) -> Optional[BailianModelSpec]:
     return _MODEL_BY_ID.get(resolve_base_ai_id(ai_id))
 
 
+def get_tokenplan_provider() -> str:
+    provider = (os.getenv("TOKENPLAN_PROVIDER") or "direct").strip().casefold()
+    if provider not in {"direct", "neoflow"}:
+        raise ValueError("TOKENPLAN_PROVIDER 仅支持 direct 或 neoflow")
+    return provider
+
+
+def get_tokenplan_base_url() -> str:
+    if get_tokenplan_provider() == "neoflow":
+        value = os.getenv("NEOFLOW_BASE_URL") or DEFAULT_NEOFLOW_BASE_URL
+    else:
+        value = os.getenv("TOKENPLAN_BASE_URL") or DIRECT_TOKENPLAN_BASE_URL
+    return value.strip().rstrip("/")
+
+
+def get_tokenplan_secret_provider_id() -> str:
+    return "neoflow" if get_tokenplan_provider() == "neoflow" else "bailian"
+
+
 def get_api_model(ai_id: str) -> str:
     spec = get_bailian_model(ai_id)
     if not spec:
         raise ValueError(f"未知 AI Token Plan 模型: {ai_id}")
-    env_key = f"TOKENPLAN_MODEL_{spec.id.replace('-', '_')}"
+    suffix = spec.id.replace("-", "_")
+    if get_tokenplan_provider() == "neoflow":
+        override = (os.getenv(f"NEOFLOW_MODEL_{suffix}") or "").strip()
+        if override:
+            return override
+        mapped = _NEOFLOW_DEFAULT_MODEL_MAP.get(spec.api_model.casefold())
+        if mapped:
+            return mapped
+        raise ValueError(
+            f"模型 {spec.api_model} 尚无 NeoFlow 映射；"
+            f"请配置 NEOFLOW_MODEL_{suffix}"
+        )
+    env_key = f"TOKENPLAN_MODEL_{suffix}"
     return (os.getenv(env_key) or "").strip() or spec.api_model
+
+
+def build_tokenplan_extra_body(
+    spec: BailianModelSpec,
+    enable_reasoning: bool,
+    reasoning_effort: str,
+) -> Dict[str, Any]:
+    """仅构造模型能力参数，不指定 NeoFlow 上游供应商。"""
+    extra_body: Dict[str, Any] = {}
+    if spec.supports_reasoning:
+        extra_body["enable_thinking"] = bool(enable_reasoning)
+        if enable_reasoning and spec.use_reasoning_effort:
+            extra_body["reasoning_effort"] = reasoning_effort
+    return extra_body
+
+
+def is_tokenplan_model_available(ai_id: str) -> bool:
+    try:
+        get_api_model(ai_id)
+        return True
+    except ValueError:
+        return False
 
 
 def get_default_mention_model_id() -> str:
     default_id = (
-        os.getenv("TOKENPLAN_DEFAULT_MENTION_MODEL") or "bailian-deepseekv4"
+        os.getenv("TOKENPLAN_DEFAULT_MENTION_MODEL") or "bailian-qwen37plus"
     ).strip()
     default_id = _LEGACY_ID_ALIASES.get(default_id, default_id)
-    return default_id if default_id in _MODEL_BY_ID else BAILIAN_MODELS[0].id
+    return default_id if default_id in _MODEL_BY_ID else "bailian-qwen37plus"
 
 
 def build_mention_alias_map() -> Dict[str, str]:

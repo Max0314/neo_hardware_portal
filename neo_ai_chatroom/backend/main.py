@@ -104,9 +104,14 @@ from backend.services.ai_key_resolver import (
 from backend.models.ai_provider_keys import get_provider, AI_KEY_PROVIDERS
 from backend.ai.bailian_models import (
     BAILIAN_MODELS,
+    build_tokenplan_extra_body,
     build_mention_alias_map,
     get_api_model,
     get_bailian_model,
+    get_tokenplan_base_url,
+    get_tokenplan_provider,
+    get_tokenplan_secret_provider_id,
+    is_tokenplan_model_available,
     is_bailian_ai_id,
     resolve_base_ai_id,
 )
@@ -125,7 +130,9 @@ async def _is_ai_invokable(ai_config: dict) -> bool:
     ai_id = ai_config.get("id") or ""
     base_ai = ai_config.get("baseAI") or _resolve_base_ai_id(ai_id)
     if base_ai.startswith("bailian-"):
-        return await has_provider("bailian")
+        return is_tokenplan_model_available(base_ai) and await has_provider(
+            get_tokenplan_secret_provider_id()
+        )
     if str(ai_id).startswith("custom-"):
         return await has_provider(base_ai)
     return await has_provider(ai_id)
@@ -165,14 +172,14 @@ async def _build_llm_provider_catalog() -> list:
                 "isCustom": False,
             }
         )
-    bailian_enabled = await has_provider("bailian")
+    bailian_enabled = await has_provider(get_tokenplan_secret_provider_id())
     for spec in BAILIAN_MODELS:
         entry = {
             "id": spec.id,
             "name": spec.name,
             "avatar": spec.avatar,
             "description": spec.description,
-            "enabled": bailian_enabled,
+            "enabled": bailian_enabled and is_tokenplan_model_available(spec.id),
             "baseAI": spec.id,
             "isCustom": False,
         }
@@ -828,18 +835,17 @@ async def stream_bailian_response(
     if not spec:
         raise ValueError(f"未知 AI Token Plan 模型: {ai_id}")
 
-    api_key = (await get_secret_async("bailian") or "").strip()
+    provider = get_tokenplan_provider()
+    secret_provider_id = get_tokenplan_secret_provider_id()
+    api_key = (await get_secret_async(secret_provider_id) or "").strip()
     if not api_key:
+        env_var = "NEOFLOW_API_KEY" if provider == "neoflow" else "TOKENPLAN_API_KEY"
         raise ValueError(
-            "AI Token Plan API Key 未配置。请在「API 密钥」中保存密钥，"
-            "或设置环境变量 TOKENPLAN_API_KEY。"
+            f"AI Token Plan（{provider}）API Key 未配置。"
+            f"请在「API 密钥」中保存密钥，或设置环境变量 {env_var}。"
         )
 
-    base_url = (
-        (os.getenv("TOKENPLAN_BASE_URL") or "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1")
-        .strip()
-        .rstrip("/")
-    )
+    base_url = get_tokenplan_base_url()
     reasoning_effort = (os.getenv("TOKENPLAN_REASONING_EFFORT") or "high").strip() or "high"
     cap = int(os.getenv("BAILIAN_MAX_OUTPUT_TOKENS", str(spec.max_tokens)))
     safe_max = max_tokens if isinstance(max_tokens, int) and max_tokens > 0 else cap
@@ -871,17 +877,16 @@ async def stream_bailian_response(
         "max_tokens": safe_max,
         "stream_options": {"include_usage": True},
     }
-    extra_body: Dict[str, Any] = {}
-    if spec.supports_reasoning:
-        extra_body["enable_thinking"] = bool(use_reasoning)
-        if use_reasoning and spec.use_reasoning_effort:
-            extra_body["reasoning_effort"] = reasoning_effort
+    extra_body = build_tokenplan_extra_body(spec, use_reasoning, reasoning_effort)
     if extra_body:
         request_params["extra_body"] = extra_body
     if not (spec.supports_reasoning and use_reasoning):
         request_params["temperature"] = spec.default_temperature
 
-    print(f"[Token Plan流式] ai_id={ai_id} model={api_model} message_id={message_id}")
+    print(
+        f"[Token Plan流式] provider={provider} ai_id={ai_id} "
+        f"model={api_model} message_id={message_id}"
+    )
 
     try:
         stream = await client.chat.completions.create(**request_params)

@@ -16,6 +16,12 @@ AI_KEY_PROVIDERS: List[Dict[str, Any]] = [
         "description": "AI Token Plan OpenAI 兼容接口（TokenPlan-XXX 模型共用）",
     },
     {
+        "id": "neoflow",
+        "name": "NeoFlow Token Plan",
+        "env_var": "NEOFLOW_API_KEY",
+        "description": "通过 NeoFlow 网关调用 Token Plan 模型",
+    },
+    {
         "id": "doubao",
         "name": "豆包 SEED Mini",
         "env_var": "ARK_API_KEY",
