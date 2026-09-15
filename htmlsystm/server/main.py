@@ -2232,26 +2232,30 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path.startswith('/api/announcement/attachment/'):
             if not self.check_auth():
                 return
-            parts = self.path.split('/')
+            parsed_attachment_url = urllib.parse.urlparse(self.path)
+            parts = parsed_attachment_url.path.split('/')
+            attachment_query = urllib.parse.parse_qs(parsed_attachment_url.query)
+            attachment_view = attachment_query.get('view', ['published'])[0]
+            if attachment_view not in ('published', 'pending'):
+                self._send_attachment_api_error(400, '无效的附件版本')
+                return
             print(f"附件下载请求: path={self.path}, parts={parts}, len={len(parts)}")
             if len(parts) >= 6:  # /api/announcement/attachment/{id}/{filename} 或 by-index/{n}
                 announcement_id = parts[4]
-                version_number = None
+                version_number = attachment_query.get('version', [None])[0]
                 filename = None
 
                 if parts[5] == 'by-index' and len(parts) >= 7:
                     index_part = parts[6]
-                    if '?' in index_part:
-                        index_part, query_string = index_part.split('?', 1)
-                        version_number = urllib.parse.parse_qs(query_string).get('version', [None])[0]
                     try:
                         att_index = int(index_part)
                     except ValueError:
                         self._send_attachment_api_error(400, '无效的附件索引')
                         return
-                    ann = self.announcement_mgr.get_announcement_for_download(announcement_id)
-                    if not ann:
-                        ann = self.announcement_mgr.get_announcement(announcement_id)
+                    ann = self.announcement_mgr.get_announcement_for_download(
+                        announcement_id,
+                        view=attachment_view,
+                    )
                     attachments = (ann or {}).get('attachments') or []
                     if att_index < 0 or att_index >= len(attachments):
                         self._send_attachment_api_error(404, '附件索引不存在')
@@ -2265,10 +2269,6 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
                     )
                 else:
                     filename_encoded = '/'.join(parts[5:])
-                    if '?' in filename_encoded:
-                        filename_encoded, query_string = filename_encoded.split('?', 1)
-                        query_params = urllib.parse.parse_qs(query_string)
-                        version_number = query_params.get('version', [None])[0]
                     try:
                         filename = urllib.parse.unquote(filename_encoded, encoding='utf-8')
                     except Exception as e:
@@ -2276,7 +2276,12 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
                         filename = filename_encoded
 
                 if filename:
-                    self.handle_download_attachment(announcement_id, filename, version_number)
+                    self.handle_download_attachment(
+                        announcement_id,
+                        filename,
+                        version_number,
+                        view=attachment_view,
+                    )
             else:
                 logger.warning(f"附件下载: 路径格式错误, path={self.path}")
                 self._send_attachment_api_error(404, '无效的附件下载地址')
@@ -2323,11 +2328,19 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
             if not self.check_auth():
                 return
             
-            announcement_id = self.path.split('/')[-1]
-            
-            # 优先从文件读取（temp目录优先），确保获取最新内容
-            # 因为编辑已发布公告时，会在temp目录创建待审批副本，需要优先读取
-            announcement = self.announcement_mgr.get_announcement(announcement_id)
+            parsed_detail_url = urllib.parse.urlparse(self.path)
+            announcement_id = parsed_detail_url.path.split('/')[-1]
+            detail_query = urllib.parse.parse_qs(parsed_detail_url.query)
+            detail_view = detail_query.get('view', ['editable'])[0]
+            if detail_view == 'published':
+                announcement = self.announcement_mgr.get_published_announcement(announcement_id)
+            elif detail_view == 'pending':
+                announcement = self.announcement_mgr.get_pending_announcement(announcement_id)
+            elif detail_view == 'editable':
+                announcement = self.announcement_mgr.get_announcement(announcement_id)
+            else:
+                self.send_json_response({'error': '无效的公告版本'}, status=400)
+                return
             
             if announcement:
                 # 如果从temp目录读取到待审批版本，清除内存缓存（确保后续读取也是最新）
@@ -2361,8 +2374,11 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
                     if sub_board:
                         announcement['sub_board_name'] = sub_board['name']
                 
-                # 移除内部标记
-                announcement.pop('_is_pending_review', None)
+                # 告知前端附件必须从哪个版本下载，随后移除内部标记。
+                is_pending_review = bool(announcement.pop('_is_pending_review', None))
+                announcement['_attachment_view'] = (
+                    'pending' if is_pending_review else 'published'
+                )
                 
                 self.send_json_response(announcement)
             else:
@@ -7432,7 +7448,7 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
         """附件 API 统一返回 JSON，避免前端 XHR 收到 HTML 误判。"""
         self.send_json_response({'success': False, 'error': message}, status=code)
 
-    def handle_download_attachment(self, announcement_id, filename, version_number=None):
+    def handle_download_attachment(self, announcement_id, filename, version_number=None, view='published'):
         """处理附件下载
         
         Args:
@@ -7445,10 +7461,11 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
             self._send_attachment_api_error(401, '请先登录')
             return
         
-        # 优先使用正式目录中已发布版本（避免 temp 待审副本导致无权或附件路径不一致）
-        announcement = self.announcement_mgr.get_announcement_for_download(announcement_id)
-        if not announcement:
-            announcement = self.announcement_mgr.get_announcement(announcement_id)
+        # 详情页显式指定正式版或待审版，禁止跨版本回退。
+        announcement = self.announcement_mgr.get_announcement_for_download(
+            announcement_id,
+            view=view,
+        )
         if not announcement:
             logger.warning(f"附件下载失败: 公告不存在, id={announcement_id}")
             self._send_attachment_api_error(404, '公告不存在')
@@ -7480,7 +7497,10 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
                 attachment_path = None
         else:
             attachment_path = self.announcement_mgr.get_attachment(
-                announcement_id, filename, metadata=announcement
+                announcement_id,
+                filename,
+                metadata=announcement,
+                view=view,
             )
         
         if not attachment_path or not os.path.exists(attachment_path):

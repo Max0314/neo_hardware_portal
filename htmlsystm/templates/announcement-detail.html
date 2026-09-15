@@ -321,6 +321,10 @@
     </div>
 
     <script>
+        const announcementView = new URLSearchParams(window.location.search).get('view') === 'pending'
+            ? 'pending'
+            : 'published';
+
         document.addEventListener('DOMContentLoaded', function() {
             // 从URL获取公告ID
             const pathParts = window.location.pathname.split('/');
@@ -336,7 +340,7 @@
         });
         
         function loadAnnouncement(announcementId) {
-            fetch(`/api/announcement/announcement/${announcementId}`, {
+            fetch(`/api/announcement/announcement/${announcementId}?view=${announcementView}`, {
                 credentials: 'include'
             })
                 .then(response => {
@@ -492,7 +496,8 @@
                 
                 announcement.attachments.forEach((attachment, attIndex) => {
                     const size = (attachment.size / 1024).toFixed(1);
-                    const downloadUrl = `/api/announcement/attachment/${announcement.id}/by-index/${attIndex}`;
+                    const attachmentView = announcement._attachment_view || announcementView;
+                    const downloadUrl = `/api/announcement/attachment/${announcement.id}/by-index/${attIndex}?view=${attachmentView}`;
                     html += `
                         <div class="attachment-item">
                             <div class="attachment-info">
