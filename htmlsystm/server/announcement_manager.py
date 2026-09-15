@@ -609,6 +609,122 @@ class AnnouncementManager:
                 raise ValueError(f"保存附件失败：{attachment.get('name', 'unknown')}, 错误: {str(e)}")
         
         return saved_attachments
+
+    def _reconcile_attachments(self, announcement_path, existing_attachments, attachments):
+        """Atomically make an announcement's attachment directory match the submitted list.
+
+        Entries with ``data`` are new/replacement files.  Entries without ``data``
+        are references to files already present in ``existing_attachments``.  The
+        submitted list is authoritative, so omitted files are removed.
+        """
+        if attachments is None:
+            return list(existing_attachments or [])
+        if not isinstance(attachments, list):
+            raise ValueError("附件列表格式不正确")
+        if len(attachments) > MAX_ATTACHMENTS_PER_ANNOUNCEMENT:
+            raise ValueError(
+                f"附件数量超过限制：最多允许{MAX_ATTACHMENTS_PER_ANNOUNCEMENT}个附件，"
+                f"当前有{len(attachments)}个"
+            )
+
+        existing_attachments = list(existing_attachments or [])
+        existing_by_name = {
+            self._normalize_attachment_name(att.get('name')): att
+            for att in existing_attachments
+            if isinstance(att, dict) and att.get('name')
+        }
+
+        seen_names = set()
+        new_attachments = []
+        attachment_plan = []
+        for attachment in attachments:
+            if not isinstance(attachment, dict):
+                raise ValueError("附件信息格式不正确")
+            name = attachment.get('name') or ''
+            safe_name = os.path.basename(name)
+            if not safe_name or safe_name != name or '..' in safe_name or '/' in safe_name or '\\' in safe_name:
+                raise ValueError(f"文件名不合法：{name}")
+
+            normalized_name = self._normalize_attachment_name(name)
+            if normalized_name in seen_names:
+                raise ValueError(f"附件名称重复：{name}")
+            seen_names.add(normalized_name)
+
+            has_new_data = attachment.get('data') not in (None, '')
+            if has_new_data:
+                new_attachments.append(attachment)
+                attachment_plan.append(('new', normalized_name, attachment))
+            else:
+                existing = existing_by_name.get(normalized_name)
+                if not existing:
+                    raise ValueError(f"引用的已有附件不存在：{name}")
+                attachment_plan.append(('existing', normalized_name, existing))
+
+        attachment_dir = os.path.join(announcement_path, 'attachments')
+        staging_root = os.path.join(
+            os.path.dirname(announcement_path),
+            f'.{os.path.basename(announcement_path)}-attachments-{uuid.uuid4().hex}',
+        )
+        staging_attachments_dir = os.path.join(staging_root, 'attachments')
+        backup_dir = os.path.join(staging_root, 'original-attachments')
+        os.makedirs(staging_attachments_dir, exist_ok=False)
+
+        try:
+            saved_new = self._save_attachments(staging_root, new_attachments) if new_attachments else []
+            saved_new_by_name = {
+                self._normalize_attachment_name(att.get('name')): att
+                for att in saved_new
+            }
+
+            reconciled = []
+            for kind, normalized_name, attachment in attachment_plan:
+                if kind == 'new':
+                    saved = saved_new_by_name.get(normalized_name)
+                    if not saved:
+                        raise ValueError(f"新附件保存失败：{attachment.get('name', '')}")
+                    reconciled.append(saved)
+                    continue
+
+                source = self._match_attachment_file(
+                    attachment_dir,
+                    attachment.get('name', ''),
+                    existing_attachments,
+                )
+                if not source:
+                    raise ValueError(f"已有附件文件不存在：{attachment.get('name', '')}")
+                target = os.path.join(staging_attachments_dir, os.path.basename(source))
+                shutil.copy2(source, target)
+                preserved = dict(attachment)
+                preserved['name'] = os.path.basename(source)
+                preserved['size'] = os.path.getsize(target)
+                reconciled.append(preserved)
+
+            original_moved = False
+            if os.path.isdir(attachment_dir):
+                os.replace(attachment_dir, backup_dir)
+                original_moved = True
+            try:
+                os.replace(staging_attachments_dir, attachment_dir)
+            except Exception:
+                if original_moved and not os.path.exists(attachment_dir):
+                    os.replace(backup_dir, attachment_dir)
+                raise
+
+            if os.path.isdir(backup_dir):
+                try:
+                    shutil.rmtree(backup_dir)
+                except OSError as e:
+                    logger.warning("清理旧附件暂存目录失败 %s: %s", backup_dir, e)
+            logger.info(
+                "公告附件已更新: id=%s, 总数=%d, 新增或替换=%d",
+                os.path.basename(announcement_path),
+                len(reconciled),
+                len(saved_new),
+            )
+            return reconciled
+        finally:
+            if os.path.isdir(staging_root):
+                shutil.rmtree(staging_root, ignore_errors=True)
     
     def create_announcement(self, board_id, title, content, author, priority='normal', status='draft', attachments=None, sub_board_id=None, user_id=None, author_userid=None, pending_approver_identifier=None, pending_approver_userid=None):
         """创建新公告
@@ -1287,26 +1403,30 @@ class AnnouncementManager:
                             if key != 'attachments':  # 附件稍后单独处理
                                 temp_metadata[key] = value
                         
-                        # 保存副本的元数据
-                        if not self._write_metadata(temp_announcement_path, temp_metadata):
-                            print(f"  ⚠️ 保存待审批副本元数据失败")
-                            self._release_metadata_lock(lock_fd)
-                            return False, "保存待审批副本元数据失败"
-                        
-                        # 更新副本的内容文件（如果有）
-                        if 'content' in updates:
-                            temp_content_file = os.path.join(temp_announcement_path, 'content.html')
-                            try:
+                        try:
+                            # 更新副本的内容文件（如果有）
+                            if 'content' in updates:
+                                temp_content_file = os.path.join(temp_announcement_path, 'content.html')
                                 with open(temp_content_file, 'w', encoding='utf-8') as f:
                                     f.write(updates['content'])
                                 print(f"  ✅ 已更新待审批副本内容")
-                            except Exception as e:
-                                print(f"  ⚠️ 更新待审批副本内容失败: {e}")
-                        
-                        # 处理附件（如果需要更新）
-                        if 'attachments' in updates:
-                            # 这里可以处理附件更新，暂时跳过，使用原附件
-                            pass
+
+                            # 在待审批副本中应用附件的新增、替换和删除；正式版本保持不变。
+                            if 'attachments' in updates:
+                                temp_metadata['attachments'] = self._reconcile_attachments(
+                                    temp_announcement_path,
+                                    temp_metadata.get('attachments', []),
+                                    updates['attachments'],
+                                )
+
+                            # 内容和附件全部成功后再提交元数据。
+                            if not self._write_metadata(temp_announcement_path, temp_metadata):
+                                raise OSError("保存待审批副本元数据失败")
+                        except Exception as e:
+                            logger.error("更新待审批副本失败 %s: %s", announcement_id, e, exc_info=True)
+                            self._safe_rmtree(temp_announcement_path)
+                            self._release_metadata_lock(lock_fd)
+                            return False, f"更新待审批副本失败: {str(e)}"
                         
                         # 原公告保持不变（approved状态），返回成功
                         print(f"  ✅ 原公告保持approved状态，待审批副本已创建")
@@ -1389,36 +1509,13 @@ class AnnouncementManager:
                         if new_board_id != metadata.get('board_id'):
                             metadata['board_id'] = new_board_id
                 
-                # 处理附件上传
+                # 让附件目录与前端提交列表完全一致（包括只删除、不新增的情况）。
                 if 'attachments' in updates:
-                    # 分离新上传的附件（有data且不为null）和已有附件（data为null或不存在）
-                    new_attachments = [att for att in updates['attachments'] if att.get('data') and att.get('data') is not None]
-                    existing_attachment_refs = [att for att in updates['attachments'] if not att.get('data') or att.get('data') is None]
-                    
-                    # 获取现有附件列表
-                    existing_attachments = metadata.get('attachments', [])
-                    existing_attachment_names = {att.get('name') for att in existing_attachments}
-                    
-                    # 保存新上传的附件
-                    saved_attachments = []
-                    if new_attachments:
-                        saved_attachments = self._save_attachments(announcement_path, new_attachments)
-                        print(f"新上传附件: {len(saved_attachments)} 个")
-                    
-                    # 合并已有附件（从前端传递的引用或现有附件中）
-                    saved_attachment_names = {att.get('name') for att in saved_attachments}
-                    referenced_names = {ref.get('name') for ref in existing_attachment_refs}
-                    
-                    # 添加已有附件（如果不在新上传列表中）
-                    for existing_att in existing_attachments:
-                        if existing_att.get('name') not in saved_attachment_names:
-                            # 如果被前端引用，或者没有新附件，则保留
-                            if existing_att.get('name') in referenced_names or not new_attachments:
-                                saved_attachments.append(existing_att)
-                    
-                    metadata['attachments'] = saved_attachments
-                    total_kept = len(saved_attachments) - len(new_attachments)
-                    print(f"附件已更新: 共 {len(saved_attachments)} 个附件（新上传 {len(new_attachments)} 个，保留 {total_kept} 个）")
+                    metadata['attachments'] = self._reconcile_attachments(
+                        announcement_path,
+                        metadata.get('attachments', []),
+                        updates['attachments'],
+                    )
                 
                 # 保存更新后的元数据
                 if not self._write_metadata(announcement_path, metadata):
@@ -1449,68 +1546,76 @@ class AnnouncementManager:
                 traceback.print_exc()
                 return False, f"更新公告失败: {str(e)}"
     
-    def get_announcement(self, announcement_id):
-        """获取单个公告详情
-        
-        优先查找temp目录中的待审批版本（编辑已发布公告时创建的副本），
-        如果不存在，再查找正式目录中的已发布版本。
-        这样可以确保审批页面显示的是最新的编辑内容。
-        """
-        # 优先在临时目录查找（编辑已发布公告时创建的待审批副本）
-        temp_path = os.path.join(self.base_dir, self.temp_dir)
-        if os.path.exists(temp_path):
-            # 先尝试旧格式：temp/{announcement_id}
-            announcement_path = os.path.join(temp_path, announcement_id)
-            metadata = self._read_metadata(announcement_path)
-            if metadata:
-                content_file = os.path.join(announcement_path, 'content.html')
-                if os.path.exists(content_file):
-                    try:
-                        with open(content_file, 'r', encoding='utf-8') as f:
-                            metadata['content'] = f.read()
-                    except Exception as e:
-                        print(f"读取内容文件失败: {e}")
-                        metadata['content'] = ''
-                # 标记这是待审批版本
-                metadata['_is_pending_review'] = True
-                return metadata
-        
-            # 搜索新格式：temp/{user_id}/{announcement_id}
-            for user_dir in os.listdir(temp_path):
-                user_dir_path = os.path.join(temp_path, user_dir)
-                if os.path.isdir(user_dir_path):
-                    announcement_path = os.path.join(user_dir_path, announcement_id)
-                    metadata = self._read_metadata(announcement_path)
-                    if metadata:
-                        content_file = os.path.join(announcement_path, 'content.html')
-                        if os.path.exists(content_file):
-                            try:
-                                with open(content_file, 'r', encoding='utf-8') as f:
-                                    metadata['content'] = f.read()
-                            except Exception as e:
-                                print(f"读取内容文件失败: {e}")
-                                metadata['content'] = ''
-                        # 标记这是待审批版本
-                        metadata['_is_pending_review'] = True
-                        return metadata
-        
-        # 在正式目录查找（如果temp目录中没有）
+    def _read_announcement_at_path(self, announcement_path, pending=False):
+        metadata = self._read_metadata(announcement_path)
+        if not metadata:
+            return None
+        content_file = os.path.join(announcement_path, 'content.html')
+        if os.path.exists(content_file):
+            try:
+                with open(content_file, 'r', encoding='utf-8') as f:
+                    metadata['content'] = f.read()
+            except Exception as e:
+                print(f"读取内容文件失败: {e}")
+                metadata['content'] = ''
+        if pending:
+            metadata['_is_pending_review'] = True
+        return metadata
+
+    def _iter_pending_announcement_paths(self, announcement_id):
+        temp_root = os.path.join(self.base_dir, self.temp_dir)
+        direct = os.path.join(temp_root, announcement_id)
+        if os.path.isdir(direct):
+            yield direct
+        if not os.path.isdir(temp_root):
+            return
+        for name in os.listdir(temp_root):
+            nested = os.path.join(temp_root, name, announcement_id)
+            if os.path.isdir(nested):
+                yield nested
+
+    def _iter_formal_announcement_paths(self, announcement_id):
+        seen = set()
         for board_id in self._get_all_board_ids():
-            announcement_path = self._get_announcement_path(board_id, announcement_id, False)
-            metadata = self._read_metadata(announcement_path)
+            path = self._get_announcement_path(board_id, announcement_id, False)
+            absolute = os.path.abspath(path)
+            if absolute not in seen and os.path.isdir(absolute):
+                seen.add(absolute)
+                yield absolute
+        if os.path.isdir(self.base_dir):
+            for name in os.listdir(self.base_dir):
+                if name == self.temp_dir or name.startswith('.'):
+                    continue
+                path = os.path.abspath(os.path.join(self.base_dir, name, announcement_id))
+                if path not in seen and os.path.isdir(path):
+                    seen.add(path)
+                    yield path
+
+    def get_pending_announcement(self, announcement_id):
+        for announcement_path in self._iter_pending_announcement_paths(announcement_id):
+            metadata = self._read_announcement_at_path(announcement_path, pending=True)
             if metadata:
-                # 读取内容
-                content_file = os.path.join(announcement_path, 'content.html')
-                if os.path.exists(content_file):
-                    try:
-                        with open(content_file, 'r', encoding='utf-8') as f:
-                            metadata['content'] = f.read()
-                    except Exception as e:
-                        print(f"读取内容文件失败: {e}")
-                        metadata['content'] = ''
                 return metadata
-        
         return None
+
+    def get_published_announcement(self, announcement_id):
+        fallback = None
+        for announcement_path in self._iter_formal_announcement_paths(announcement_id):
+            metadata = self._read_announcement_at_path(announcement_path)
+            if not metadata:
+                continue
+            if metadata.get('status') == 'approved':
+                return metadata
+            if fallback is None:
+                fallback = metadata
+        return fallback
+
+    def get_announcement(self, announcement_id):
+        """获取可编辑详情；待审/草稿副本优先，否则返回正式版本。"""
+        return (
+            self.get_pending_announcement(announcement_id)
+            or self.get_published_announcement(announcement_id)
+        )
     
     def get_announcements(self, board_id=None, status=None, include_temp=False, sub_board_id=None):
         """获取公告列表
@@ -2095,40 +2200,22 @@ class AnnouncementManager:
     def _iter_announcement_paths(self, announcement_id: str):
         """遍历可能存放该公告的所有目录（含未在配置中登记的一级公告栏）。"""
         seen = set()
+        for path in self._iter_pending_announcement_paths(announcement_id):
+            absolute = os.path.abspath(path)
+            if absolute not in seen:
+                seen.add(absolute)
+                yield absolute
+        for path in self._iter_formal_announcement_paths(announcement_id):
+            absolute = os.path.abspath(path)
+            if absolute not in seen:
+                seen.add(absolute)
+                yield absolute
 
-        def _yield(path):
-            ap = os.path.abspath(path)
-            if ap in seen or not os.path.isdir(ap):
-                return
-            seen.add(ap)
-            yield ap
-
-        yield from _yield(os.path.join(self.base_dir, self.temp_dir, announcement_id))
-        temp_root = os.path.join(self.base_dir, self.temp_dir)
-        if os.path.isdir(temp_root):
-            for name in os.listdir(temp_root):
-                yield from _yield(os.path.join(temp_root, name, announcement_id))
-        for board_id in self._get_all_board_ids():
-            yield from _yield(self._get_announcement_path(board_id, announcement_id, False))
-        if os.path.isdir(self.base_dir):
-            for name in os.listdir(self.base_dir):
-                if name == self.temp_dir:
-                    continue
-                yield from _yield(os.path.join(self.base_dir, name, announcement_id))
-
-    def get_announcement_for_download(self, announcement_id: str):
-        """下载/鉴权用：优先返回正式目录中已发布版本，避免 temp 待审副本导致无权或附件路径不一致。"""
-        published = None
-        fallback = None
-        for ann_path in self._iter_announcement_paths(announcement_id):
-            meta = self._read_metadata(ann_path)
-            if not meta:
-                continue
-            if meta.get('status') == 'approved' and not self._is_temp_announcement_path(ann_path):
-                return meta
-            if not fallback:
-                fallback = meta
-        return fallback
+    def get_announcement_for_download(self, announcement_id: str, view='published'):
+        """返回下载所对应的明确版本，禁止在正式与待审目录之间模糊回退。"""
+        if view == 'pending':
+            return self.get_pending_announcement(announcement_id)
+        return self.get_published_announcement(announcement_id)
 
     def _normalize_attachment_name(self, name: str) -> str:
         if name is None:
@@ -2241,20 +2328,27 @@ class AnnouncementManager:
             return os.path.join(attachments_dir, files[0])
         return None
 
-    def get_attachment(self, announcement_id, filename, metadata=None):
+    def get_attachment(self, announcement_id, filename, metadata=None, view=None):
         """获取附件文件路径（当前版本）"""
         logger.info(f"查找附件: announcement_id={announcement_id}, filename={filename}")
+        if view == 'pending':
+            path_factory = self._iter_pending_announcement_paths
+        elif view == 'published':
+            path_factory = self._iter_formal_announcement_paths
+        else:
+            path_factory = self._iter_announcement_paths
+
         metadata_attachments = None
         if metadata and isinstance(metadata.get('attachments'), list):
             metadata_attachments = metadata['attachments']
         elif not metadata_attachments:
-            for ann_path in self._iter_announcement_paths(announcement_id):
+            for ann_path in path_factory(announcement_id):
                 meta = self._read_metadata(ann_path)
                 if meta and meta.get('attachments'):
                     metadata_attachments = meta['attachments']
                     break
 
-        for ann_path in self._iter_announcement_paths(announcement_id):
+        for ann_path in path_factory(announcement_id):
             attachments_dir = os.path.join(ann_path, 'attachments')
             if not os.path.isdir(attachments_dir):
                 continue

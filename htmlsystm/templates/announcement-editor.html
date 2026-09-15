@@ -979,7 +979,7 @@
         });
         
         function loadAnnouncementForEdit(announcementId) {
-            fetch(`/api/announcement/announcement/${announcementId}`)
+            fetch(`/api/announcement/announcement/${announcementId}?view=editable`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('加载公告失败');
@@ -1223,7 +1223,7 @@
                         submitBtn.disabled = true;
                         submitBtn.textContent = '已提交';
                         setTimeout(() => {
-                            window.location.href = `/announcement-detail/${editAnnouncementId}`;
+                            window.location.href = `/announcement-detail/${editAnnouncementId}?view=pending`;
                         }, 4500);
                     } else {
                         let updateMsg = '公告更新成功！已提交审核，等待管理员审批。';
@@ -1232,7 +1232,7 @@
                         }
                         showMessage(updateMsg, 'success');
                         setTimeout(() => {
-                            window.location.href = `/announcement-detail/${editAnnouncementId}`;
+                            window.location.href = `/announcement-detail/${editAnnouncementId}?view=pending`;
                         }, 2000);
                     }
                 } else {

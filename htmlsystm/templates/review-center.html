@@ -690,7 +690,7 @@
                 actions.innerHTML = `
                     <button class="btn btn-approve" onclick="approveAnnouncement('${announcement.id}', true)">✅ 批准发布</button>
                     <button class="btn btn-reject" onclick="approveAnnouncement('${announcement.id}', false)">❌ 拒绝</button>
-                    <a href="/announcement-detail/${announcement.id}" class="btn">👁️ 查看详情</a>
+                    <a href="/announcement-detail/${announcement.id}?view=pending" class="btn">👁️ 查看详情</a>
                 `;
                 
                 item.appendChild(header);
