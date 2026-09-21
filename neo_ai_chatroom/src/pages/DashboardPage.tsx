@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import type { DashboardStats, DashboardStatsResponse, DashboardKpiKey } from '@/types/dashboard';
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts';
+import { EfficiencyPanel } from '@/components/dashboard/EfficiencyPanel';
 import { ActivityTicker } from '@/components/dashboard/ActivityTicker';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { KpiDetailModal } from '@/components/dashboard/KpiDetailModal';
@@ -60,6 +61,8 @@ export function DashboardPage() {
           </h1>
           <div style={{ width: 100 }} />
         </header>
+
+        <EfficiencyPanel stats={s} loading={loading} />
 
         <section className="bi-dashboard">
           <div className="section-header" style={{ cursor: 'default' }}>
