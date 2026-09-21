@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from backend.ai.bailian_models import (
     build_tokenplan_extra_body,
+    extract_reasoning_delta,
     get_api_model,
     get_bailian_model,
     get_default_mention_model_id,
@@ -14,6 +15,23 @@ from backend.ai.bailian_models import (
 
 
 class TokenPlanGatewayTests(unittest.TestCase):
+    def test_reasoning_delta_accepts_neoflow_and_deepseek_fields(self):
+        class Delta:
+            reasoning = "NeoFlow reasoning"
+            reasoning_content = None
+
+        self.assertEqual(extract_reasoning_delta(Delta()), "NeoFlow reasoning")
+        self.assertEqual(
+            extract_reasoning_delta({"reasoning_content": "DeepSeek reasoning"}),
+            "DeepSeek reasoning",
+        )
+        self.assertEqual(
+            extract_reasoning_delta(
+                {"reasoning_content": "preferred", "reasoning": "fallback"}
+            ),
+            "preferred",
+        )
+
     def test_direct_route_preserves_original_model_and_endpoint(self):
         with patch.dict(os.environ, {"TOKENPLAN_PROVIDER": "direct"}, clear=True):
             self.assertEqual(get_api_model("bailian-qwen37plus"), "qwen3.7-plus")

@@ -164,6 +164,17 @@ def build_tokenplan_extra_body(
     return extra_body
 
 
+def extract_reasoning_delta(delta: Any) -> Optional[str]:
+    """兼容 OpenAI 扩展中常见的两种流式思考字段。"""
+    if delta is None:
+        return None
+    if isinstance(delta, dict):
+        return delta.get("reasoning_content") or delta.get("reasoning")
+    return getattr(delta, "reasoning_content", None) or getattr(
+        delta, "reasoning", None
+    )
+
+
 def is_tokenplan_model_available(ai_id: str) -> bool:
     try:
         get_api_model(ai_id)

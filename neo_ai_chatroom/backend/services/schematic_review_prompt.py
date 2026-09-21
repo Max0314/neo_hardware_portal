@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from backend.ai.bailian_models import BAILIAN_MODELS
+from backend.ai.bailian_models import BAILIAN_MODELS, is_tokenplan_model_available
 
 DEFAULT_SCHEMATIC_REVIEW_PROMPT = """你是一名资深硬件工程师，请对以下网表进行原理图/接口评审。
 请严格以 JSON 格式输出，包含 overall_status、summary、complete、interfaces（含 checks 数组，每项含 check_name、status、description）。
@@ -35,13 +35,17 @@ def list_selectable_schematic_ai_models() -> List[Dict[str, str]]:
     ]
     out = [{"id": pid, "name": name, "description": desc} for pid, name, desc in specs]
     for spec in BAILIAN_MODELS:
+        if not is_tokenplan_model_available(spec.id):
+            continue
         out.append({"id": spec.id, "name": spec.name, "description": spec.description})
     return out
 
 
 def normalize_schematic_default_ai_id(ai_id: Optional[str]) -> str:
     val = (ai_id or "").strip()
-    if val in _BUILTIN_SCHEMATIC_AI_IDS:
+    if val in _BUILTIN_SCHEMATIC_AI_IDS and (
+        not val.startswith("bailian-") or is_tokenplan_model_available(val)
+    ):
         return val
     return DEFAULT_SCHEMATIC_AI_ID
 

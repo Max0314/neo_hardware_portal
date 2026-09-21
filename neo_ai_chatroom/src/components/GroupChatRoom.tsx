@@ -144,6 +144,7 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
   const [reviewPrompt, setReviewPrompt] = useState(() => getSchematicReviewPrompt());
   const [aiReviewRunning, setAiReviewRunning] = useState(false);
   const [aiReviewRound, setAiReviewRound] = useState(0);
+  const [aiReviewError, setAiReviewError] = useState<string | null>(null);
   const schematicAiReviewPendingRef = useRef(false);
   const schematicContinuationLoopRef = useRef(false);
   const schematicFinishReasonsRef = useRef<Record<string, string>>({});
@@ -1447,11 +1448,25 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
       });
     };
 
+    const handleDisconnect = () => {
+      setMessages(prev => prev.map(msg =>
+        msg.sender === 'ai' && msg.status === 'sending'
+          ? {
+              ...msg,
+              content: '连接已断开，本次请求已停止，请重试。',
+              status: 'error',
+              isThinking: false,
+            }
+          : msg
+      ));
+    };
+
     // 注册事件监听
     wsClient.on('ai_thinking', handleAIThinking);
     wsClient.on('ai_response', handleAIResponse);
     wsClient.on('ai_error', handleAIError);
     wsClient.on('ai_stream', handleAIStream);
+    wsClient.on('disconnect', handleDisconnect);
 
     // 清理函数
     return () => {
@@ -1459,6 +1474,7 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
       wsClient.off('ai_response', handleAIResponse);
       wsClient.off('ai_error', handleAIError);
       wsClient.off('ai_stream', handleAIStream);
+      wsClient.off('disconnect', handleDisconnect);
     };
     }, [selectedAIs, isSchematic, registerAiReviewFromContent]);
 
@@ -1533,7 +1549,7 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
   ) => {
     const messageText = customText ?? inputText;
     const filesToAttach = customText !== undefined ? [] : [...pendingChatFiles];
-    if (!messageText.trim() && filesToAttach.length === 0) return;
+    if (!messageText.trim() && filesToAttach.length === 0) return false;
 
     let outgoingContent = messageText;
     let attachmentNames: string[] | undefined;
@@ -1611,7 +1627,7 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
       }
       if (!wsClient.isConnected()) {
         alert('WebSocket连接失败，请刷新页面重试');
-        return;
+        return false;
       }
     }
     
@@ -1649,17 +1665,55 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
     if (!customText) {
       setInputText('');
     }
+    return true;
   };
 
   const waitForGroupMessageComplete = useCallback(
-    () =>
-      new Promise<void>((resolve) => {
-        const handler = () => {
-          wsClient.off('group_message_complete', handler);
+    () => {
+      let cancel = () => {};
+      const promise = new Promise<void>((resolve, reject) => {
+        let settled = false;
+        const cleanup = () => {
+          window.clearTimeout(timeoutId);
+          wsClient.off('group_message_complete', handleComplete);
+          wsClient.off('ai_error', handleError);
+          wsClient.off('disconnect', handleDisconnect);
+        };
+        const handleComplete = () => {
+          if (settled) return;
+          settled = true;
+          cleanup();
           resolve();
         };
-        wsClient.on('group_message_complete', handler);
-      }),
+        const handleError = (data: any) => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(new Error(data?.error || 'AI 评审请求失败'));
+        };
+        const handleDisconnect = () => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(new Error('连接已断开，本次 AI 评审已停止，请重试'));
+        };
+        const timeoutId = window.setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(new Error('AI 评审等待超时（190 秒），请重试'));
+        }, 190000);
+        cancel = () => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+        };
+        wsClient.on('group_message_complete', handleComplete);
+        wsClient.on('ai_error', handleError);
+        wsClient.on('disconnect', handleDisconnect);
+      });
+      return { promise, cancel };
+    },
     []
   );
 
@@ -1667,6 +1721,7 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
     async (payload: { prompt: string; netlist: string }) => {
       setChatPanelExpanded(true);
       setAiReviewRunning(true);
+      setAiReviewError(null);
       schematicContinuationLoopRef.current = true;
       const priorParsed: any[] = [];
       const sessionEntries: Array<{
@@ -1682,26 +1737,44 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
         for (let round = 1; round <= SCHEMATIC_REVIEW_MAX_ROUNDS; round++) {
           setAiReviewRound(round);
           schematicAiReviewPendingRef.current = true;
-
-          await handleSendMessage(message, {
-            skipEventTriggers: true,
-            schematicReview: true,
-            schematicPhase: 'pre_export',
-            maxTokens: SCHEMATIC_MAX_OUTPUT_TOKENS,
-          });
-
-          await waitForGroupMessageComplete();
+          const existingAiMessageIds = new Set(
+            messagesRef.current.filter((m) => m.sender === 'ai').map((m) => m.id)
+          );
+          const completion = waitForGroupMessageComplete();
+          try {
+            const sent = await handleSendMessage(message, {
+              skipEventTriggers: true,
+              schematicReview: true,
+              schematicPhase: 'pre_export',
+              maxTokens: SCHEMATIC_MAX_OUTPUT_TOKENS,
+            });
+            if (!sent) throw new Error('AI 评审消息发送失败，请检查连接后重试');
+            await completion.promise;
+          } catch (error) {
+            completion.cancel();
+            throw error;
+          }
           schematicAiReviewPendingRef.current = false;
 
           await new Promise((r) => window.setTimeout(r, 80));
 
           const recent = [...messagesRef.current].reverse();
           const aiMsg = recent.find(
-            (m) => m.sender === 'ai' && m.aiModel !== 'babata' && m.content?.trim()
+            (m) =>
+              m.sender === 'ai' &&
+              m.aiModel !== 'babata' &&
+              !existingAiMessageIds.has(m.id) &&
+              m.status === 'sent' &&
+              m.content?.trim()
           );
-          if (!aiMsg?.content) break;
+          if (!aiMsg?.content) {
+            throw new Error('模型未返回可用的评审结果');
+          }
 
           const parsed = parseSchematicReviewJson(aiMsg.content);
+          if (!parsed) {
+            throw new Error('模型返回内容不是有效的评审 JSON，已停止自动续写');
+          }
           const finishReason = schematicFinishReasonsRef.current[aiMsg.id];
 
           if (parsed) {
@@ -1764,7 +1837,10 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
             applySummary(null);
           }
         }
+      } catch (error) {
+        setAiReviewError(error instanceof Error ? error.message : 'AI 评审失败，请重试');
       } finally {
+        schematicAiReviewPendingRef.current = false;
         schematicContinuationLoopRef.current = false;
         setAiReviewRunning(false);
         setAiReviewRound(0);
@@ -2383,7 +2459,9 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
           <ChatInput
             value={inputText}
             onChange={setInputText}
-            onSubmit={() => handleSendMessage()}
+            onSubmit={async () => {
+              await handleSendMessage();
+            }}
             selectedAIs={selectedAIs}
             pendingAttachments={pendingChatFiles.map((f) => ({ name: f.name, size: f.size }))}
             onRemoveAttachment={(index) =>
@@ -2536,6 +2614,7 @@ export const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ title = 'AI工作�
                     onRunAiReview={runSchematicAiReview}
                     aiReviewRunning={aiReviewRunning}
                     aiReviewRound={aiReviewRound}
+                    aiReviewError={aiReviewError}
                     onOpenChat={() => {
                       setChatPanelExpanded(true);
                       chatSectionRef.current?.scrollIntoView({ behavior: 'smooth' });

@@ -51,6 +51,7 @@ export interface SchematicReviewPanelProps {
   onRunAiReview: (payload: { prompt: string; netlist: string }) => void;
   aiReviewRunning?: boolean;
   aiReviewRound?: number;
+  aiReviewError?: string | null;
   onOpenChat?: () => void;
   canManagePrompt?: boolean;
   onOpenPromptSettings?: () => void;
@@ -77,6 +78,7 @@ export const SchematicReviewPanel: React.FC<SchematicReviewPanelProps> = ({
   onRunAiReview,
   aiReviewRunning = false,
   aiReviewRound = 0,
+  aiReviewError = null,
   onOpenChat,
   canManagePrompt = false,
   onOpenPromptSettings,
@@ -622,6 +624,11 @@ export const SchematicReviewPanel: React.FC<SchematicReviewPanelProps> = ({
                       : 'AI 评审中…'
                     : '发送 AI 评审'}
                 </button>
+                {aiReviewError && (
+                  <p role="alert" className="mt-2 text-sm text-red-700">
+                    AI 评审失败：{aiReviewError}
+                  </p>
+                )}
                 {aggregatedReviewSummary && (
                   <div className="space-y-3 mt-4">
                     <div className="flex gap-3 text-[11px] font-medium">

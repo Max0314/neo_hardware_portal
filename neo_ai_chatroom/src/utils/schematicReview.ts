@@ -67,7 +67,10 @@ export function applySchematicAiSelection(
     }
     return filtered;
   }
-  const pickId = filtered.some((ai) => ai.id === defaultAiId) ? defaultAiId : filtered[0]?.id;
+  const available = filtered.filter((ai) => ai.enabled);
+  const pickId = available.some((ai) => ai.id === defaultAiId)
+    ? defaultAiId
+    : available[0]?.id;
   return filtered.map((ai) => ({ ...ai, enabled: ai.id === pickId }));
 }
 
