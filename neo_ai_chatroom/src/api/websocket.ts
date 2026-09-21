@@ -5,6 +5,8 @@ export class WebSocketClient {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private heartbeatIntervalMs = 25000;
   private listeners: Map<string, Set<(data: any) => void>> = new Map();
 
   connect(url: string) {
@@ -17,6 +19,7 @@ export class WebSocketClient {
     this.ws.onopen = () => {
       console.log('WebSocket连接已建立');
       this.reconnectAttempts = 0;
+      this.startHeartbeat();
       this.emit('connect', {});
     };
 
@@ -36,9 +39,26 @@ export class WebSocketClient {
 
     this.ws.onclose = () => {
       console.log('WebSocket连接已关闭');
+      this.stopHeartbeat();
       this.emit('disconnect', {});
       this.attemptReconnect(url);
     };
+  }
+
+  private startHeartbeat() {
+    this.stopHeartbeat();
+    this.heartbeatTimer = setInterval(() => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, this.heartbeatIntervalMs);
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
   }
 
   private attemptReconnect(url: string) {
@@ -94,6 +114,7 @@ export class WebSocketClient {
   }
 
   disconnect() {
+    this.stopHeartbeat();
     if (this.ws) {
       this.ws.close();
       this.ws = null;

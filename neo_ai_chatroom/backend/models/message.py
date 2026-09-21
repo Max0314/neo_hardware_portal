@@ -296,7 +296,8 @@ class MessageStore:
         self,
         conversation_id: str,
         ai_model: str,
-        limit: int = 20
+        limit: int = 20,
+        exclude_message_id: Optional[str] = None,
     ) -> List[Dict]:
         """获取特定AI的对话历史（用于上下文）
         
@@ -304,22 +305,32 @@ class MessageStore:
         """
         async with db_compat.connect() as db:
             db.row_factory = db_compat.Row
-            # 获取用户消息和该AI的回复，按时间顺序排列
+            # 先取最近 N 条，再恢复为时间正序。排除当前用户消息，调用方会在末尾追加，
+            # 避免同一份大网表被重复发送给上游。
             cursor = await db.execute("""
-                SELECT 
+                SELECT
                     role,
                     content,
                     ai_model,
                     created_at
-                FROM messages
-                WHERE conversation_id = ?
-                  AND (
-                    role = 'user' 
-                    OR (role = 'assistant' AND ai_model = ? AND status = 'completed')
-                  )
+                FROM (
+                    SELECT
+                        role,
+                        content,
+                        ai_model,
+                        created_at
+                    FROM messages
+                    WHERE conversation_id = ?
+                      AND id <> ?
+                      AND (
+                        role = 'user'
+                        OR (role = 'assistant' AND ai_model = ? AND status = 'completed')
+                      )
+                    ORDER BY created_at DESC
+                    LIMIT ?
+                ) AS recent_messages
                 ORDER BY created_at ASC
-                LIMIT ?
-            """, (conversation_id, ai_model, limit))
+            """, (conversation_id, exclude_message_id or "", ai_model, limit))
             rows = await cursor.fetchall()
             
             # 转换为标准格式

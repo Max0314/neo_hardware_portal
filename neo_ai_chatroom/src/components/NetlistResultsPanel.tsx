@@ -29,6 +29,7 @@ export interface AIReviewEntry {
 
 interface NetlistResultsPanelProps {
   aiReviewRound?: number;
+  aiReviewError?: string | null;
   selectedResultId: string | null;
   resultType: 'comparison' | 'analysis' | null;
   onResultSelected?: (id: string, type: 'comparison' | 'analysis') => void;
@@ -1293,6 +1294,8 @@ export const NetlistResultsPanel: React.FC<NetlistResultsPanelProps> = (props) =
         onReviewExported={props.onReviewExported ?? (() => {})}
         onRunAiReview={props.onRunAiReview ?? (() => {})}
         aiReviewRunning={props.aiReviewRunning ?? false}
+        aiReviewRound={props.aiReviewRound ?? 0}
+        aiReviewError={props.aiReviewError}
         onOpenChat={props.onOpenChat}
         canManagePrompt={props.canManagePrompt ?? false}
         onOpenPromptSettings={props.onOpenPromptSettings}

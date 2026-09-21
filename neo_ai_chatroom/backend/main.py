@@ -106,6 +106,7 @@ from backend.ai.bailian_models import (
     BAILIAN_MODELS,
     build_tokenplan_extra_body,
     build_mention_alias_map,
+    extract_reasoning_delta,
     get_api_model,
     get_bailian_model,
     get_tokenplan_base_url,
@@ -717,7 +718,7 @@ async def stream_deepseek_response(
         if delta is None:
             continue
         # 思考过程（deepseek-reasoner 模型），OpenAI SDK 的 delta 为对象
-        reasoning_part = getattr(delta, "reasoning_content", None)
+        reasoning_part = extract_reasoning_delta(delta)
         if reasoning_part:
             thinking_text += reasoning_part
         # 正式回答内容
@@ -829,6 +830,7 @@ async def stream_bailian_response(
     enhanced_system_prompt: Optional[str],
     enable_reasoning: bool,
     max_tokens: int = None,
+    force_disable_reasoning: bool = False,
 ) -> str:
     """AI Token Plan OpenAI 兼容流式输出。"""
     spec = get_bailian_model(ai_id)
@@ -853,8 +855,8 @@ async def stream_bailian_response(
         print(f"[Token Plan流式] max_tokens={safe_max} 超出上限 {cap}，已截断")
         safe_max = cap
 
-    use_reasoning = enable_reasoning
-    if spec.supports_reasoning and not enable_reasoning:
+    use_reasoning = enable_reasoning and not force_disable_reasoning
+    if spec.supports_reasoning and not enable_reasoning and not force_disable_reasoning:
         use_reasoning = spec.default_enable_reasoning
 
     messages = []
@@ -867,7 +869,12 @@ async def stream_bailian_response(
             messages.append({"role": role, "content": content})
     messages.append({"role": "user", "content": user_message})
 
-    client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+    client = AsyncOpenAI(
+        api_key=api_key,
+        base_url=base_url,
+        timeout=float(os.getenv("TOKENPLAN_TIMEOUT_SECONDS", "180")),
+        max_retries=int(os.getenv("TOKENPLAN_MAX_RETRIES", "0")),
+    )
     api_model = get_api_model(ai_id)
 
     request_params: Dict[str, Any] = {
@@ -898,6 +905,10 @@ async def stream_bailian_response(
     thinking_text = ""
     answer_text = ""
     finish_reason = None
+    emit_interval = max(
+        0.0, float(os.getenv("TOKENPLAN_STREAM_EMIT_INTERVAL_SECONDS", "0.2"))
+    )
+    last_emit_at = 0.0
     async for chunk in stream:
         if not chunk.choices:
             continue
@@ -907,7 +918,7 @@ async def stream_bailian_response(
         delta = chunk.choices[0].delta
         if delta is None:
             continue
-        reasoning_part = getattr(delta, "reasoning_content", None)
+        reasoning_part = extract_reasoning_delta(delta)
         if reasoning_part:
             thinking_text += reasoning_part
         content_part = getattr(delta, "content", None)
@@ -916,6 +927,11 @@ async def stream_bailian_response(
 
         if not thinking_text and not answer_text:
             continue
+
+        now = time.monotonic()
+        if not fr and now - last_emit_at < emit_interval:
+            continue
+        last_emit_at = now
 
         full_content = ""
         if thinking_text:
@@ -3477,7 +3493,8 @@ async def process_ais_sequentially(
         time_based_history = await message_store.get_ai_conversation_history(
             conversation_id=conversation_id,
             ai_model=ai_id,
-            limit=10
+            limit=10,
+            exclude_message_id=parent_message_id,
         )
         
         # 使用向量搜索获取相关的历史消息（语义搜索，如果可用）
@@ -3681,20 +3698,28 @@ async def process_ai_response_sync(
                 user_message=message,
                 optimized_history=optimized_history,
                 enhanced_system_prompt=enhanced_system_prompt,
-                enable_reasoning=enable_reasoning,
+                enable_reasoning=False if schematic_pre_export else enable_reasoning,
                 max_tokens=max_tokens,
             )
         elif is_bailian_ai_id(ai_id):
-            response, finish_reason = await stream_bailian_response(
-                websocket=websocket,
-                ai_id=ai_id,
-                message_id=message_id,
-                user_message=message,
-                optimized_history=optimized_history,
-                enhanced_system_prompt=enhanced_system_prompt,
-                enable_reasoning=enable_reasoning,
-                max_tokens=max_tokens,
-            )
+            tokenplan_timeout = float(os.getenv("TOKENPLAN_TIMEOUT_SECONDS", "180"))
+            try:
+                async with asyncio.timeout(tokenplan_timeout):
+                    response, finish_reason = await stream_bailian_response(
+                        websocket=websocket,
+                        ai_id=ai_id,
+                        message_id=message_id,
+                        user_message=message,
+                        optimized_history=optimized_history,
+                        enhanced_system_prompt=enhanced_system_prompt,
+                        enable_reasoning=enable_reasoning,
+                        max_tokens=max_tokens,
+                        force_disable_reasoning=schematic_pre_export,
+                    )
+            except TimeoutError as e:
+                raise ValueError(
+                    f"AI Token Plan 请求超过 {tokenplan_timeout:g} 秒，已停止，请重试"
+                ) from e
         elif base_ai_id == "doubao":
             response, finish_reason = await stream_ark_doubao_response(
                 websocket=websocket,
