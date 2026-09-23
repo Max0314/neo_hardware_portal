@@ -15,8 +15,10 @@ def test_empty_alternative_group_is_kept_and_code_is_string():
 def test_duplicates_and_conflicts():
     a = library([['001', '电阻', 'A', '优选']])
     assert len(build_snapshot([a, a])['parts']) == 1
-    with pytest.raises(ValueError, match='冲突'):
-        build_snapshot([a, library([['001', '电容', 'A', '优选']], 'b')])
+    snapshot = build_snapshot([a, library([['001', '电容', 'A', '优选']], 'b')])
+    assert snapshot['conflicts'] == ['001']
+    assert len(snapshot['parts']) == 2
+    assert all(p['conflict'] for p in snapshot['parts'])
 
 
 def test_version_changes_only_when_material_content_changes():

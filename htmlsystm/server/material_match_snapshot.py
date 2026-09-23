@@ -6,7 +6,7 @@ FIELDS = {'物料代码': 'partCode', '物料描述': 'description', '替代组�
 
 
 def build_snapshot(libraries):
-    parts, seen, conflicts = [], {}, []
+    parts, seen, conflicts, signatures = [], {}, set(), set()
     for lib in sorted(libraries, key=lambda x: str(x.get('id', ''))):
         table = lib.get('currentTable') or {}
         rows = table.get('data') or []
@@ -25,13 +25,19 @@ def build_snapshot(libraries):
             code = part['partCode']
             if code in seen:
                 if seen[code] != part:
-                    conflicts.append(code)
+                    conflicts.add(code)
+            else:
+                seen[code] = dict(part)
+            signature = json.dumps(part, ensure_ascii=False, sort_keys=True)
+            if signature in signatures:
                 continue
-            seen[code] = dict(part)
+            signatures.add(signature)
             part['libraryId'] = str(lib['id'])
             parts.append(part)
-    if conflicts:
-        raise ValueError('物料代码存在字段冲突，请在物料库核对：' + '、'.join(sorted(set(conflicts))[:10]))
+    # Preserve conflicting source rows for inspection; never choose one silently.
+    # The consumer excludes these codes from automatic selection and flags manual use.
+    for part in parts:
+        part['conflict'] = part['partCode'] in conflicts
     parts.sort(key=lambda p: (p['partCode'], p['libraryId']))
     version = hashlib.sha256(json.dumps(parts, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
-    return {'parts': parts, 'version': version, 'libraryCount': len(libraries)}
+    return {'parts': parts, 'version': version, 'libraryCount': len(libraries), 'conflicts': sorted(conflicts)}
