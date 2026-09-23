@@ -243,6 +243,18 @@ gunzip -c backup-xxx.sql.gz | MYSQL_PWD='<密码>' mysql --default-character-set
 先部署本仓库以创建共享网络，再部署报告服务。报告服务迁移和回滚步骤以其仓库
 `docs/neoflow-migration.md` 为准。
 
+### 5.2 AI BOM 智能选型与校验子服务
+
+- 独立仓库 `Max0314/ai-bom`，服务器目录 `/home/max/apps/ai-bom`。
+- 独立 Compose 单容器 `material-match:8000`；宿主机不发布端口。
+- 新建专用网络 `neo-hardware-material-match`，仅 gateway、htmlsystm 和该服务加入。
+- 公开路径 `/neo_hardware/material-match/`；gateway 保留动态 DNS、Cookie、外部协议和流式响应。
+- 会话校验使用现有内部接口的可选 `fresh=1`，检查会话撤销、最新角色和账号状态。
+- `/api/material-db/match-snapshot` 为登录后的只读四字段投影，不修改物料，不调用宜搭同步。
+- 独立 NeoFlowData MySQL 库/账号 `ai_bom`，OSS 前缀 `prod/material-match/`。
+- 首次按新仓库说明初始化配置；常规更新先 Git 拉取，再 `bash scripts/deploy.sh`。
+- 故障只影响子路径；回滚保留独立数据库和 OSS 文件，不修改报告审核服务。
+
 ---
 
 ## 六、Nginx 反代

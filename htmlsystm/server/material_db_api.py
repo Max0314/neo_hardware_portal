@@ -35,6 +35,16 @@ class MaterialDbApi:
         query = parse_qs(parsed_path.query or '')
         body = self._read_json_body() if method in ('POST', 'PUT', 'PATCH') else {}
 
+        # Additive read-only endpoint; no sync, unlock or material mutation.
+        if method == 'GET' and path == '/api/material-db/match-snapshot':
+            from server.material_match_snapshot import build_snapshot
+            try:
+                snapshot = build_snapshot(mdb.list_libraries(include_history_data=False))
+                self.h.send_json_response({'success': True, **snapshot})
+            except ValueError as exc:
+                self.h.send_json_response({'success': False, 'error': str(exc)}, status=409)
+            return
+
         # GET /api/material-db/dingtalk-open-url
         if method == 'GET' and path == '/api/material-db/dingtalk-open-url':
             from server.dingtalk_url_util import build_material_db_dingtalk_url

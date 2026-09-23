@@ -2451,6 +2451,7 @@ _DASHBOARD_FEATURE_LABELS: Dict[str, str] = {
     "bom_compare": "BOM 对比",
     "bom_check": "BOM AI 检查",
     "report_audit": "测试报告审核",
+    "material_match": "AI BOM智能选型与校验",
     "material_db": "物料数据库",
 }
 

@@ -78,6 +78,7 @@ services:
     networks:
       - default
       - report_audit_internal
+      - material_match_internal
     healthcheck:
       test:
         [
@@ -197,6 +198,7 @@ services:
     networks:
       - default
       - report_audit_internal
+      - material_match_internal
     depends_on:
       htmlsystm:
         condition: service_healthy
@@ -229,3 +231,6 @@ networks:
   # gateway 也通过服务名访问报告平台。网络不对宿主机或公网发布端口。
   report_audit_internal:
     name: neo-hardware-report-audit
+
+  material_match_internal:
+    name: neo-hardware-material-match

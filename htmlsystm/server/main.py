@@ -580,6 +580,19 @@ class HardwareRDBHandler(http.server.SimpleHTTPRequestHandler):
             self.send_json_response({'authenticated': False, 'error': '禁止访问'}, status=403)
             return
         user = self.get_current_user(skip_session_enrich=True)
+        # Opt-in fresh verification for independently deployed privileged tools.
+        # Existing NEO/report callers retain their current fast-path behavior.
+        fresh = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('fresh') == ['1']
+        if user and fresh:
+            try:
+                from server.auth.login_service import resolve_user_from_cookies
+                user = resolve_user_from_cookies(self.headers.get('Cookie', ''), lite=False, skip_session_enrich=True)
+                user = self.user_manager.get_user_by_id(int(user['id'])) if user else None
+                if not user or not self._user_status_allows_login(user):
+                    user = None
+            except Exception:
+                self.send_json_response({'authenticated': False, 'error': '身份校验暂时不可用'}, status=503)
+                return
         if user:
             from server.auth.capabilities import user_capabilities
             self.send_json_response({

@@ -302,6 +302,15 @@ export function HomePage() {
               </div>
             </Link>
 
+            <a href={appUrl('/material-match/')} target="_blank" rel="noopener noreferrer"
+              className="feature-card" style={{ textDecoration: 'none', color: 'inherit' }}
+              onClick={() => trackDashboardFeatureUse('material_match')}>
+              <div className="icon-wrapper dual-icon"><i className="fas fa-microchip" /><i className="fas fa-check-circle" /></div>
+              <div className="card-title">AI BOM智能选型与校验<span className="ai-tag">AI</span></div>
+              <div className="card-desc">导入客户 BOM，从物料优选库辅助选型；支持 Excel、CSV、TXT 坐标封装校验、人工复核和报告导出。</div>
+              <div className="card-action"><div className="action-btn"><i className="fas fa-arrow-right" /><span>进入选型</span></div></div>
+            </a>
+
             {/* 测试报告审核 */}
             <a
               href={appUrl('/report-audit/')}
