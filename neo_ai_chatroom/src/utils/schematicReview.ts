@@ -177,8 +177,16 @@ function worstStatus(a: string, b: string): string {
   return ra >= rb ? a.toUpperCase() : b.toUpperCase();
 }
 
+function interfaceName(iface: any): string {
+  // Some models return interface_name instead of the legacy type/name fields.
+  for (const value of [iface?.type, iface?.name, iface?.interface_name]) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return '接口';
+}
+
 function checkKey(iface: any, chk: any): string {
-  const ifaceType = String(iface?.type ?? iface?.name ?? '接口');
+  const ifaceType = interfaceName(iface);
   const name = String(chk?.check_name ?? chk?.name ?? '');
   return `${ifaceType}::${name}`;
 }
@@ -203,7 +211,7 @@ export function mergeSchematicReviewJson(parts: any[]): any {
     overall = worstStatus(overall, String(part.overall_status ?? 'INFO'));
     for (const iface of part.interfaces || []) {
       if (!iface || typeof iface !== 'object') continue;
-      const ifaceType = String(iface.type ?? iface.name ?? '接口');
+      const ifaceType = interfaceName(iface);
       if (!mergedInterfaces[ifaceType]) {
         mergedInterfaces[ifaceType] = { type: ifaceType, checks: [] };
       }
@@ -237,7 +245,7 @@ export function buildSchematicContinuationPrompt(
   const ifaceTypes = new Set<string>();
   for (const p of priorParsed) {
     for (const iface of p?.interfaces || []) {
-      ifaceTypes.add(String(iface?.type ?? iface?.name ?? '接口'));
+      ifaceTypes.add(interfaceName(iface));
     }
   }
   const listed = [...ifaceTypes].slice(0, 30).join('、') || '（无）';
@@ -542,7 +550,7 @@ export function collectAiChecksFromAggregated(aggregated: any): SchematicReviewC
   if (!parsedSource?.interfaces) return aiChecks;
 
   parsedSource.interfaces.forEach((iface: any, ifaceIdx: number) => {
-    const ifaceType = String(iface?.type ?? '接口');
+    const ifaceType = interfaceName(iface);
     (iface.checks || []).forEach((chk: any, chkIdx: number) => {
       const status = String(chk?.status ?? 'INFO').toUpperCase() || 'INFO';
       const name = String(chk?.check_name ?? '');

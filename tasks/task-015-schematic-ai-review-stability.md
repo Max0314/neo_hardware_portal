@@ -35,3 +35,13 @@
 
 - `deepseek-v4-flash` 在 NeoFlow 当前模型目录中没有映射，NeoFlow 模式下从原理图默认模型选项中隐藏；可在上游模型就绪后通过显式 `NEOFLOW_MODEL_bailian_deepseekv4flash` 恢复。
 - 回滚：回退本任务合并提交后重新执行标准部署脚本。
+
+## 2026-11-02 浏览器端到端验收补充
+
+- 分支：`codex/schematic-report-e2e-20261102`。
+- 使用 Chrome 中现存真实账号会话，经正式门户进入原理图审核，不替换服务端鉴权。网表使用明确标记的合成数据 `CODEX_E2E_20261102_01a199e2`。
+- 实际复现：DeepSeek V4 Pro 两轮回复使用 `interface_name`；前端只识别 `type/name`，将 7 个接口归入同一组，并使 U5/U2V 的同名检查互相覆盖，原始 13 项检查只展示 12 项。
+- 修复：前端合并、去重键、续写上下文和报告明细统一识别 `type`、`name`、`interface_name`，跳过空名称；保留既有字段优先级和同一接口同一检查的更新规则。只修复前端解析，不改模型、生产提示词、接口、数据库或历史记录。
+- 定向验证：`node scripts/test-schematic-review.cjs` 3 项通过，覆盖不同接口同名检查保留、跨轮次同接口更新、旧字段和未合并历史展示。将两轮真实回复重放到修复前后实现，结果由 1 组/12 项恢复为 7 组/13 项。
+- 构建验证：`VITE_NEO_PATH_PREFIX=/neo_hardware/neo npm run build` 通过（包含 TypeScript）；保留既有产物体积、Browserslist 与静态资源提示，未扩展至无关优化。
+- 部署及后续 PDF、浏览器会话验收：进行中；只构建 web，使用共享构建锁，再运行 `bash migration/deploy.sh --no-build`。完成后补录运行版本、导出文件与合成数据清理证据。
