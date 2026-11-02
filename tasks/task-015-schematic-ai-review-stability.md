@@ -17,8 +17,8 @@
 - [x] Python 编译检查
 - [x] 后端单元测试（26 passed）
 - [x] 前端生产构建与 TypeScript 检查
-- [ ] NeoFlow 部署及健康检查
-- [ ] 生产 Token Plan 流式冒烟测试
+- [x] NeoFlow 部署及健康检查（2026-11-02 补充核验运行版本 `5a44806`，4 个服务 healthy）
+- [x] 生产 Token Plan 流式冒烟测试（2026-11-02 隔离合成 WebSocket 业务验证，DeepSeek V4 Pro 返回完整评审 JSON，MySQL/OSS 保存读取及清理通过；详见 [Task 013](task-013-neoflow-tokenplan-models.md#2026-11-02-默认模型切换与业务验收)）
 
 ## Git
 
