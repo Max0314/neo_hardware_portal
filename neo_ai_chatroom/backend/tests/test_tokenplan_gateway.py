@@ -15,6 +15,19 @@ from backend.ai.bailian_models import (
 
 
 class TokenPlanGatewayTests(unittest.TestCase):
+    def test_luna_uses_neoflow_route_and_reasoning_parameters(self):
+        with patch.dict(os.environ, {
+            "TOKENPLAN_PROVIDER": "neoflow",
+            "TOKENPLAN_DEFAULT_MENTION_MODEL": "bailian-gpt6luna",
+        }, clear=True):
+            self.assertEqual(get_default_mention_model_id(), "bailian-gpt6luna")
+            self.assertEqual(get_api_model("bailian-gpt6luna"), "openai/gpt-6-luna")
+            spec = get_bailian_model("bailian-gpt6luna")
+            self.assertEqual(build_tokenplan_extra_body(spec, False, "high"), {"reasoning_effort": "none"})
+            self.assertEqual(build_tokenplan_extra_body(spec, True, "high"), {"reasoning_effort": "high"})
+        with patch.dict(os.environ, {"TOKENPLAN_PROVIDER": "direct"}, clear=True):
+            self.assertFalse(is_tokenplan_model_available("bailian-gpt6luna"))
+
     def test_reasoning_delta_accepts_neoflow_and_deepseek_fields(self):
         class Delta:
             reasoning = "NeoFlow reasoning"

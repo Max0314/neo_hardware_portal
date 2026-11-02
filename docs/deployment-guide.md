@@ -2,6 +2,8 @@
 
 更新时间：2026-08-05
 
+2026-11-02 默认模型调整：NeoFlow 聊天默认提及使用 `TOKENPLAN_DEFAULT_MENTION_MODEL=bailian-gpt6luna`，实际模型为 `openai/gpt-6-luna`。后端模型列表显示 GPT-6 Luna；原理图审核仍保持独立的 DeepSeek V4 Pro 设置。Luna 的思考开关映射为 `reasoning_effort`，关闭时使用 `none`，不发送 Qwen 专属参数。回滚可恢复原默认提及变量和原镜像；不要覆盖生产密钥或历史会话。
+
 面向在 NeoFlow 平台上部署与运维硬件研发部门户的人。凭据不写在本文，位置见
 [凭据](#凭据) 一节。
 

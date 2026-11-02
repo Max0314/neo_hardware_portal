@@ -47,6 +47,11 @@ def _spec(
 
 
 BAILIAN_MODELS: List[BailianModelSpec] = [
+    BailianModelSpec(
+        id="bailian-gpt6luna", name="GPT-6 Luna", api_model="gpt-6-luna",
+        avatar="🌙", description="NeoFlow GPT-6 Luna",
+        supports_reasoning=True, use_reasoning_effort=True,
+    ),
     _spec("deepseekv4", "deepseek-v4-pro", "🔮", reasoning_effort=True),
     _spec("deepseekv4flash", "deepseek-v4-flash", "⚡", reasoning_effort=True),
     _spec("deepseekv32", "deepseek-v3.2", "🧠"),
@@ -76,6 +81,7 @@ _LEGACY_ID_ALIASES = {
 }
 
 _NEOFLOW_DEFAULT_MODEL_MAP = {
+    "gpt-6-luna": "openai/gpt-6-luna",
     "deepseek-v4-pro": "deepseek/deepseek-v4-pro",
     "qwen3.7-plus": "qwen/qwen3.7-plus",
     "qwen3.6-plus": "qwen/qwen3.6-plus",
@@ -146,6 +152,8 @@ def get_api_model(ai_id: str) -> str:
             f"模型 {spec.api_model} 尚无 NeoFlow 映射；"
             f"请配置 NEOFLOW_MODEL_{suffix}"
         )
+    if spec.id == "bailian-gpt6luna":
+        raise ValueError("GPT-6 Luna 仅通过 NeoFlow 提供")
     env_key = f"TOKENPLAN_MODEL_{suffix}"
     return (os.getenv(env_key) or "").strip() or spec.api_model
 
@@ -157,6 +165,8 @@ def build_tokenplan_extra_body(
 ) -> Dict[str, Any]:
     """仅构造模型能力参数，不指定 NeoFlow 上游供应商。"""
     extra_body: Dict[str, Any] = {}
+    if spec.id == "bailian-gpt6luna":
+        return {"reasoning_effort": reasoning_effort if enable_reasoning else "none"}
     if spec.supports_reasoning:
         extra_body["enable_thinking"] = bool(enable_reasoning)
         if enable_reasoning and spec.use_reasoning_effort:
